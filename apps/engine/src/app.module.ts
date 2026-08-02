@@ -3,6 +3,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ConfigModule } from './config/config.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
+import { PersistenceModule } from './persistence/persistence.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { AuthModule } from './auth/auth.module';
     ConfigModule,
     AuthModule,
     HealthModule,
+    PersistenceModule,
   ],
 })
 export class AppModule {}
