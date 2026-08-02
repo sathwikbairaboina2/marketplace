@@ -11,7 +11,10 @@ describe('BlueprintDiffSchema', () => {
 
   it('rejects a destructive diff', () => {
     expect(() =>
-      BlueprintDiffSchema.parse({ addedFields: [], removedFields: ['price'] }),
+      BlueprintDiffSchema.parse({
+        addedFields: [{ name: 'dietaryNeeds', type: 'string' }],
+        removedFields: ['price'],
+      }),
     ).toThrow();
   });
 
