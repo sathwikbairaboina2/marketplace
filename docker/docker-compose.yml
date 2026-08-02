@@ -1,0 +1,58 @@
+name: marketplace
+
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:2.5.2
+    command: ['-jar', 'DynamoDBLocal.jar', '-inMemory', '-sharedDb']
+    ports: ['8000:8000']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -s -o /dev/null http://localhost:8000 || exit 1']
+      interval: 3s
+      retries: 20
+
+  localstack:
+    image: localstack/localstack:3.8
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: us-east-1
+    ports: ['4566:4566']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -s http://localhost:4566/_localstack/health | grep -q "\"sqs\": \"available\""']
+      interval: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports: ['6379:6379']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      retries: 20
+
+  cognito-local:
+    image: jagregory/cognito-local:3.21.0
+    ports: ['9229:9229']
+    volumes: ['cognito-data:/app/.cognito']
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:9229/health || exit 0']
+      interval: 3s
+      retries: 20
+
+  seed:
+    build: { context: .., dockerfile: docker/seed/Dockerfile }
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+      SQS_ENDPOINT: http://localstack:4566
+      COGNITO_ENDPOINT: http://cognito-local:9229
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      ENV_OUT: /repo/docker/.env.generated
+    volumes: ['.:/repo/docker']
+    depends_on:
+      dynamodb-local: { condition: service_healthy }
+      localstack: { condition: service_healthy }
+      cognito-local: { condition: service_started }
+
+volumes:
+  cognito-data:

@@ -1,0 +1,19 @@
+{
+  "name": "@marketplace/seed",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": { "test": "jest", "build": "tsc -p tsconfig.json --noEmit" },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.665.0",
+    "@aws-sdk/client-dynamodb": "^3.665.0",
+    "@aws-sdk/client-sqs": "^3.665.0",
+    "tsx": "^4.19.1"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.13",
+    "@types/node": "^22.7.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.6.0"
+  }
+}
