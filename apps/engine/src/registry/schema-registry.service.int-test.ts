@@ -78,4 +78,58 @@ describe('SchemaRegistryService', () => {
     );
     expect((await asTenant(b, () => registry.get('Product'))).fields).toEqual({});
   });
+
+  it('rejects duplicate field names within one applyAddFields call instead of silently collapsing them', async () => {
+    const t = uniq();
+
+    const err = await asTenant(t, () =>
+      registry.applyAddFields('Product', [
+        { name: 'dup', type: 'string', required: false, default: null },
+        { name: 'dup', type: 'number', required: false, default: null },
+      ]),
+    ).catch((e) => e);
+
+    expect(err).toBeInstanceOf(ProblemException);
+    expect((err as ProblemException).getStatus()).toBe(422);
+    // Nothing should have been written: the schema stays at version 0.
+    expect((await asTenant(t, () => registry.get('Product'))).version).toBe(0);
+  });
+
+  it('rejects a required field that declares a non-null default', async () => {
+    const t = uniq();
+
+    const err = await asTenant(t, () =>
+      registry.applyAddFields('Product', [{ name: 'seats', type: 'number', required: true, default: 4 }]),
+    ).catch((e) => e);
+
+    expect(err).toBeInstanceOf(ProblemException);
+    expect((err as ProblemException).getStatus()).toBe(422);
+    expect((await asTenant(t, () => registry.get('Product'))).version).toBe(0);
+  });
+
+  it('surfaces a lost schema-version race as a 409 conflict, not a bare 500', async () => {
+    const t = uniq();
+
+    // Establish a real schema at version 1.
+    await asTenant(t, () =>
+      registry.applyAddFields('Product', [{ name: 'fieldA', type: 'string', required: false, default: null }]),
+    );
+
+    // Simulate a caller whose read of the current record raced with (and lost to)
+    // another writer: force the next `repo.get` — the one `applyAddFields`'s
+    // `readThrough` performs — to return the stale pre-update record (v0) even
+    // though DynamoDB actually holds v1. Its conditional Put must then fail
+    // against the version DynamoDB really has, and that failure must surface
+    // as a structured 409, not a bare 500.
+    const getSpy = jest.spyOn(repo, 'get').mockResolvedValueOnce({ version: 0, fields: {} });
+
+    const err = await asTenant(t, () =>
+      registry.applyAddFields('Product', [{ name: 'fieldB', type: 'string', required: false, default: null }]),
+    ).catch((e) => e);
+
+    getSpy.mockRestore();
+
+    expect(err).toBeInstanceOf(ProblemException);
+    expect((err as ProblemException).getStatus()).toBe(409);
+  });
 });

@@ -6,6 +6,7 @@ export type ProblemType =
   | 'event-at-capacity'
   | 'schema-validation-failed'
   | 'unsupported-schema-change'
+  | 'schema-version-conflict'
   | 'too-many-line-items'
   | 'mixed-currency-order'
   | 'request-in-progress'

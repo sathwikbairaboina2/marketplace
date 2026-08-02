@@ -47,6 +47,14 @@ describe('validateAttributes', () => {
     expect(validateAttributes(fields, { seats: 1, startsOn: 'tomorrow' }).ok).toBe(false);
   });
 
+  it('rejects dates that are not canonical ISO-8601, even when Date.parse would accept them', () => {
+    // Date.parse falls back to a non-ISO, locale/timezone-dependent parser for strings
+    // like these, silently producing a timestamp a day off from the UTC interpretation.
+    expect(validateAttributes(fields, { seats: 1, startsOn: '02026-08-03' }).ok).toBe(false);
+    expect(validateAttributes(fields, { seats: 1, startsOn: ' 2026-08-03' }).ok).toBe(false);
+    expect(validateAttributes(fields, { seats: 1, startsOn: '2026-08-03 ' }).ok).toBe(false);
+  });
+
   it('accepts anything when the tenant has defined no fields', () => {
     expect(validateAttributes({}, {})).toEqual({ ok: true, value: {} });
   });

@@ -10,6 +10,14 @@ export type ValidationResult =
   | { ok: true; value: Record<string, unknown> }
   | { ok: false; errors: FieldError[] };
 
+// Anchored, canonical ISO-8601: either a plain `YYYY-MM-DD` date, or a full
+// date-time with an explicit `T` separator and an explicit `Z`/offset zone.
+// Unanchored matching previously let malformed strings like "02026-08-03",
+// " 2026-08-03" or "2026-08-03 " slip through the type check and then be
+// parsed by `Date.parse`'s non-ISO, locale/timezone-dependent fallback,
+// silently drifting the resulting timestamp by a day.
+const ISO_8601_PATTERN = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2}))?$/;
+
 function matchesScalar(type: string, value: unknown): boolean {
   switch (type) {
     case 'string':
@@ -19,7 +27,7 @@ function matchesScalar(type: string, value: unknown): boolean {
     case 'boolean':
       return typeof value === 'boolean';
     case 'date':
-      return typeof value === 'string' && !Number.isNaN(Date.parse(value)) && /\d{4}-\d{2}-\d{2}/.test(value);
+      return typeof value === 'string' && ISO_8601_PATTERN.test(value) && !Number.isNaN(Date.parse(value));
     default:
       return false;
   }
