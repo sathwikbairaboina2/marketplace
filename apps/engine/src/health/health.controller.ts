@@ -2,6 +2,7 @@ import { Controller, Get, Inject } from '@nestjs/common';
 import { DynamoDBClient, DescribeTableCommand } from '@aws-sdk/client-dynamodb';
 import Redis from 'ioredis';
 import { ENV, EnvConfig } from '../config/env.schema';
+import { Public } from '../auth/public.decorator';
 
 @Controller('health')
 export class HealthController {
@@ -13,11 +14,13 @@ export class HealthController {
     this.redis = new Redis(env.REDIS_URL, { lazyConnect: true, maxRetriesPerRequest: 1 });
   }
 
+  @Public()
   @Get('live')
   live(): { status: string } {
     return { status: 'ok' };
   }
 
+  @Public()
   @Get('ready')
   async ready(): Promise<{ dynamodb: string; redis: string }> {
     await this.ddb.send(new DescribeTableCommand({ TableName: this.env.TABLE_NAME }));
