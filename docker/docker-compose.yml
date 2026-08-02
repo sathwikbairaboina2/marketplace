@@ -34,7 +34,11 @@ services:
     ports: ['9229:9229']
     volumes: ['cognito-data:/app/.cognito']
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:9229/health || exit 0']
+      test:
+        [
+          'CMD-SHELL',
+          'wget -q -O /dev/null --header="Content-Type: application/x-amz-json-1.1" --header="X-Amz-Target: AWSCognitoIdentityProviderService.ListUserPools" --post-data="{\"MaxResults\":1}" http://127.0.0.1:9229/',
+        ]
       interval: 3s
       retries: 20
 
@@ -52,7 +56,7 @@ services:
     depends_on:
       dynamodb-local: { condition: service_healthy }
       localstack: { condition: service_healthy }
-      cognito-local: { condition: service_started }
+      cognito-local: { condition: service_healthy }
 
 volumes:
   cognito-data:

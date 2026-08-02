@@ -1,9 +1,16 @@
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, rmSync } from 'node:fs';
 import { ensureTable } from './dynamo';
 import { ensureQueues } from './sqs';
 import { ensureUserPool } from './cognito';
 
 async function main(): Promise<void> {
+  // A stale .env.generated from a previous successful run must not survive a
+  // failed run: verify.test.ts reads whatever is on disk, so a partial
+  // failure that left the old file in place would validate yesterday's
+  // infrastructure instead of failing loudly. Removing it up front means a
+  // run that dies partway through leaves no file at all.
+  rmSync(process.env.ENV_OUT!, { force: true });
+
   await ensureTable();
   const { queueUrl, dlqUrl } = await ensureQueues();
   const { userPoolId, clientId } = await ensureUserPool();
