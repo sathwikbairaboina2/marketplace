@@ -4,6 +4,8 @@ import { ConfigModule } from './config/config.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { PersistenceModule } from './persistence/persistence.module';
+import { RedisModule } from './redis/redis.module';
+import { RegistryModule } from './registry/registry.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { PersistenceModule } from './persistence/persistence.module';
     AuthModule,
     HealthModule,
     PersistenceModule,
+    RedisModule,
+    RegistryModule,
   ],
 })
 export class AppModule {}
