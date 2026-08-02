@@ -9,7 +9,7 @@ describe('authentication', () => {
   it('rejects a request with no token', async () => {
     const res = await fetch(`${baseUrl}/api/v1/me`);
     expect(res.status).toBe(401);
-    // TODO(Task 8): restore application/problem+json assertion once ProblemFilter lands
+    expect(res.headers.get('content-type')).toContain('application/problem+json');
   });
 
   it('rejects a malformed token', async () => {
