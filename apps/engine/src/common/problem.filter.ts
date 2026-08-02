@@ -17,11 +17,14 @@ export class ProblemFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();
-    const traceId = (req.headers['x-request-id'] as string) ?? 'unknown';
+    const traceId =
+      (req as unknown as { id?: string }).id ??
+      (req.headers['x-request-id'] as string | undefined) ??
+      'unknown';
 
     const body = this.toProblem(exception);
     if (body.status >= 500) {
-      this.logger.error({ err: exception, traceId }, 'unhandled error');
+      this.logger.error({ err: exception, traceId, msg: 'unhandled error' });
     }
 
     res
@@ -35,14 +38,16 @@ export class ProblemFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
-      const slug =
-        status === HttpStatus.UNAUTHORIZED
-          ? 'unauthorized'
-          : status === HttpStatus.NOT_FOUND
-            ? 'not-found'
-            : status < 500
-              ? 'invalid-request'
-              : 'internal-error';
+
+      if (status >= 500) {
+        return {
+          type: 'https://marketplace.local/problems/internal-error',
+          title: 'Internal Server Error',
+          status,
+        };
+      }
+
+      const slug = status === HttpStatus.UNAUTHORIZED ? 'unauthorized' : status === HttpStatus.NOT_FOUND ? 'not-found' : 'invalid-request';
       const response = exception.getResponse();
       const detail =
         typeof response === 'string'

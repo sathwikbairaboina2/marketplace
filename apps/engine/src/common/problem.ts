@@ -32,11 +32,11 @@ export class ProblemException extends HttpException {
     extra: Record<string, unknown> = {},
   ) {
     const problem: ProblemBody = {
+      ...extra,
       type: `https://marketplace.local/problems/${type}`,
       title,
       status,
       ...(detail === undefined ? {} : { detail }),
-      ...extra,
     };
     super(problem, status);
     this.problem = problem;
