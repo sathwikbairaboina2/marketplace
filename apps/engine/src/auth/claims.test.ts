@@ -21,4 +21,16 @@ describe('principalFromClaims', () => {
       UnauthorizedException,
     );
   });
+
+  it('rejects a tenant claim containing a key-delimiter character', () => {
+    expect(() =>
+      principalFromClaims({ sub: 'user-1', 'custom:tenant_id': 'client#123' }),
+    ).toThrow(UnauthorizedException);
+  });
+
+  it('rejects a whitespace-only tenant claim', () => {
+    expect(() => principalFromClaims({ sub: 'user-1', 'custom:tenant_id': '   ' })).toThrow(
+      UnauthorizedException,
+    );
+  });
 });

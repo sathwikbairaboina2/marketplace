@@ -35,4 +35,21 @@ describe('authentication', () => {
     expect(a['custom:tenant_id']).toBe('tenant_a');
     expect(b['custom:tenant_id']).toBe('tenant_b');
   });
+
+  it('never leaks one tenant into a concurrent request for another', async () => {
+    const tokenA = await tokenFor('tenant_concurrent_a', 'concurrent-a@example.com');
+    const tokenB = await tokenFor('tenant_concurrent_b', 'concurrent-b@example.com');
+
+    const requests = Array.from({ length: 24 }, (_, i) => {
+      const [token, tenantId] = i % 2 === 0 ? [tokenA, 'tenant_concurrent_a'] : [tokenB, 'tenant_concurrent_b'];
+      return fetch(`${baseUrl}/api/v1/me`, { headers: { authorization: `Bearer ${token}` } })
+        .then((res) => res.json())
+        .then((body) => ({ expected: tenantId, got: (body as { tenantId: string }).tenantId }));
+    });
+
+    const results = await Promise.all(requests);
+    for (const { expected, got } of results) {
+      expect(got).toBe(expected);
+    }
+  });
 });

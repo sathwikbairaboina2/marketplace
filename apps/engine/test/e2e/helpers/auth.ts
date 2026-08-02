@@ -2,6 +2,7 @@ import {
   CognitoIdentityProviderClient,
   AdminCreateUserCommand,
   AdminSetUserPasswordCommand,
+  AdminUpdateUserAttributesCommand,
   InitiateAuthCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import '../setup';
@@ -29,6 +30,20 @@ export async function tokenFor(tenantId: string, username: string): Promise<stri
     );
   } catch (err) {
     if ((err as Error).name !== 'UsernameExistsException') throw err;
+
+    // The user already exists, possibly from an earlier test that requested
+    // a different tenant for this same username. Force the attribute to the
+    // tenant this call actually asked for -- silently reusing whatever
+    // tenant the user happened to have would let a caller mint a token for
+    // the wrong tenant with no error, which is exactly the kind of bug a
+    // cross-tenant isolation test must not be able to hide.
+    await client.send(
+      new AdminUpdateUserAttributesCommand({
+        UserPoolId: poolId,
+        Username: username,
+        UserAttributes: [{ Name: 'custom:tenant_id', Value: tenantId }],
+      }),
+    );
   }
 
   await client.send(
