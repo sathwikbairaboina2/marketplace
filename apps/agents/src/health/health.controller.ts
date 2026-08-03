@@ -2,6 +2,7 @@ import { Controller, Get, Inject } from '@nestjs/common';
 import Redis from 'ioredis';
 import { ENV, EnvConfig } from '../config/env.schema';
 import { REDIS } from '../redis/redis.module';
+import { Public } from '../auth/public.decorator';
 
 @Controller('health')
 export class HealthController {
@@ -10,11 +11,13 @@ export class HealthController {
     @Inject(REDIS) private readonly redis: Redis,
   ) {}
 
+  @Public()
   @Get('live')
   live(): { status: string } {
     return { status: 'ok' };
   }
 
+  @Public()
   @Get('ready')
   async ready(): Promise<{ redis: string; ollama: string; engine: string }> {
     await this.redis.ping();
