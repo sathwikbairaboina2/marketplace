@@ -7,11 +7,30 @@ export function connectSocket(token: string): Promise<Socket> {
     auth: { token },
     transports: ['websocket'],
     forceNew: true,
+    // socket.io-client's Manager retries a failed handshake with backoff by
+    // default, even on the very first connection attempt. Without this, a
+    // refused handshake (missing/malformed token) leaves a reconnect timer
+    // running in the background -- exactly the kind of dangling handle that
+    // keeps a Jest worker alive after the test that opened it has finished.
+    reconnection: false,
   });
   return new Promise((resolve, reject) => {
-    socket.on('connect', () => resolve(socket));
-    socket.on('connect_error', reject);
-    setTimeout(() => reject(new Error('socket did not connect')), 15_000);
+    const timer = setTimeout(() => {
+      socket.close();
+      reject(new Error('socket did not connect'));
+    }, 15_000);
+    socket.on('connect', () => {
+      clearTimeout(timer);
+      resolve(socket);
+    });
+    // A refused handshake must not leave the client behind either: close it
+    // here rather than relying on the caller, since the two rejection tests
+    // never get a reference to hand to a tracked disconnect() in afterAll.
+    socket.on('connect_error', (err) => {
+      clearTimeout(timer);
+      socket.close();
+      reject(err);
+    });
   });
 }
 
