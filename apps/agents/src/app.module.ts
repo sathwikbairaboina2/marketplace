@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { ConfigModule } from './config/config.module';
 import { RedisModule } from './redis/redis.module';
+import { LlmModule } from './llm/llm.module';
 import { HealthModule } from './health/health.module';
 
 @Module({
@@ -18,6 +19,7 @@ import { HealthModule } from './health/health.module';
     }),
     ConfigModule,
     RedisModule,
+    LlmModule,
     HealthModule,
   ],
 })
