@@ -263,6 +263,53 @@ There is no coverage-percentage target. The gate is that those five end-to-end i
 
 `packages/contracts` → shared primitives (`DynamoRepository`, `SchemaRegistry`, `TenantContext`) → feature modules → SQS consumer. Each layer's tests pass before the next begins.
 
+## 11. Amendments during implementation
+
+The following points in this document described the intended design at the time it was written;
+the whole-branch review that preceded merge found five places where the implementation ended up
+taking a different, deliberate path. Recorded here rather than silently edited into the sections
+above, so the document still reflects what was decided when and why.
+
+- **§5, Idempotency.** Redis keys are `idem:<tenantId>:<userId>:<key>`, not `idem:<tenantId>:<key>`
+  as stated above. Scoping by tenant alone would let a second user in the same tenant collide on
+  an `Idempotency-Key` value they didn't choose (an order id, a cart id, a retry counter) and
+  receive the first user's stored response verbatim — a cross-user data leak on the replay path,
+  not just a false conflict. `userId` is taken from the same ambient principal as `tenantId`.
+
+- **§5, Bookings.** DynamoDB's `ConditionExpression` grammar has no arithmetic operators — a
+  condition of the form `bookedCount + :qty <= capacity` is a `ValidationException` ("Invalid
+  ConditionExpression: Syntax error; token: '+'"), even though the same arithmetic is legal in an
+  `UpdateExpression`'s `SET` clause. The implementation instead precomputes the threshold from the
+  `capacity` already read (`maxAllowed = capacity - ticketQuantity`) and conditions on
+  `bookedCount <= :maxAllowed`, additionally pinning `capacity = :capacity` to close the
+  read-then-write window on `capacity` itself. See `BookingsService.create` for the full
+  reasoning.
+
+- **§7, Cancellation-index mapping.** "The exception filter maps that index back to the
+  originating line item" overstates what `ProblemFilter` does. `ProblemFilter` only translates a
+  thrown exception into an HTTP response; it has no knowledge of orders, bookings, or line items.
+  The mapping from a `TransactionCanceledException`'s `CancellationReasons` index back to *which*
+  product or event caused it happens in each writing service's own `explainFailure` method
+  (`OrdersService.explainFailure`, `BookingsService.explainFailure`), using the shared
+  `failedTransactionIndexes`/`conflictedTransactionIndexes` helpers in `common/transaction-errors`.
+
+- **§10, Integration test isolation.** Integration tests do not create a uniquely named table per
+  run. There is one fixed table (`MarketplaceEngine`, or `TABLE_NAME` if set), created once by the
+  `seed` container. Isolation between concurrently-running test cases comes from per-test random
+  tenant ids (`t_${uniq()}`), the same mechanism the tenant-isolation guarantee itself provides.
+  End-to-end tests additionally run with Jest's `--runInBand` (see `apps/engine/package.json`'s
+  `test:e2e` script) so cross-suite ordering assumptions (e.g. a dedicated tenant per suite) hold.
+
+- **§10 / §4, Registry cache invalidation.** The registry cache is not "invalidated on write."
+  There is no `DEL` on the write path. `SchemaRegistryService.applyAddFields` instead writes the
+  fresh record straight into the cache via a version-guarded compare-and-set
+  (`setSchemaCacheIfNewer`, implemented as a single atomic Lua script): the write is applied only
+  if no cached value exists yet, or the cached value's `version` is strictly less than the
+  incoming one. This closes a read-after-write race that a bare invalidate would leave open — a
+  concurrent `get()` whose read was in flight before the write commits could otherwise repopulate
+  the cache with the stale pre-write record *after* the fresh one already landed. The
+  never-called `invalidate()` method this replaced has been removed.
+
 ## 11. Out of scope
 
 - MarketplaceAgents (LangGraph state machine, Redis checkpointer, LLM nodes)

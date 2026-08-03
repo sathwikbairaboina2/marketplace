@@ -1589,10 +1589,15 @@ describe('authentication', () => {
     expect(await res.json()).toMatchObject({ tenantId: 'tenant_a' });
   });
 
-  it('issues distinct tenants distinct principals', async () => {
-    const a = await tokenFor('tenant_a', 'alice@example.com');
-    const b = await tokenFor('tenant_b', 'bob@example.com');
-    expect(a).not.toBe(b);
+  it('stamps each tenant claim onto its own token', async () => {
+    const decodeClaims = (token: string): Record<string, unknown> =>
+      JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+
+    const a = decodeClaims(await tokenFor('tenant_a', 'alice@example.com'));
+    const b = decodeClaims(await tokenFor('tenant_b', 'bob@example.com'));
+
+    expect(a['custom:tenant_id']).toBe('tenant_a');
+    expect(b['custom:tenant_id']).toBe('tenant_b');
   });
 });
 ```

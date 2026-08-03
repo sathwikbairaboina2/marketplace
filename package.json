@@ -1,0 +1,21 @@
+{
+  "name": "marketplace",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "docker:up": "node scripts/reset-env-generated.mjs && docker compose -f docker/docker-compose.yml up -d --wait --build dynamodb-local localstack redis cognito-local seed && node scripts/wait-for-seed-env.mjs && docker compose -f docker/docker-compose.yml up -d --wait --build --force-recreate engine agents",
+    "docker:down": "node scripts/docker-teardown.mjs",
+    "e2e": "node scripts/e2e.mjs"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.13",
+    "@types/node": "^22.7.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.0"
+  }
+}

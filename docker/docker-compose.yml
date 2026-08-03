@@ -1,0 +1,157 @@
+name: marketplace
+
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:2.5.2
+    command: ['-jar', 'DynamoDBLocal.jar', '-inMemory', '-sharedDb']
+    ports: ['8000:8000']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -s -o /dev/null http://localhost:8000 || exit 1']
+      interval: 3s
+      retries: 20
+
+  localstack:
+    image: localstack/localstack:3.8
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: us-east-1
+    ports: ['4566:4566']
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -s http://localhost:4566/_localstack/health | grep -qE "\"sqs\": \"(available|running)\""']
+      interval: 3s
+      retries: 30
+
+  redis:
+    # redis-stack-server, not plain redis: @langchain/langgraph-checkpoint-redis's
+    # RedisSaver stores checkpoints via JSON.SET and indexes them via FT.CREATE,
+    # both of which require the RedisJSON and RediSearch modules. It is a strict
+    # superset of plain Redis (redis-cli PING and every command ThreadRegistryService
+    # and RedisModule use still work), so nothing else on this instance is affected.
+    image: redis/redis-stack-server:7.4.0-v3
+    ports: ['6379:6379']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      retries: 20
+
+  cognito-local:
+    image: jagregory/cognito-local:3.21.0
+    ports: ['9229:9229']
+    volumes: ['cognito-data:/app/.cognito']
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget -q -O /dev/null --header="Content-Type: application/x-amz-json-1.1" --header="X-Amz-Target: AWSCognitoIdentityProviderService.ListUserPools" --post-data="{\"MaxResults\":1}" http://127.0.0.1:9229/',
+        ]
+      interval: 3s
+      retries: 20
+
+  seed:
+    build: { context: .., dockerfile: docker/seed/Dockerfile }
+    environment:
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+      SQS_ENDPOINT: http://localstack:4566
+      COGNITO_ENDPOINT: http://cognito-local:9229
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      ENV_OUT: /repo/docker/.env.generated
+    volumes: ['.:/repo/docker']
+    depends_on:
+      dynamodb-local: { condition: service_healthy }
+      localstack: { condition: service_healthy }
+      cognito-local: { condition: service_healthy }
+
+  engine:
+    build: { context: .., dockerfile: apps/engine/Dockerfile }
+    ports: ['3000:3000']
+    # Long form with `required: false`: Compose resolves `env_file` at project-load time, but
+    # `.env.generated` is produced by the `seed` container during the *same* `up`. On a clean
+    # clone the file does not exist yet, and a required `env_file` would fail `docker compose
+    # config` before any container is created. `docker:up` brings the stack up in two steps (see
+    # package.json) so the second step re-reads the project after `seed` has written the file;
+    # `required: false` just means the first step's project load can't fail on its absence.
+    #
+    # The second step also passes `--force-recreate` (scoped to this service only, in
+    # package.json). Each `docker:down -v` deletes the `cognito-data` volume, so the next
+    # `seed` run mints a brand new user pool id and rewrites JWT_ISSUER/JWT_AUDIENCE/JWKS_URI
+    # here -- but Compose does not reliably recreate a container just because the *contents* of
+    # a referenced env_file changed; the service definition itself is unchanged. Without
+    # `--force-recreate`, `engine` can be left running with the previous run's issuer/audience
+    # while cognito-local now serves a different pool, and every authenticated request 401s.
+    # `--force-recreate` makes that pairing structurally impossible; it is scoped to `engine`
+    # so the infra services above are not needlessly rebuilt on every run.
+    env_file: [{ path: ./.env.generated, required: false }]
+    environment:
+      PORT: '3000'
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      TABLE_NAME: MarketplaceEngine
+      DYNAMODB_ENDPOINT: http://dynamodb-local:8000
+      SQS_ENDPOINT: http://localstack:4566
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: info
+    depends_on:
+      seed: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/api/v1/health/live || exit 1']
+      interval: 3s
+      retries: 30
+
+  ollama:
+    image: ollama/ollama:0.32.5
+    ports: ['11434:11434']
+    volumes: ['ollama-models:/root/.ollama']
+    healthcheck:
+      test: ['CMD-SHELL', 'ollama list >/dev/null 2>&1 || exit 1']
+      interval: 5s
+      retries: 40
+
+  ollama-init:
+    image: ollama/ollama:0.32.5
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ['/bin/sh', '-c', 'ollama pull qwen2.5:7b-instruct']
+    restart: 'no'
+    depends_on:
+      ollama: { condition: service_healthy }
+
+  agents:
+    build: { context: .., dockerfile: apps/agents/Dockerfile }
+    ports: ['3001:3001']
+    # Same rationale as `engine` above: `.env.generated` may not exist yet on a clean clone
+    # when this file is first loaded, and the second `docker:up` step force-recreates this
+    # service (see package.json) so a surviving container can't run with a stale JWT issuer
+    # after `docker:down -v` mints a new Cognito pool.
+    env_file: [{ path: ./.env.generated, required: false }]
+    environment:
+      PORT: '3001'
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      SQS_ENDPOINT: http://localstack:4566
+      REDIS_URL: redis://redis:6379
+      ENGINE_BASE_URL: http://engine:3000
+      OLLAMA_BASE_URL: http://ollama:11434
+      LLM_MODEL: qwen2.5:7b-instruct
+      LOG_LEVEL: info
+    depends_on:
+      redis: { condition: service_healthy }
+      engine: { condition: service_healthy }
+      ollama-init: { condition: service_completed_successfully }
+    healthcheck:
+      # `127.0.0.1`, not `localhost`: on this Alpine image, busybox wget resolves `localhost`
+      # to `::1` first and does not fall back to `127.0.0.1` on refusal, so the healthcheck
+      # reports the container unhealthy even while the app is listening and serving fine
+      # (confirmed via `curl`/`wget 127.0.0.1` inside the container). `engine`'s healthcheck
+      # already sidesteps this the same way.
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3001/api/v1/health/live || exit 1']
+      interval: 3s
+      retries: 30
+
+volumes:
+  cognito-data:
+  ollama-models:

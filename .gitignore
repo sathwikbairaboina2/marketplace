@@ -6,3 +6,5 @@ dist/
 .turbo/
 coverage/
 .claude/worktrees/
+docker/.env.generated
+.cognito/

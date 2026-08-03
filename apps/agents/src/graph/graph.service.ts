@@ -1,0 +1,118 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { HumanMessage } from '@langchain/core/messages';
+import { END, START, StateGraph } from '@langchain/langgraph';
+import { RedisSaver } from '@langchain/langgraph-checkpoint-redis';
+import { AgentStateSnapshot } from '@marketplace/contracts';
+import { ENV, EnvConfig } from '../config/env.schema';
+import { LLM, LlmProvider } from '../llm/llm.provider';
+import { EngineClient } from '../engine-client/engine.client';
+import { DispatchService } from '../dispatch/dispatch.service';
+import { AgentAnnotation, AgentState, PendingAction, defaultAgentState, toSnapshot } from './state';
+import { RunContext } from './context';
+import { CHECKPOINTER } from './checkpointer';
+import { makeAnalyzeIntentNode } from './nodes/analyze-intent.node';
+import { makeLoadRegistryNode } from './nodes/load-registry.node';
+import { makeRequirementCheckNode } from './nodes/requirement-check.node';
+import { makeDraftSchemaNode } from './nodes/draft-schema.node';
+import { makeValidateNode } from './nodes/validate.node';
+import { makeDispatchNode } from './nodes/dispatch.node';
+import { makeApplyRejectionNode } from './nodes/apply-rejection.node';
+
+export interface RunInput {
+  threadId: string;
+  ctx: Omit<RunContext, 'threadId'>;
+  action: PendingAction;
+  content?: string;
+}
+
+@Injectable()
+export class GraphService {
+  constructor(
+    @Inject(ENV) private readonly env: EnvConfig,
+    @Inject(LLM) private readonly llm: LlmProvider,
+    private readonly engine: EngineClient,
+    private readonly dispatch: DispatchService,
+    @Inject(CHECKPOINTER) private readonly checkpointer: RedisSaver,
+  ) {}
+
+  /**
+   * Built per run rather than once, so nodes can close over the caller's
+   * identity without it being written to the checkpoint. Compiling a handful of
+   * nodes is cheap next to a single model call.
+   */
+  private build(ctx: RunContext) {
+    const graph = new StateGraph(AgentAnnotation)
+      .addNode('analyzeIntent', makeAnalyzeIntentNode({ llm: this.llm }))
+      .addNode('loadRegistry', makeLoadRegistryNode({ engine: this.engine }, ctx))
+      .addNode('requirementCheck', makeRequirementCheckNode({ llm: this.llm }))
+      .addNode('draftSchema', makeDraftSchemaNode({ llm: this.llm }))
+      .addNode('validate', makeValidateNode({ maxAttempts: this.env.DRAFT_MAX_ATTEMPTS }))
+      .addNode('dispatch', makeDispatchNode({ dispatch: this.dispatch }, ctx))
+      .addNode('applyRejection', makeApplyRejectionNode())
+      // A confirmation is a decision, not a sentence to interpret: it routes
+      // straight to dispatch without any model in the path. A confirm is also
+      // routed to dispatch once the thread is already `done` with a message
+      // id recorded, so a repeated confirm (double click, resumed thread)
+      // still reaches the node whose own `dispatchedMessageId` guard makes it
+      // a no-op, instead of falling through to `analyzeIntent`. The second
+      // disjunct requires `phase === 'done'` alongside `dispatchedMessageId`:
+      // without it, ANY confirm would route to dispatch as soon as a prior
+      // proposal on this thread had ever been dispatched, even one sent while
+      // a brand new proposal is still mid gathering/drafting -- which would
+      // hit the dispatch node's own guard and silently report `phase: 'done'`
+      // having sent nothing for the new proposal.
+      .addConditionalEdges(START, (state: AgentState) => {
+        if (
+          state.pendingAction === 'confirm' &&
+          (state.phase === 'awaiting_confirmation' || (state.dispatchedMessageId && state.phase === 'done'))
+        ) {
+          return 'dispatch';
+        }
+        if (state.phase === 'awaiting_confirmation' && state.pendingAction === 'reject') return 'applyRejection';
+        return 'analyzeIntent';
+      })
+      .addConditionalEdges('analyzeIntent', (state: AgentState) =>
+        state.targetEntity ? 'loadRegistry' : END,
+      )
+      .addEdge('loadRegistry', 'requirementCheck')
+      .addConditionalEdges('requirementCheck', (state: AgentState) =>
+        state.phase === 'gathering' ? END : 'draftSchema',
+      )
+      .addEdge('draftSchema', 'validate')
+      .addConditionalEdges('validate', (state: AgentState) =>
+        state.phase === 'drafting' ? 'draftSchema' : END,
+      )
+      .addEdge('dispatch', END)
+      .addEdge('applyRejection', END);
+
+    return graph.compile({ checkpointer: this.checkpointer });
+  }
+
+  async run(input: RunInput): Promise<AgentStateSnapshot> {
+    const app = this.build({ ...input.ctx, threadId: input.threadId });
+    const config = { configurable: { thread_id: input.threadId } };
+
+    await app.invoke(
+      {
+        pendingAction: input.action,
+        ...(input.content ? { messages: [new HumanMessage(input.content)] } : {}),
+      },
+      config,
+    );
+
+    return this.snapshot(input.threadId);
+  }
+
+  async snapshot(threadId: string): Promise<AgentStateSnapshot> {
+    const app = this.build({
+      principal: { tenantId: '', userId: '', role: null },
+      authToken: '',
+      threadId,
+    });
+    const state = await app.getState({ configurable: { thread_id: threadId } });
+    // A thread with no prior run has no checkpoint, so `state.values` is `{}`
+    // (LangGraph's own `getState` fallback) rather than a full AgentState.
+    // Defaults fill in what a real run would otherwise have produced.
+    return toSnapshot(threadId, { ...defaultAgentState, ...(state.values as Partial<AgentState>) });
+  }
+}

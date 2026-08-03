@@ -1861,7 +1861,7 @@ The checkpointer stores conversation state keyed by thread id, but it does not k
 - Produces: `ThreadRegistryService` with
   - `create(principal: TenantPrincipal): Promise<string>` — returns a new ULID thread id
   - `assertOwned(threadId: string, principal: TenantPrincipal): Promise<void>` — throws `thread-not-found` (404) when absent, expired, or owned by another tenant
-  - `touch(threadId: string): Promise<void>` — refreshes the TTL
+  - `touch(threadId: string, principal: TenantPrincipal): Promise<void>` — asserts ownership, then refreshes the TTL. It takes the principal so an unchecked refresh is unreachable from the public API: otherwise anyone holding a leaked thread id could keep another tenant's conversation alive indefinitely, and the guarantee would rest on every future caller remembering to check first.
 
 - [ ] **Step 1: Write the failing integration test**
 
@@ -1913,8 +1913,23 @@ describe('ThreadRegistryService', () => {
   it('refreshes the expiry on touch', async () => {
     const threadId = await registry.create(alice);
     await redis.expire(`thread:${threadId}`, 5);
-    await registry.touch(threadId);
+    await registry.touch(threadId, alice);
     expect(await redis.ttl(`thread:${threadId}`)).toBeGreaterThan(5);
+  });
+
+  it('refuses to refresh another tenant thread', async () => {
+    const threadId = await registry.create(alice);
+    await expect(registry.touch(threadId, bob)).rejects.toMatchObject({
+      problem: { status: 404 },
+    });
+  });
+
+  it('treats a corrupt ownership record as not found', async () => {
+    const threadId = await registry.create(alice);
+    await redis.set(`thread:${threadId}`, 'not json');
+    await expect(registry.assertOwned(threadId, alice)).rejects.toMatchObject({
+      problem: { status: 404 },
+    });
   });
 });
 ```
@@ -1983,7 +1998,15 @@ export class ThreadRegistryService {
     }
   }
 
-  async touch(threadId: string): Promise<void> {
+  /**
+   * Ownership is asserted here rather than left to the caller. A bare TTL
+   * refresh would let anyone holding a leaked thread id keep another tenant's
+   * conversation alive indefinitely, and this is the one class of gap this
+   * service exists to close — so the public API must make that unreachable
+   * rather than rely on every future caller remembering to check first.
+   */
+  async touch(threadId: string, principal: TenantPrincipal): Promise<void> {
+    await this.assertOwned(threadId, principal);
     await this.redis.expire(this.key(threadId), this.env.THREAD_TTL_SECONDS);
   }
 }
@@ -2986,6 +3009,12 @@ export function makeValidateNode(deps: { maxAttempts: number }) {
       return {
         phase: 'awaiting_confirmation',
         validationErrors: [],
+        // Clear any previous dispatch. dispatchedMessageId guards against
+        // dispatching the SAME proposal twice; left uncleared it becomes a
+        // permanent per-thread lock, and a second legitimate proposal on this
+        // thread would hit the stale value, short-circuit, and report success
+        // while sending nothing.
+        dispatchedMessageId: null,
         messages: [
           new AIMessage(
             `Ready to propose adding ${describeDiff(state)} to ${state.targetEntity}. Confirm to send it for approval.`,
@@ -3231,7 +3260,24 @@ describe('DispatchService', () => {
 });
 ```
 
-This test consumes from the shared queue. Run it while the Engine's consumer is also running and the Engine will simply propose a Flow for the same message — which is the intended behaviour, not interference.
+**This test must NOT use the shared `QUEUE_URL`.** The Engine's SQS consumer runs in the same stack and wins the race for every message deterministically, so a test that polls the shared queue for its own message never observes it — the message is correct, it has simply already been consumed and turned into a Flow.
+
+Instead the test creates its own FIFO queue at run time and points `DispatchService` at it:
+
+```ts
+const testQueueName = `agents-dispatch-int-test.fifo`;
+const created = await sqs.send(
+  new CreateQueueCommand({
+    QueueName: testQueueName,
+    Attributes: { FifoQueue: 'true' },
+  }),
+);
+const env = { ...baseEnv, QUEUE_URL: created.QueueUrl! } as EnvConfig;
+```
+
+`CreateQueue` is idempotent for an identical name and attribute set, so repeated runs reuse the queue. Note `ContentBasedDeduplication` is deliberately NOT set: this suite asserts on the explicitly supplied `MessageDeduplicationId`, and content-based dedup would mask a broken derivation.
+
+That keeps this an integration test of `DispatchService` alone — what it puts on a queue, and that the same proposal twice yields one message. Proof that the real queue reaches the Engine and produces a proposed Flow belongs to the end-to-end suite in Task 12, where it is asserted through the Engine's API rather than by racing its consumer.
 
 - [ ] **Step 3: Run them to verify they fail**
 
@@ -3542,7 +3588,7 @@ git commit -m "feat: dispatch confirmed proposals to the engine queue with deriv
 The client-facing surface. Two things carry the security weight here: the handshake is the only place a token is accepted, and every handler asserts thread ownership before touching the graph.
 
 **Files:**
-- Create: `apps/agents/src/auth/jwt-verifier.service.ts`, `src/auth/public.decorator.ts`, `src/auth/jwt-auth.guard.ts`, `src/auth/auth.module.ts`
+- Create: `apps/agents/src/auth/jwt-verifier.service.ts`, `src/auth/public.decorator.ts`, `src/auth/jwt-auth.guard.ts`, `src/auth/request-principal.ts`, `src/auth/tenant-context.interceptor.ts`, `src/auth/auth.module.ts`
 - Create: `apps/agents/src/chat/chat.gateway.ts`, `src/chat/chat.module.ts`
 - Create: `apps/agents/src/threads/threads.controller.ts`, `src/threads/threads.module.ts`
 - Modify: `apps/agents/src/app.module.ts`, `src/health/health.controller.ts`
@@ -3754,13 +3800,18 @@ export const Public = () => SetMetadata(IS_PUBLIC, true);
 
 `apps/agents/src/auth/jwt-auth.guard.ts`:
 
+**Do not call `enterTenant` from this guard.** The Engine hit this exact problem and worked around it; `apps/engine/src/auth/jwt-auth.guard.ts`, `request-principal.ts` and `tenant-context.interceptor.ts` carry the full explanation. In short: Nest's guards consumer awaits the guard's promise from a continuation scheduled *before* `verify()` resolved, so an `AsyncLocalStorage.enterWith()` performed after that `await` is never observed by the controller. `GET /threads/:id` calls `currentPrincipal()`, so it would throw "no tenant context" at runtime while every unit test passed.
+
+Mirror the Engine: the guard stashes the principal on the request, and an interceptor binds the async scope at the point Nest wraps the continuation with `AsyncResource.bind`.
+
 ```ts
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { AuthError, enterTenant } from '@marketplace/auth';
+import { AuthError } from '@marketplace/auth';
 import { IS_PUBLIC } from './public.decorator';
 import { JwtVerifierService } from './jwt-verifier.service';
+import { setTenantPrincipal } from './request-principal';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -3784,13 +3835,63 @@ export class JwtAuthGuard implements CanActivate {
     const header = req.headers.authorization;
     if (!header?.startsWith('Bearer ')) throw new UnauthorizedException('missing bearer token');
 
+    let principal;
     try {
-      enterTenant(await this.verifier.verify(header.slice('Bearer '.length)));
+      principal = await this.verifier.verify(header.slice('Bearer '.length));
     } catch (err) {
       if (err instanceof AuthError) throw new UnauthorizedException(err.message);
       throw err;
     }
+
+    setTenantPrincipal(req, principal);
     return true;
+  }
+}
+```
+
+`apps/agents/src/auth/request-principal.ts`:
+
+```ts
+import { TenantPrincipal } from '@marketplace/auth';
+
+// Keyed by the Express request object (unique per request, garbage collected
+// with it) rather than a mutated property, so this stays type-safe without
+// augmenting Express's types.
+const principals = new WeakMap<object, TenantPrincipal>();
+
+export function setTenantPrincipal(req: object, principal: TenantPrincipal): void {
+  principals.set(req, principal);
+}
+
+export function getTenantPrincipal(req: object): TenantPrincipal | undefined {
+  return principals.get(req);
+}
+```
+
+`apps/agents/src/auth/tenant-context.interceptor.ts`:
+
+```ts
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { Request } from 'express';
+import { runWithTenant } from '@marketplace/auth';
+import { getTenantPrincipal } from './request-principal';
+
+/**
+ * Binds the verified principal to the request's async scope. This must be an
+ * interceptor rather than work the guard does directly — see the comment in
+ * jwt-auth.guard.ts. next.handle() is called synchronously inside
+ * runWithTenant's callback, which is what makes the binding stick.
+ */
+@Injectable()
+export class TenantContextInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    if (context.getType() !== 'http') return next.handle();
+    const req = context.switchToHttp().getRequest<Request>();
+    const principal = getTenantPrincipal(req);
+    // Public route: the guard never verified a token, so there is nothing to bind.
+    if (!principal) return next.handle();
+    return runWithTenant(principal, () => next.handle());
   }
 }
 ```
@@ -3799,13 +3900,20 @@ export class JwtAuthGuard implements CanActivate {
 
 ```ts
 import { Global, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtVerifierService } from './jwt-verifier.service';
+import { TenantContextInterceptor } from './tenant-context.interceptor';
 
 @Global()
 @Module({
-  providers: [JwtVerifierService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [
+    JwtVerifierService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Order matters: guards run before interceptors, so the principal is
+    // always stashed by the time this binds the async scope.
+    { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
+  ],
   exports: [JwtVerifierService],
 })
 export class AuthModule {}
@@ -3893,8 +4001,7 @@ export class ChatGateway implements OnGatewayInit {
   async onThreadResume(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId } = this.parse(ThreadResumeSchema, body);
-      await this.threads.assertOwned(threadId, data.principal);
-      await this.threads.touch(threadId);
+      await this.threads.touch(threadId, data.principal);
       return this.graph.snapshot(threadId);
     });
   }
@@ -3903,8 +4010,7 @@ export class ChatGateway implements OnGatewayInit {
   async onMessage(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId, content } = this.parse(SendMessageSchema, body);
-      await this.threads.assertOwned(threadId, data.principal);
-      await this.threads.touch(threadId);
+      await this.threads.touch(threadId, data.principal);
       return this.graph.run({
         threadId,
         ctx: { principal: data.principal, authToken: data.token, threadId },
@@ -3918,8 +4024,7 @@ export class ChatGateway implements OnGatewayInit {
   async onConfirm(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId } = this.parse(ConfirmSchema, body);
-      await this.threads.assertOwned(threadId, data.principal);
-      await this.threads.touch(threadId);
+      await this.threads.touch(threadId, data.principal);
       return this.graph.run({
         threadId,
         ctx: { principal: data.principal, authToken: data.token, threadId },
@@ -3932,8 +4037,7 @@ export class ChatGateway implements OnGatewayInit {
   async onReject(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId, notes } = this.parse(RejectSchema, body);
-      await this.threads.assertOwned(threadId, data.principal);
-      await this.threads.touch(threadId);
+      await this.threads.touch(threadId, data.principal);
       return this.graph.run({
         threadId,
         ctx: { principal: data.principal, authToken: data.token, threadId },
