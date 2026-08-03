@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { DevTokenModule } from '@marketplace/openapi';
 import { ConfigModule } from './config/config.module';
+import { DevTokenEnvSchema } from './config/env.schema';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { PersistenceModule } from './persistence/persistence.module';
@@ -27,6 +29,7 @@ import { MessagingModule } from './messaging/messaging.module';
       },
     }),
     ConfigModule,
+    DevTokenModule.registerIfEnabled(DevTokenEnvSchema.parse(process.env)),
     AuthModule,
     HealthModule,
     PersistenceModule,

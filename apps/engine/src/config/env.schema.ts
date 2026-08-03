@@ -29,3 +29,22 @@ export const EnvSchema = z.object({
 
 export type EnvConfig = z.infer<typeof EnvSchema>;
 export const ENV = Symbol('ENV');
+
+// `DevTokenModule.registerIfEnabled` decides whether a controller exists at
+// all, so it has to run while `@Module`'s metadata is being evaluated -- at
+// import time, long before `ConfigModule` instantiates `ENV`. Parsing the full
+// `EnvSchema` there would throw on any process that imports `AppModule`
+// without the service's required runtime configuration (QUEUE_URL, REDIS_URL,
+// JWKS_URI...), which is exactly what a unit or integration test does before
+// its own `beforeAll` sets those. Every field this narrow schema picks is
+// optional or defaulted, so it parses cleanly against any environment while
+// still reading the same values from the same declarations.
+export const DevTokenEnvSchema = EnvSchema.pick({
+  DOCS_ENABLED: true,
+  DEV_TENANT_ID: true,
+  DEV_USERNAME: true,
+  AWS_REGION: true,
+  COGNITO_ENDPOINT: true,
+  COGNITO_USER_POOL_ID: true,
+  COGNITO_CLIENT_ID: true,
+});
