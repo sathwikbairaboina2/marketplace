@@ -25,6 +25,7 @@ function toResponse(record: BookingRecord): BookingResponse {
 // contended transaction index back to what actually happened -- do not reorder or interleave
 // these without updating that handling too.
 const EVENT_UPDATE_INDEX = 0;
+const BOOKING_PUT_INDEX = 1;
 
 @Injectable()
 export class BookingsService {
@@ -67,16 +68,24 @@ export class BookingsService {
 
     // Item 0 (EVENT_UPDATE_INDEX) is the capacity claim: it can only commit if `bookedCount`
     // stays within `capacity`, evaluated atomically by DynamoDB alongside the Put below. There
-    // is no read-then-write window here -- the increment and the capacity check happen as a
-    // single conditional write, which is what makes overselling structurally impossible rather
-    // than merely unlikely under concurrency.
+    // is no read-then-write window for `bookedCount` here -- the increment and the capacity
+    // check happen as a single conditional write, which is what makes overselling structurally
+    // impossible rather than merely unlikely under concurrency.
     //
     // DynamoDB's ConditionExpression grammar supports only comparisons (`<=`, `=`, ...), not
     // arithmetic -- `#booked + :qty <= #capacity` is a ValidationException ("Invalid
     // ConditionExpression: Syntax error; token: '+'"), even though the same arithmetic is legal
     // in an UpdateExpression's SET clause. So the capacity threshold is computed here, from the
-    // event this request already read, and compared directly: `#booked <= :maxAllowed`. Item 1
-    // is the booking record itself.
+    // event this request already read, and compared directly: `#booked <= :maxAllowed`.
+    //
+    // `capacity` itself IS read-then-written, though: `maxAllowed` is derived from the `event`
+    // read at the top of this method, before the transaction runs. Nothing so far pins that
+    // value, so `#capacity = :capacity` is added to the condition to close that window -- if
+    // `capacity` changes between the read and the commit (there is no endpoint that does this
+    // today, but the condition must not depend on that staying true), the whole transaction is
+    // cancelled rather than committing against a stale threshold. This mirrors
+    // `orders.service.ts`'s `#price = :expectedPrice` guard against a concurrent price edit.
+    // Item 1 is the booking record itself.
     const maxAllowed = event.capacity - input.ticketQuantity;
     try {
       await this.repo.transactWrite([
@@ -85,9 +94,13 @@ export class BookingsService {
             TableName: this.repo.tableName,
             Key: this.repo.key(entitySk('Event', input.eventId)),
             UpdateExpression: 'SET #booked = #booked + :qty',
-            ConditionExpression: '#booked <= :maxAllowed',
-            ExpressionAttributeNames: { '#booked': 'bookedCount' },
-            ExpressionAttributeValues: { ':qty': input.ticketQuantity, ':maxAllowed': maxAllowed },
+            ConditionExpression: '#booked <= :maxAllowed AND #capacity = :capacity',
+            ExpressionAttributeNames: { '#booked': 'bookedCount', '#capacity': 'capacity' },
+            ExpressionAttributeValues: {
+              ':qty': input.ticketQuantity,
+              ':maxAllowed': maxAllowed,
+              ':capacity': event.capacity,
+            },
           },
         },
         {
@@ -99,7 +112,7 @@ export class BookingsService {
         },
       ]);
     } catch (err) {
-      await this.explainFailure(err, input);
+      await this.explainFailure(err, input, id);
       throw err;
     }
 
@@ -107,19 +120,50 @@ export class BookingsService {
   }
 
   /** Turns a cancelled transaction into the specific problem that caused it. */
-  private async explainFailure(err: unknown, input: CreateBooking): Promise<never | void> {
+  private async explainFailure(err: unknown, input: CreateBooking, id: string): Promise<never | void> {
     // A failed ConditionExpression on the capacity claim takes priority over a bare contention
     // signal: if we can tell the caller exactly how many tickets remain, that is strictly more
     // useful than "retry".
     if (failedTransactionIndexes(err).includes(EVENT_UPDATE_INDEX)) {
       const current = await this.repo.get<EventRecord>(entitySk('Event', input.eventId));
-      const remaining = current ? current.capacity - current.bookedCount : 0;
+
+      // The event that failed its condition may have been deleted entirely between our read and
+      // the transaction's write -- that is a categorically different problem from "sold out"
+      // (`current?.capacity ?? 0` would otherwise silently report "0 ticket(s) remain",
+      // misleading the caller into thinking the event still exists but has no tickets left).
+      // There is no delete-event endpoint today, but `get` and `explainFailure` must agree on
+      // what "gone" means regardless.
+      if (current === null) {
+        throw new ProblemException(
+          'not-found',
+          404,
+          'Event no longer exists',
+          `event ${input.eventId} was removed before the booking could be completed`,
+          { eventId: input.eventId },
+        );
+      }
+
+      const remaining = current.capacity - current.bookedCount;
       throw new ProblemException(
         'event-at-capacity',
         409,
         'Event at capacity',
         `${remaining} ticket(s) remain, ${input.ticketQuantity} requested`,
         { eventId: input.eventId, remaining, requested: input.ticketQuantity },
+      );
+    }
+
+    // `attribute_not_exists(PK)` on the booking Put fails only if a booking with this ULID
+    // already exists -- practically unreachable given ULID collision odds, but an unmapped
+    // cancellation reason here would otherwise fall through to a raw AWS error and an
+    // unhelpful 500 instead of a definite problem.
+    if (failedTransactionIndexes(err).includes(BOOKING_PUT_INDEX)) {
+      throw new ProblemException(
+        'internal-error',
+        500,
+        'Booking id collision',
+        `booking id ${id} already exists`,
+        { bookingId: id },
       );
     }
 

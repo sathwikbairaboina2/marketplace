@@ -62,6 +62,34 @@ describe('bookings', () => {
       body: JSON.stringify({ eventId: '01J000000000000000000000AB', ticketQuantity: 1 }),
     });
     expect(res.status).toBe(422);
+    expect(((await res.json()) as { type: string }).type).toContain('invalid-request');
+  });
+
+  it('books repeatedly under the capacity-pinning condition without spuriously rejecting', async () => {
+    // Task 14 fix round 1: the capacity claim's ConditionExpression now also pins
+    // `#capacity = :capacity` (closing the read-then-write window on `capacity` itself, not
+    // just `bookedCount`). That extra clause participates in *every* booking, so it must not
+    // reject legitimate, non-contending requests -- two sequential bookings against an event
+    // with headroom should both succeed and the counter should reflect both.
+    const event = await createEvent(headers, 5);
+
+    const first = await fetch(`${baseUrl}/api/v1/bookings`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ eventId: event.id, ticketQuantity: 2 }),
+    });
+    expect(first.status).toBe(201);
+
+    const second = await fetch(`${baseUrl}/api/v1/bookings`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ eventId: event.id, ticketQuantity: 2 }),
+    });
+    expect(second.status).toBe(201);
+
+    const after = await fetch(`${baseUrl}/api/v1/events/${event.id}`, { headers });
+    expect(after.status).toBe(200);
+    expect(((await after.json()) as { bookedCount: number }).bookedCount).toBe(4);
   });
 
   it('never oversells under concurrency', async () => {
@@ -77,6 +105,15 @@ describe('bookings', () => {
     expect(statuses.filter((s) => s === 201)).toHaveLength(1);
     expect(statuses.filter((s) => s === 409)).toHaveLength(19);
 
+    // Counting statuses alone would still pass if the nineteen losers failed for the wrong
+    // reason (e.g. all reported as `transaction-conflict`, or `request-in-progress` if an
+    // `Idempotency-Key` ever reached these shared headers). Pin down why they lost, so a
+    // regression that preserves the 1/19 split for an unrelated reason doesn't slip through.
+    const failedBodies = await Promise.all(
+      responses.filter((r) => r.status === 409).map((r) => r.json() as Promise<{ type: string }>),
+    );
+    expect(failedBodies.some((b) => b.type.includes('event-at-capacity'))).toBe(true);
+
     const after = await fetch(`${baseUrl}/api/v1/events/${event.id}`, { headers });
     expect(after.status).toBe(200);
     expect(((await after.json()) as { bookedCount: number }).bookedCount).toBe(1);
@@ -90,12 +127,15 @@ describe('bookings', () => {
       body: JSON.stringify({ eventId: event.id, ticketQuantity: 1 }),
     });
     expect(created.status).toBe(201);
-    const createdBooking = (await created.json()) as { userId: string };
+    const createdBooking = (await created.json()) as { id: string; userId: string };
 
     const res = await fetch(`${baseUrl}/api/v1/bookings?limit=5`, { headers });
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { items: { userId: string }[] };
-    expect(body.items.length).toBeGreaterThan(0);
+    const body = (await res.json()) as { items: { id: string; userId: string }[] };
+    // `body.items.length > 0` alone would still pass even if the booking just created never made
+    // it into the page returned -- assert the specific booking is actually present, not merely
+    // that the list is non-empty.
+    expect(body.items.map((i) => i.id)).toContain(createdBooking.id);
     expect(body.items.every((i) => i.userId === createdBooking.userId)).toBe(true);
   });
 
