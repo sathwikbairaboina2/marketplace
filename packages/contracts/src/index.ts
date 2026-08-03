@@ -7,3 +7,4 @@ export * from './event';
 export * from './booking';
 export * from './flow';
 export * from './sqs';
+export * from './agent';
