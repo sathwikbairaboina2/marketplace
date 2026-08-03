@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createServer, Server, Socket, AddressInfo } from 'node:net';
 import { OllamaLlmProvider } from './ollama.provider';
 import { EnvConfig } from '../config/env.schema';
 
@@ -28,10 +29,50 @@ describe('OllamaLlmProvider', () => {
     expect(typeof out.isCity).toBe('boolean');
   });
 
-  it('reports an unreachable model endpoint as llm-unavailable', async () => {
+  it('reports an unreachable model endpoint as llm-unavailable via the connection-error path', async () => {
     const broken = new OllamaLlmProvider({ ...env, OLLAMA_BASE_URL: 'http://127.0.0.1:1' } as EnvConfig);
     await expect(
       broken.text({ system: '', messages: [{ role: 'user', content: 'hi' }] }),
-    ).rejects.toMatchObject({ problem: { status: 503 } });
+    ).rejects.toMatchObject({ problem: { status: 503, title: 'Model call failed' } });
+  });
+
+  describe('a model call that hangs', () => {
+    // A raw TCP server that accepts the connection and then never responds and
+    // never closes it. This makes the underlying HTTP request hang indefinitely,
+    // so the only way `guard()` can resolve is via its own timeout race -- unlike
+    // the ECONNREFUSED case above, there is no connection error to short-circuit
+    // through the "wrap unknown error" branch instead.
+    let server: Server;
+    let port: number;
+    const sockets = new Set<Socket>();
+
+    beforeAll(async () => {
+      server = createServer((socket) => {
+        sockets.add(socket);
+        socket.on('close', () => sockets.delete(socket));
+        // Deliberately no response, no close: the connection just sits open.
+      });
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      port = (server.address() as AddressInfo).port;
+    });
+
+    afterAll(async () => {
+      for (const socket of sockets) socket.destroy();
+      await new Promise<void>((resolve, reject) =>
+        server.close((err) => (err ? reject(err) : resolve())),
+      );
+    });
+
+    it('reports it as llm-unavailable via the timeout path, not a connection error', async () => {
+      const hung = new OllamaLlmProvider({
+        ...env,
+        OLLAMA_BASE_URL: `http://127.0.0.1:${port}`,
+        LLM_TIMEOUT_MS: 300,
+      } as EnvConfig);
+
+      await expect(
+        hung.text({ system: '', messages: [{ role: 'user', content: 'hi' }] }),
+      ).rejects.toMatchObject({ problem: { status: 503, title: 'Model timed out' } });
+    });
   });
 });

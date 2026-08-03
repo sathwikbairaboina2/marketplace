@@ -48,8 +48,15 @@ export class OllamaLlmProvider implements LlmProvider {
         this.env.LLM_TIMEOUT_MS,
       );
     });
+    const call = fn();
+    // If the timeout wins the race, `call` is still pending and may reject later
+    // (e.g. the socket errors once a caller tears down the connection after the
+    // fact). Nothing awaits `call` past this point, so an unhandled rejection
+    // would otherwise surface once it eventually settles; swallow it here. The
+    // rejection this listener sees is never the one `Promise.race` reports below.
+    call.catch(() => {});
     try {
-      return await Promise.race([fn(), timeout]);
+      return await Promise.race([call, timeout]);
     } catch (err) {
       if (err instanceof ProblemException) throw err;
       throw new ProblemException(
