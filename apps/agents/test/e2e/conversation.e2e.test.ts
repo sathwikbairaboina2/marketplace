@@ -2,7 +2,7 @@ import { Socket } from 'socket.io-client';
 import { engineBaseUrl, waitForAgentsHealthy } from './setup';
 import { tokenFor } from './helpers/auth';
 import { connectSocket, waitForError, waitForState } from './helpers/socket';
-import { driveTo, startThread } from './helpers/converse';
+import { driveTo, driveUntil, startThread } from './helpers/converse';
 
 const tenantId = `tenant_conv_${Math.random().toString(36).slice(2, 8)}`;
 const username = `conv-${Date.now()}@example.com`;
@@ -37,6 +37,34 @@ async function waitForProposedFlow(field: string, timeoutMs = 60_000): Promise<s
     await new Promise((r) => setTimeout(r, 2000));
   }
   return null;
+}
+
+async function countProposedFlows(field: string): Promise<number> {
+  const res = await fetch(`${engineBaseUrl}/api/v1/flows?limit=50`, { headers: await engineHeaders() });
+  const { items } = (await res.json()) as {
+    items: { blueprintDiff: { addedFields: { name: string }[] } }[];
+  };
+  return items.filter((f) => f.blueprintDiff.addedFields.some((a) => a.name === field)).length;
+}
+
+/**
+ * Polls up to `timeoutMs` for a NEW flow proposing `field` to appear beyond
+ * `baseline`. Returns the count observed when the wait ends -- either because
+ * it grew past baseline, or because the timeout elapsed with no growth. This
+ * exists (rather than reusing `waitForProposedFlow`) because a flow for
+ * `field` may already exist from an earlier, legitimate proposal: finding
+ * *a* match is not evidence of anything, only finding *more* matches than
+ * before is.
+ */
+async function waitForNewProposedFlowCount(field: string, baseline: number, timeoutMs = 10_000): Promise<number> {
+  const deadline = Date.now() + timeoutMs;
+  let count = baseline;
+  while (Date.now() < deadline) {
+    count = await countProposedFlows(field);
+    if (count > baseline) return count;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return count;
 }
 
 describe('agent conversation', () => {
@@ -96,20 +124,33 @@ describe('agent conversation', () => {
   // once that test's Flow has been executed above. Keep this ordered after it
   // rather than making it independent -- do not reorder these two casually.
   it('refuses to propose a field that already exists', async () => {
-    // Runs after the first test, so FIELD is now in the registry.
+    // Runs after the first test, so FIELD is now in the registry, and that
+    // test's Flow execution already created one proposed flow for FIELD --
+    // hence baselining the count below rather than asserting "no flow".
     const socket = await open(tenantId, username);
     const threadId = await startThread(socket);
+    const baseline = await countProposedFlows(FIELD);
 
-    const snapshot = await driveTo(
+    // driveTo('gathering') would exit on the very FIRST turn here: 'gathering'
+    // is also a fresh thread's default phase and the phase requirementCheck
+    // sets while still asking a clarifying question, so it can be satisfied
+    // before validate ever runs. Driving until validationErrors is populated
+    // instead forces the run through drafting and validation, which is the
+    // invariant this test exists to cover.
+    const snapshot = await driveUntil(
       socket,
       threadId,
       `Add a text field called ${FIELD} to events.`,
       `It is called ${FIELD} and it is text.`,
-      'gathering',
+      (s) => s.validationErrors.length > 0,
+      'validationErrors populated',
     );
 
-    expect(snapshot.draftPayload).toBeNull();
-    expect(snapshot.phase).not.toBe('awaiting_confirmation');
+    expect(snapshot.validationErrors.some((e) => e.includes(FIELD))).toBe(true);
+    expect(snapshot.dispatchedMessageId).toBeNull();
+
+    const afterCount = await waitForNewProposedFlowCount(FIELD, baseline, 10_000);
+    expect(afterCount).toBe(baseline);
   });
 
   it('resumes a conversation after a disconnect with its history intact', async () => {
