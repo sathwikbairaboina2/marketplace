@@ -48,7 +48,10 @@ export class ProblemFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
     const req = ctx.getRequest<Request>();
-    const traceId = (req.headers['x-request-id'] as string) ?? 'unknown';
+    const traceId =
+      (req as unknown as { id?: string }).id ??
+      (req.headers['x-request-id'] as string | undefined) ??
+      'unknown';
 
     const body = toProblem(exception);
     if (body.status >= 500) {
