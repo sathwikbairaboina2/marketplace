@@ -61,7 +61,13 @@ services:
   engine:
     build: { context: .., dockerfile: apps/engine/Dockerfile }
     ports: ['3000:3000']
-    env_file: ['./.env.generated']
+    # Long form with `required: false`: Compose resolves `env_file` at project-load time, but
+    # `.env.generated` is produced by the `seed` container during the *same* `up`. On a clean
+    # clone the file does not exist yet, and a required `env_file` would fail `docker compose
+    # config` before any container is created. `docker:up` brings the stack up in two steps (see
+    # package.json) so the second step re-reads the project after `seed` has written the file;
+    # `required: false` just means the first step's project load can't fail on its absence.
+    env_file: [{ path: ./.env.generated, required: false }]
     environment:
       PORT: '3000'
       AWS_REGION: us-east-1
