@@ -1,4 +1,4 @@
-import { CallHandler, ExecutionContext } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Logger } from '@nestjs/common';
 import { lastValueFrom, of, throwError } from 'rxjs';
 import { IdempotencyInterceptor, IDEMPOTENT_REPLAY_HEADER } from './idempotency.interceptor';
 import { IdempotencyService } from './idempotency.service';
@@ -109,5 +109,38 @@ describe('IdempotencyInterceptor', () => {
 
     expect(service.release).toHaveBeenCalledWith('key-1');
     expect(service.complete).not.toHaveBeenCalled();
+  });
+
+  it('does not release the claim or fail the request when complete() itself fails after a successful handler', async () => {
+    const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    try {
+      const service = {
+        begin: jest.fn().mockResolvedValue({ status: 'new' }),
+        complete: jest.fn().mockRejectedValue(new Error('redis blip')),
+        release: jest.fn(),
+      };
+      const interceptor = new IdempotencyInterceptor(service as unknown as IdempotencyService);
+      const { context } = makeContext({ 'idempotency-key': 'key-1' });
+      const next: CallHandler = { handle: jest.fn(() => of({ id: 'ORDER-1' })) };
+
+      // The response the handler already produced must still reach the
+      // caller: the order was created and stock was decremented before
+      // complete() ever ran, so a complete() failure must not be surfaced
+      // as a request failure.
+      const result = await asTenant(() => lastValueFrom(interceptor.intercept(context, next)));
+      expect(result).toEqual({ id: 'ORDER-1' });
+
+      // Releasing here would let a retry with the same key re-run the
+      // handler and double-execute a request that already succeeded — the
+      // exact double-order/double-decrement bug this module exists to
+      // prevent. The claim must stay in place so a retry sees
+      // request-in-progress (409) instead.
+      expect(service.release).not.toHaveBeenCalled();
+
+      // The failure is an operational event: someone needs to see it.
+      expect(loggerErrorSpy).toHaveBeenCalled();
+    } finally {
+      loggerErrorSpy.mockRestore();
+    }
   });
 });
