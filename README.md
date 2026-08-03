@@ -1,18 +1,27 @@
 # Marketplace
 
-Multi-tenant commerce and booking platform. This repository contains
-**MarketplaceEngine**, the deterministic core service, and
-**MarketplaceAgents**, the LangGraph orchestrator that talks to it.
+Multi-tenant commerce and booking platform. Two services, decoupled by an SQS
+FIFO queue:
 
-- Design spec: `docs/superpowers/specs/2026-08-03-marketplace-engine-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-08-03-marketplace-engine.md`
+- **MarketplaceEngine** — the deterministic core: CRUD, tenant isolation, and an
+  enforcing per-tenant dynamic schema registry.
+- **MarketplaceAgents** — the conversational layer: a LangGraph.js state machine
+  that turns a chat into a validated schema-change proposal and puts it on the
+  queue. It owns no database.
+
+Specs and plans:
+
+- `docs/superpowers/specs/2026-08-03-marketplace-engine-design.md`
+- `docs/superpowers/plans/2026-08-03-marketplace-engine.md`
+- `docs/superpowers/specs/2026-08-03-marketplace-agents-design.md`
+- `docs/superpowers/plans/2026-08-03-marketplace-agents.md`
 
 ## Layout
 
 | Path | Contents |
 |---|---|
 | `apps/engine` | NestJS service: auth, products, events, orders, bookings, flows, and the SQS consumer that turns AI-proposed flows into records |
-| `apps/agents` | NestJS service: config, health, problem+json, and Redis wiring for the LangGraph orchestrator that will push `PROPOSE_FLOW` messages onto the queue `apps/engine`'s consumer reads (agent logic itself lands in later tasks) |
+| `apps/agents` | NestJS service: an authenticated WebSocket gateway backed by a LangGraph.js state machine that turns a chat into a validated schema-change proposal and, on confirmation, pushes a `PROPOSE_FLOW` message onto the queue `apps/engine`'s consumer reads |
 | `packages/contracts` | Zod schemas — the single source of truth for entity shapes |
 | `packages/auth` | Shared JWT verifier and tenant context |
 | `docker/` | Compose stack and infrastructure seeding |
@@ -23,7 +32,7 @@ Multi-tenant commerce and booking platform. This repository contains
 pnpm install
 pnpm docker:up      # dynamodb-local, localstack (sqs), redis, cognito-local, seed, engine, ollama, ollama-init, agents
 pnpm test           # unit + integration
-pnpm e2e            # full stack end to end, then tears down
+pnpm e2e            # engine suite, then agents suite, then tears down
 pnpm docker:down
 ```
 
@@ -45,6 +54,18 @@ volume deliberately — neither ever runs `docker compose down -v`, which would
 delete it and force the next `docker:up` to re-download 4.7GB. They do still
 wipe the rest of the stack's state (in particular the Cognito pool), so every
 run still starts from a clean data plane; only the cached model survives.
+
+## The conversation
+
+A client connects a WebSocket to `/agents` on port 3001, passing a Cognito ID
+token in the socket.io handshake `auth.token`. Events are `thread.start`,
+`thread.resume`, `message`, `confirm`, `reject`; the server replies with `state`
+snapshots and `error` problem documents. Every payload shape is exported from
+`@marketplace/contracts`.
+
+Confirming a proposal does not change any schema. It queues a `PROPOSE_FLOW`
+message; the Engine records a Flow at `status: 'proposed'`, and a human applies
+it with `POST /api/v1/flows/:id/execute`.
 
 ## API surface
 

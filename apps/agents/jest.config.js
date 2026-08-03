@@ -4,4 +4,5 @@ module.exports = {
   rootDir: 'src',
   testRegex: '.*\\.(test|int-test)\\.ts$',
   passWithNoTests: true,
+  setupFiles: ['<rootDir>/../jest.setup.js'],
 };
