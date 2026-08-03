@@ -238,4 +238,59 @@ describe('GraphService confirmation', () => {
     expect(prematureConfirm.phase).toBe('gathering');
     expect(dispatch.dispatch).toHaveBeenCalledTimes(1);
   });
+
+  it('gives a second proposal on the same thread the full draft-attempt budget, not leftovers from the first', async () => {
+    const llm = new ScriptedLlmProvider();
+    const engine = {
+      getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
+    } as unknown as EngineClient;
+    const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-a') };
+    const service = new GraphService(env, llm, engine, dispatch as never, await createCheckpointer(env));
+
+    const threadId = ulid();
+
+    // Proposal A: succeeds on its first and only draft attempt.
+    llm.pushStructured({ targetEntity: 'Event', clarification: '' });
+    llm.pushStructured({ satisfied: true, missing: [], question: '' });
+    llm.pushStructured({ addedFields: [{ name: 'dietaryNeeds', type: 'string', required: false }] });
+    const proposalA = await service.run({
+      threadId,
+      ctx,
+      action: 'message',
+      content: 'add dietaryNeeds text to events',
+    });
+    expect(proposalA.phase).toBe('awaiting_confirmation');
+
+    // Proposal B, same thread: three consecutive drafts that each collide with
+    // Event's built-in `capacity` field, so every one of them is rejected by
+    // validate. This should burn through the FULL DRAFT_MAX_ATTEMPTS budget
+    // before giving up -- not just whatever proposal A's single successful
+    // attempt happened to leave behind. If validate's success branch left
+    // draftAttempts uncleared, proposal B would start already "spent" from
+    // proposal A and give up after only two attempts, leaving the third
+    // scripted response here unconsumed.
+    llm.pushStructured({ satisfied: true, missing: [], question: '' });
+    llm.pushStructured({ addedFields: [{ name: 'capacity', type: 'number', required: false }] });
+    llm.pushStructured({ addedFields: [{ name: 'capacity', type: 'number', required: false }] });
+    llm.pushStructured({ addedFields: [{ name: 'capacity', type: 'number', required: false }] });
+
+    const callsBefore = llm.calls.length;
+    const proposalB = await service.run({
+      threadId,
+      ctx,
+      action: 'message',
+      content: 'also add a capacity override',
+    });
+    const callsConsumed = llm.calls.length - callsBefore;
+
+    expect(proposalB.phase).toBe('gathering');
+    expect(proposalB.draftPayload).toBeNull();
+    expect(proposalB.validationErrors.some((e) => e.includes('capacity'))).toBe(true);
+    expect(proposalB.messages[proposalB.messages.length - 1]?.content).toContain(
+      `after ${env.DRAFT_MAX_ATTEMPTS} attempts`,
+    );
+    // 1 requirementCheck call plus all three scripted drafts: the full budget,
+    // not the 2 that proposal A's carried-over draftAttempts would allow.
+    expect(callsConsumed).toBe(1 + env.DRAFT_MAX_ATTEMPTS);
+  });
 });

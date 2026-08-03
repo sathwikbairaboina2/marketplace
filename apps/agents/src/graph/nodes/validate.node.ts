@@ -44,6 +44,11 @@ export function makeValidateNode(deps: { maxAttempts: number }) {
         // thread would hit the stale value, short-circuit, and report success
         // while sending nothing.
         dispatchedMessageId: null,
+        // Reset the per-proposal draft counter now that this proposal is
+        // finished. Left uncleared, draftAttempts carries over into the next
+        // proposal on this thread and the maxAttempts bound -- meant to apply
+        // per proposal -- silently becomes per-thread-lifetime instead.
+        draftAttempts: 0,
         messages: [
           new AIMessage(
             `Ready to propose adding ${describeDiff(state)} to ${state.targetEntity}. Confirm to send it for approval.`,
