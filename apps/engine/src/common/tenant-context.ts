@@ -1,26 +1,9 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
-
-export interface TenantPrincipal {
-  tenantId: string;
-  userId: string;
-  role: string | null;
-}
-
-const storage = new AsyncLocalStorage<TenantPrincipal>();
-
-/** Wraps a callback in a tenant scope. Used by tests and the SQS consumer. */
-export function runWithTenant<T>(principal: TenantPrincipal, fn: () => T): T {
-  return storage.run(principal, fn);
-}
-
-export function currentPrincipal(): TenantPrincipal {
-  const principal = storage.getStore();
-  if (!principal) {
-    throw new Error('no tenant context: this code must run inside runWithTenant');
-  }
-  return principal;
-}
-
-export function currentTenantId(): string {
-  return currentPrincipal().tenantId;
-}
+// The implementation lives in @marketplace/auth so the Engine and the Agents
+// service share one tenant-context store and one JWT verifier.
+export {
+  runWithTenant,
+  enterTenant,
+  currentPrincipal,
+  currentTenantId,
+  type TenantPrincipal,
+} from '@marketplace/auth';

@@ -38,6 +38,9 @@ importers:
       '@aws-sdk/lib-dynamodb':
         specifier: ^3.665.0
         version: 3.1101.0(@aws-sdk/client-dynamodb@3.1101.0)
+      '@marketplace/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@marketplace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -126,6 +129,28 @@ importers:
       tsx:
         specifier: ^4.19.1
         version: 4.23.4
+    devDependencies:
+      '@types/jest':
+        specifier: ^29.5.13
+        version: 29.5.14
+      '@types/node':
+        specifier: ^22.7.0
+        version: 22.20.1
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@22.20.1)
+      ts-jest:
+        specifier: ^29.2.5
+        version: 29.4.12(@babel/core@7.29.7)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.29.7))(jest-util@29.7.0)(jest@29.7.0(@types/node@22.20.1))(typescript@5.9.3)
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
+  packages/auth:
+    dependencies:
+      jose:
+        specifier: ^5.9.3
+        version: 5.10.0
     devDependencies:
       '@types/jest':
         specifier: ^29.5.13

@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
+import { AuthError } from '@marketplace/auth';
 import { IS_PUBLIC } from './public.decorator';
 import { JwtVerifier } from './jwt-verifier';
 import { setTenantPrincipal } from './request-principal';
@@ -25,7 +26,16 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('missing bearer token');
     }
 
-    const principal = await this.verifier.verify(header.slice('Bearer '.length));
+    let principal;
+    try {
+      principal = await this.verifier.verify(header.slice('Bearer '.length));
+    } catch (err) {
+      // @marketplace/auth is framework-free; the HTTP transport maps its
+      // failure to 401 here, exactly as the socket gateway maps it to a
+      // problem document and a disconnect.
+      if (err instanceof AuthError) throw new UnauthorizedException(err.message);
+      throw err;
+    }
 
     // Stash on the request rather than binding the async context here.
     // Nest's guards consumer (@nestjs/core/guards/guards-consumer.js) awaits
