@@ -13,15 +13,6 @@ export function runWithTenant<T>(principal: TenantPrincipal, fn: () => T): T {
   return storage.run(principal, fn);
 }
 
-/**
- * Binds the tenant to the current async execution and everything it spawns.
- * An HTTP guard needs this rather than runWithTenant, because a guard returns
- * before the controller runs — a callback scope would already have exited.
- */
-export function enterTenant(principal: TenantPrincipal): void {
-  storage.enterWith(principal);
-}
-
 export function currentPrincipal(): TenantPrincipal {
   const principal = storage.getStore();
   if (!principal) {

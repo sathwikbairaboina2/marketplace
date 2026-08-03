@@ -2,7 +2,6 @@
 // service share one tenant-context store and one JWT verifier.
 export {
   runWithTenant,
-  enterTenant,
   currentPrincipal,
   currentTenantId,
   type TenantPrincipal,
