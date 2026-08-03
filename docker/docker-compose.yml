@@ -96,5 +96,57 @@ services:
       interval: 3s
       retries: 30
 
+  ollama:
+    image: ollama/ollama:0.32.5
+    ports: ['11434:11434']
+    volumes: ['ollama-models:/root/.ollama']
+    healthcheck:
+      test: ['CMD-SHELL', 'ollama list >/dev/null 2>&1 || exit 1']
+      interval: 5s
+      retries: 40
+
+  ollama-init:
+    image: ollama/ollama:0.32.5
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ['/bin/sh', '-c', 'ollama pull qwen2.5:7b-instruct']
+    restart: 'no'
+    depends_on:
+      ollama: { condition: service_healthy }
+
+  agents:
+    build: { context: .., dockerfile: apps/agents/Dockerfile }
+    ports: ['3001:3001']
+    # Same rationale as `engine` above: `.env.generated` may not exist yet on a clean clone
+    # when this file is first loaded, and the second `docker:up` step force-recreates this
+    # service (see package.json) so a surviving container can't run with a stale JWT issuer
+    # after `docker:down -v` mints a new Cognito pool.
+    env_file: [{ path: ./.env.generated, required: false }]
+    environment:
+      PORT: '3001'
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      SQS_ENDPOINT: http://localstack:4566
+      REDIS_URL: redis://redis:6379
+      ENGINE_BASE_URL: http://engine:3000
+      OLLAMA_BASE_URL: http://ollama:11434
+      LLM_MODEL: qwen2.5:7b-instruct
+      LOG_LEVEL: info
+    depends_on:
+      redis: { condition: service_healthy }
+      engine: { condition: service_healthy }
+      ollama-init: { condition: service_completed_successfully }
+    healthcheck:
+      # `127.0.0.1`, not `localhost`: on this Alpine image, busybox wget resolves `localhost`
+      # to `::1` first and does not fall back to `127.0.0.1` on refusal, so the healthcheck
+      # reports the container unhealthy even while the app is listening and serving fine
+      # (confirmed via `curl`/`wget 127.0.0.1` inside the container). `engine`'s healthcheck
+      # already sidesteps this the same way.
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3001/api/v1/health/live || exit 1']
+      interval: 3s
+      retries: 30
+
 volumes:
   cognito-data:
+  ollama-models:
