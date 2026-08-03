@@ -1,4 +1,5 @@
 import { ulid } from 'ulid';
+import { RedisSaver } from '@langchain/langgraph-checkpoint-redis';
 import { AgentStateSnapshotSchema } from '@marketplace/contracts';
 import { ScriptedLlmProvider } from '../llm/scripted.provider';
 import { EngineClient } from '../engine-client/engine.client';
@@ -6,6 +7,24 @@ import { DispatchService } from '../dispatch/dispatch.service';
 import { GraphService } from './graph.service';
 import { createCheckpointer } from './checkpointer';
 import { EnvConfig } from '../config/env.schema';
+
+/**
+ * Every `createCheckpointer` call opens a real Redis connection via
+ * `RedisSaver`'s underlying `redis` client; none of them are closed by
+ * anything else in this file, so each one is tracked here and disposed in an
+ * `afterAll` below. Without this, Jest reports open handles after the run.
+ */
+const openCheckpointers: RedisSaver[] = [];
+
+async function trackedCheckpointer(env: EnvConfig): Promise<RedisSaver> {
+  const checkpointer = await createCheckpointer(env);
+  openCheckpointers.push(checkpointer);
+  return checkpointer;
+}
+
+afterAll(async () => {
+  await Promise.all(openCheckpointers.map((c) => c.end()));
+});
 
 const env = {
   REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
@@ -30,7 +49,7 @@ describe('GraphService persistence', () => {
       getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
     } as unknown as EngineClient;
     const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-stub') } as unknown as DispatchService;
-    service = new GraphService(env, llm, engine, dispatch, await createCheckpointer(env));
+    service = new GraphService(env, llm, engine, dispatch, await trackedCheckpointer(env));
   });
 
   it('halts at gathering and remembers the conversation across runs', async () => {
@@ -90,7 +109,7 @@ describe('GraphService full drafting path', () => {
       getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
     } as unknown as EngineClient;
     const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-stub') } as unknown as DispatchService;
-    service = new GraphService(env, llm, engine, dispatch, await createCheckpointer(env));
+    service = new GraphService(env, llm, engine, dispatch, await trackedCheckpointer(env));
   });
 
   it('runs intent to awaiting_confirmation in one pass', async () => {
@@ -133,7 +152,7 @@ describe('GraphService confirmation', () => {
       getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
     } as unknown as EngineClient;
     const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-1') };
-    const service = new GraphService(env, llm, engine, dispatch as never, await createCheckpointer(env));
+    const service = new GraphService(env, llm, engine, dispatch as never, await trackedCheckpointer(env));
 
     const threadId = ulid();
     llm.pushStructured({ targetEntity: 'Event', clarification: '' });
@@ -155,7 +174,7 @@ describe('GraphService confirmation', () => {
       getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
     } as unknown as EngineClient;
     const dispatch = { dispatch: jest.fn().mockResolvedValueOnce('msg-a').mockResolvedValueOnce('msg-b') };
-    const service = new GraphService(env, llm, engine, dispatch as never, await createCheckpointer(env));
+    const service = new GraphService(env, llm, engine, dispatch as never, await trackedCheckpointer(env));
 
     const threadId = ulid();
 
@@ -206,7 +225,7 @@ describe('GraphService confirmation', () => {
       getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
     } as unknown as EngineClient;
     const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-a') };
-    const service = new GraphService(env, llm, engine, dispatch as never, await createCheckpointer(env));
+    const service = new GraphService(env, llm, engine, dispatch as never, await trackedCheckpointer(env));
 
     const threadId = ulid();
 
@@ -245,7 +264,7 @@ describe('GraphService confirmation', () => {
       getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
     } as unknown as EngineClient;
     const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-a') };
-    const service = new GraphService(env, llm, engine, dispatch as never, await createCheckpointer(env));
+    const service = new GraphService(env, llm, engine, dispatch as never, await trackedCheckpointer(env));
 
     const threadId = ulid();
 
