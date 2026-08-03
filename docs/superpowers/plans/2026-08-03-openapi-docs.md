@@ -110,6 +110,7 @@ Create `packages/openapi/package.json`:
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.665.0",
     "@marketplace/contracts": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
