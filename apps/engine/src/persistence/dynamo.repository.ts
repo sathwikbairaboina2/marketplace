@@ -144,6 +144,7 @@ export class DynamoRepository {
       // key of type `string | undefined` — still gets defaulted instead of clobbering it.
       if (next.Put) {
         this.assertTenantKey(next.Put.Item, expectedPk);
+        if (next.Put.Item) this.assertOwnGsi1Pk(next.Put.Item);
         next.Put = { ...next.Put, TableName: next.Put.TableName ?? this.tableName };
       }
       if (next.Update) {

@@ -211,6 +211,39 @@ describe('DynamoRepository', () => {
     expect(b).not.toBeNull();
   });
 
+  it('throws before writing anything if a transactWrite Put carries a foreign GSI1PK', async () => {
+    // The same guard `put`/`putIfAbsent` apply (`assertOwnGsi1Pk`) must also apply to the `Put`
+    // branch of `transactWrite`, because `OrdersService` and `BookingsService` -- the only
+    // writers of GSI1-bearing records in the system -- write exclusively through `transactWrite`,
+    // never through `put`/`putIfAbsent`. Follows the same write-then-verify-empty pattern as "a
+    // rejected foreign GSI1PK write never reaches the victim tenant index" above.
+    const attacker = `t_${uniq()}`;
+    const victim = `t_${uniq()}`;
+    const sk = entitySk('Order', 'TX9');
+    await expect(
+      asTenant(attacker, () =>
+        repo.transactWrite([
+          {
+            Put: {
+              TableName: undefined,
+              Item: {
+                ...repo.key(sk),
+                entityType: 'Order',
+                GSI1PK: gsi1UserPk(victim, 'u1'),
+                GSI1SK: 'ORDER#2026-08-03T10:00:00.000Z#TX9',
+              },
+            },
+          },
+        ]),
+      ),
+    ).rejects.toThrow(/GSI1PK/);
+
+    const found = await asTenant(attacker, () => repo.get(sk));
+    expect(found).toBeNull();
+    const page = await asTenant(victim, () => repo.queryUserIndex('u1', skPrefix('Order')));
+    expect(page.items).toHaveLength(0);
+  });
+
   it('throws before writing anything if a transaction item carries a foreign PK', async () => {
     const t = `t_${uniq()}`;
     const sk = entitySk('Product', 'TX3');
