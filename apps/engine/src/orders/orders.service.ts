@@ -13,7 +13,7 @@ import { entitySk, gsi1UserPk, gsi1UserSk, skPrefix } from '../persistence/keys'
 import { currentPrincipal } from '../common/tenant-context';
 import { newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
-import { failedTransactionIndexes } from '../common/transaction-errors';
+import { conflictedTransactionIndexes, failedTransactionIndexes } from '../common/transaction-errors';
 
 // The HTTP-facing shape of an order. `OrderRecord` (from @marketplace/contracts) mirrors
 // exactly what is stored in DynamoDB, including the single-table `PK`/`SK` attributes and the
@@ -166,43 +166,86 @@ export class OrdersService {
     input: CreateOrder,
     products: ProductRecord[],
   ): Promise<never | void> {
-    const failed = failedTransactionIndexes(err);
-    const lineIndex = failed.find((i) => i < input.items.length);
-    if (lineIndex === undefined) return;
+    // A failed ConditionExpression (stock/price) takes priority over a bare contention signal:
+    // if we can tell the caller exactly what changed, that is strictly more useful than "retry".
+    const failedIndex = failedTransactionIndexes(err).find((i) => i < input.items.length);
+    if (failedIndex !== undefined) {
+      const item = input.items[failedIndex];
+      const expected = products[failedIndex];
+      const current = await this.repo.get<ProductRecord>(entitySk('Product', item.productId));
 
-    const item = input.items[lineIndex];
-    const expected = products[lineIndex];
-    const current = await this.repo.get<ProductRecord>(entitySk('Product', item.productId));
+      // The product that failed its condition may have been deleted entirely between our read
+      // and the transaction's write -- that is a categorically different problem from "out of
+      // stock" (current?.stock ?? 0 would otherwise silently report 0 in stock, misleading the
+      // customer into thinking the product still exists but is sold out).
+      if (current === null) {
+        throw new ProblemException(
+          'not-found',
+          404,
+          'Product no longer exists',
+          `product ${item.productId} was removed before the order could be completed`,
+          { productId: item.productId },
+        );
+      }
 
-    // The transaction's ConditionExpression combines the stock and price checks with AND, so a
-    // cancellation alone doesn't say which one failed. Re-read the product to distinguish them:
-    // a price mismatch is reported as `price-changed`, everything else as `insufficient-stock`.
-    if (current && current.priceMinor !== expected.priceMinor) {
+      // The transaction's ConditionExpression combines the stock and price checks with AND, so
+      // a cancellation alone doesn't say which one failed. Re-read the product to distinguish
+      // them: a price mismatch is reported as `price-changed`, everything else as
+      // `insufficient-stock`.
+      if (current.priceMinor !== expected.priceMinor) {
+        throw new ProblemException(
+          'price-changed',
+          409,
+          'Product price changed',
+          `product ${item.productId} is now priced at ${current.priceMinor}`,
+          {
+            productId: item.productId,
+            expectedPriceMinor: expected.priceMinor,
+            currentPriceMinor: current.priceMinor,
+          },
+        );
+      }
+
       throw new ProblemException(
-        'price-changed',
+        'insufficient-stock',
         409,
-        'Product price changed',
-        `product ${item.productId} is now priced at ${current.priceMinor}`,
-        {
-          productId: item.productId,
-          expectedPriceMinor: expected.priceMinor,
-          currentPriceMinor: current.priceMinor,
-        },
+        'Insufficient stock',
+        `product ${item.productId} has ${current.stock} in stock, ${item.quantity} requested`,
+        { productId: item.productId, available: current.stock, requested: item.quantity },
       );
     }
 
-    throw new ProblemException(
-      'insufficient-stock',
-      409,
-      'Insufficient stock',
-      `product ${item.productId} has ${current?.stock ?? 0} in stock, ${item.quantity} requested`,
-      { productId: item.productId, available: current?.stock ?? 0, requested: item.quantity },
-    );
+    // No ConditionExpression failed, but the transaction was still cancelled: on a real table,
+    // concurrent transactions racing on the same item routinely produce `TransactionConflict`
+    // instead of `ConditionalCheckFailed`. DynamoDB Local's concurrency model tends to surface
+    // only the latter, so this branch is easy to leave untested locally -- without it, this
+    // falls through, the raw AWS error propagates, and ProblemFilter maps it to an unhelpful
+    // 500 for what is actually a routine, retryable race.
+    const conflictIndex = conflictedTransactionIndexes(err).find((i) => i < input.items.length);
+    if (conflictIndex !== undefined) {
+      const item = input.items[conflictIndex];
+      throw new ProblemException(
+        'transaction-conflict',
+        409,
+        'Concurrent write conflict',
+        `product ${item.productId} was updated by another request at the same moment; retry`,
+        { productId: item.productId },
+      );
+    }
   }
 
   async get(id: string): Promise<OrderResponse> {
     const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
-    if (!found) throw new ProblemException('not-found', 404, 'Order not found');
+    // Cross-tenant access already 404s because `repo.get` is scoped to the current tenant's
+    // partition -- a lookup from another tenant simply finds nothing. Ownership within the same
+    // tenant is a separate check: `listForCurrentUser` is scoped to the caller's own orders via
+    // the GSI1 user index, and `get` must agree with it, or any authenticated user of a tenant
+    // could read any other user's order (shipping address, totals, line items) just by knowing
+    // its id. Reported as 404, not 403 -- per the project-wide rule that a 403 would itself leak
+    // that the order exists, just to someone who isn't allowed to see it.
+    if (!found || found.userId !== currentPrincipal().userId) {
+      throw new ProblemException('not-found', 404, 'Order not found');
+    }
     return toResponse(found);
   }
 

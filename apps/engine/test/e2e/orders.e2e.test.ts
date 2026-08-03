@@ -142,6 +142,19 @@ describe('orders', () => {
     const statuses = responses.map((r) => r.status);
     expect(statuses.filter((s) => s === 201)).toHaveLength(1);
     expect(statuses.filter((s) => s === 409)).toHaveLength(9);
+
+    // Counting statuses alone would still pass if the nine losers failed for the wrong reason
+    // (e.g. all reported as `price-changed`, or stock somehow left non-zero). Pin down why they
+    // lost and what state that leaves behind, so a regression that preserves the 1/9 split for
+    // an unrelated reason doesn't slip through.
+    const failedBodies = await Promise.all(
+      responses.filter((r) => r.status === 409).map((r) => r.json() as Promise<{ type: string }>),
+    );
+    expect(failedBodies.some((b) => b.type.includes('insufficient-stock'))).toBe(true);
+
+    const after = await fetch(`${baseUrl}/api/v1/products/${product.id}`, { headers });
+    expect(after.status).toBe(200);
+    expect(((await after.json()) as { stock: number }).stock).toBe(0);
   });
 
   it('replays an order for a repeated idempotency key', async () => {
@@ -178,8 +191,52 @@ describe('orders', () => {
   });
 
   it('lists the caller own orders', async () => {
+    const product = await createProduct(headers, { stock: 5 });
+    const created = await fetch(`${baseUrl}/api/v1/orders`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        items: [{ productId: product.id, quantity: 1 }],
+        currency: 'INR',
+        shippingAddress: { line1: '1 Road' },
+      }),
+    });
+    expect(created.status).toBe(201);
+    const createdOrder = (await created.json()) as { userId: string };
+
     const res = await fetch(`${baseUrl}/api/v1/orders?limit=5`, { headers });
     expect(res.status).toBe(200);
-    expect(Array.isArray(((await res.json()) as { items: unknown[] }).items)).toBe(true);
+    const body = (await res.json()) as { items: { userId: string }[] };
+    // `Array.isArray(items)` alone would still pass on an empty array -- assert there is
+    // actually something here, and that every returned order belongs to the calling user (the
+    // GSI1 prefix for orders and bookings share the same `ORDER#`/... scheme by construction,
+    // so a prefix drift in persistence/keys.ts would otherwise go unnoticed by this test).
+    expect(body.items.length).toBeGreaterThan(0);
+    expect(body.items.every((i) => i.userId === createdOrder.userId)).toBe(true);
+  });
+
+  it('hides another user order within the same tenant', async () => {
+    const otherHeaders = await authHeaders('tenant_a', 'carol@example.com');
+    const product = await createProduct(headers, { stock: 5 });
+    const created = await fetch(`${baseUrl}/api/v1/orders`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        items: [{ productId: product.id, quantity: 1 }],
+        currency: 'INR',
+        shippingAddress: { line1: '1 Road' },
+      }),
+    });
+    expect(created.status).toBe(201);
+    const { id } = (await created.json()) as { id: string };
+
+    // Positive half: the owning user can read their own order.
+    const ownerRes = await fetch(`${baseUrl}/api/v1/orders/${id}`, { headers });
+    expect(ownerRes.status).toBe(200);
+
+    // Negative half: a different user in the *same* tenant cannot -- and gets 404, never 403,
+    // so the error channel itself doesn't confirm the order exists to someone who can't see it.
+    const otherRes = await fetch(`${baseUrl}/api/v1/orders/${id}`, { headers: otherHeaders });
+    expect(otherRes.status).toBe(404);
   });
 });

@@ -9,6 +9,7 @@ export type ProblemType =
   | 'schema-version-conflict'
   | 'too-many-line-items'
   | 'mixed-currency-order'
+  | 'transaction-conflict'
   | 'request-in-progress'
   | 'unauthorized'
   | 'not-found'
