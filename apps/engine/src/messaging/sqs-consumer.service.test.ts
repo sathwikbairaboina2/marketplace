@@ -1,7 +1,10 @@
 import { Message } from '@aws-sdk/client-sqs';
 import { SqsConsumerService } from './sqs-consumer.service';
 import { EnvConfig } from '../config/env.schema';
-import { FlowsService } from '../flows/flows.service';
+import { FlowsService, FlowResponse } from '../flows/flows.service';
+import { DynamoRepository } from '../persistence/dynamo.repository';
+import { SchemaRegistryService } from '../registry/schema-registry.service';
+import { deriveIdFrom } from '../common/ids';
 
 // `handle()` is the security chokepoint the task brief calls out explicitly: unlike every other
 // entry point, a tenant id arriving via SQS has never passed through a verified JWT claim. These
@@ -96,11 +99,17 @@ describe('SqsConsumerService.handle', () => {
 
     expect(flows.propose).toHaveBeenCalledTimes(1);
     // Zod fills in AddedFieldSchema's defaults (`required: false`, `default: null`) during parse.
-    expect(flows.propose).toHaveBeenCalledWith({
-      targetEntity: 'Product',
-      actionType: 'ADD_FIELDS',
-      blueprintDiff: { addedFields: [{ name: 'x', type: 'string', required: false, default: null }] },
-    });
+    // The second argument is the Flow id deterministically derived from the message's own id
+    // (`deriveIdFrom('msg-1')`), not a random one -- that determinism is what makes a redelivery
+    // land on the same DynamoDB key via `putIfAbsent` instead of creating a second Flow row.
+    expect(flows.propose).toHaveBeenCalledWith(
+      {
+        targetEntity: 'Product',
+        actionType: 'ADD_FIELDS',
+        blueprintDiff: { addedFields: [{ name: 'x', type: 'string', required: false, default: null }] },
+      },
+      deriveIdFrom('msg-1'),
+    );
     expect(send).toHaveBeenCalledTimes(1); // DeleteMessageCommand
   });
 
@@ -121,10 +130,40 @@ describe('SqsConsumerService.handle', () => {
     expect(send).toHaveBeenCalledTimes(1); // still deleted: this delivery was already handled once
   });
 
-  it('leaves an unparseable message unacknowledged and never creates a Flow', async () => {
+  it('leaves a schema-invalid message unacknowledged and never creates a Flow', async () => {
     const { flows, send, handle } = makeService('OK');
 
     await handle(makeMessage({ action: 'NOT_A_REAL_ACTION' }));
+
+    expect(flows.propose).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('leaves a non-JSON message body unacknowledged and never creates a Flow', async () => {
+    // Added specifically because the brief's own reference `handle()` calls `JSON.parse`
+    // un-guarded and would throw synchronously on a body like this, aborting the rest of the
+    // batch via poll()'s outer catch rather than handling this one message in isolation.
+    const { flows, send, handle } = makeService('OK');
+
+    await handle({ MessageId: 'msg-bad-json', ReceiptHandle: 'rh-bad-json', Body: '{ not valid json' });
+
+    expect(flows.propose).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('leaves a message with no MessageId unacknowledged rather than deriving a dedupe key or Flow id from "undefined"', async () => {
+    const { flows, send, handle } = makeService('OK');
+
+    await handle({
+      ReceiptHandle: 'rh-no-id',
+      Body: JSON.stringify({
+        action: 'PROPOSE_FLOW',
+        targetEntity: 'Product',
+        tenantId: 'TENANT#client_123',
+        payload: { addedFields: [{ name: 'x', type: 'string' }] },
+        metadata: { threadId: 't1' },
+      }),
+    });
 
     expect(flows.propose).not.toHaveBeenCalled();
     expect(send).not.toHaveBeenCalled();
@@ -153,6 +192,61 @@ describe('SqsConsumerService.handle', () => {
 
     expect(redis.del).toHaveBeenCalledWith('sqsmsg:msg-1');
     expect(send).not.toHaveBeenCalled(); // not deleted: message must be retried
+  });
+
+  // The Redis claim is only a fast-path optimisation, not the correctness guarantee: it cannot
+  // distinguish "definitely not written" from "outcome unknown" (write committed, ack lost). This
+  // simulates that ambiguous case directly -- the claim looks fresh/absent on *both* deliveries of
+  // the same message (as it would after the failure-path release above, or a TTL/crash edge case)
+  // -- and proves the real invariant is enforced one level down, by `FlowsService.propose`'s
+  // deterministic id + `putIfAbsent`, not by Redis. Uses a real `FlowsService` over an in-memory
+  // fake repository (rather than a mocked `FlowsService`) because that's the only way to observe
+  // whether a second underlying DynamoDB row actually got created.
+  it('produces exactly one Flow for two deliveries of the same message, even when the Redis claim is absent both times', async () => {
+    const store = new Map<string, Record<string, unknown>>();
+    const fakeRepo = {
+      put: jest.fn(async (sk: string, item: Record<string, unknown>) => {
+        store.set(sk, item);
+      }),
+      putIfAbsent: jest.fn(async (sk: string, item: Record<string, unknown>) => {
+        if (store.has(sk)) return false;
+        store.set(sk, item);
+        return true;
+      }),
+      get: jest.fn(async (sk: string) => store.get(sk) ?? null),
+    };
+    const flows = new FlowsService(
+      fakeRepo as unknown as DynamoRepository,
+      {} as unknown as SchemaRegistryService, // unused by propose()/get()
+    );
+    // `redis.set` resolving 'OK' on every call simulates the claim looking absent/fresh each
+    // time -- exactly the ambiguous case, not the ordinary "claim already held" redelivery path
+    // covered by the test above.
+    const redis = { set: jest.fn().mockResolvedValue('OK'), del: jest.fn().mockResolvedValue(1) };
+    const service = new SqsConsumerService(makeEnv(), redis as never, flows);
+    const send = jest.fn().mockResolvedValue({});
+    (service as unknown as { sqs: { send: typeof send } }).sqs.send = send;
+    const handle = (message: Message): Promise<void> =>
+      (service as unknown as { handle: (m: Message) => Promise<void> }).handle(message);
+
+    const message = makeMessage(
+      {
+        action: 'PROPOSE_FLOW',
+        targetEntity: 'Product',
+        tenantId: 'TENANT#client_123',
+        payload: { addedFields: [{ name: 'x', type: 'string' }] },
+        metadata: { threadId: 't1' },
+      },
+      'ambiguous-msg-1',
+    );
+
+    await handle(message);
+    await handle(message); // redelivery of the exact same message
+
+    expect(store.size).toBe(1); // exactly one Flow row, never two
+    const [record] = [...store.values()] as FlowResponse[];
+    expect(record.id).toBe(deriveIdFrom('ambiguous-msg-1'));
+    expect(send).toHaveBeenCalledTimes(2); // both deliveries are acknowledged
   });
 });
 

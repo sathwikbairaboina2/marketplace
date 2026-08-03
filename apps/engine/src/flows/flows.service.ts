@@ -24,12 +24,21 @@ export class FlowsService {
     private readonly registry: SchemaRegistryService,
   ) {}
 
-  // Reused verbatim by Task 16's SQS consumer to create proposed flows from the AI agent
-  // service. A flow is always created at `status: 'proposed'` here -- never auto-applied --
-  // which is what keeps a language model from silently mutating a tenant's data model; a human
-  // must call `execute` to actually apply it.
-  async propose(input: CreateFlow): Promise<FlowResponse> {
-    const id = newId();
+  // Reused by Task 16's SQS consumer to create proposed flows from the AI agent service. A flow
+  // is always created at `status: 'proposed'` here -- never auto-applied -- which is what keeps
+  // a language model from silently mutating a tenant's data model; a human must call `execute`
+  // to actually apply it.
+  //
+  // `id` is optional and defaults to a fresh `newId()` for the normal HTTP path (POST /flows),
+  // where every proposal is a genuinely new Flow. The SQS consumer instead supplies a Flow id
+  // deterministically derived from the source message's `MessageId`, and the write below uses
+  // `putIfAbsent` rather than an unconditional `put` specifically so that path is idempotent on
+  // the write itself: if the same message is ever processed twice -- a plain SQS redelivery, or
+  // the consumer's own best-effort Redis dedupe claim being lost after an ambiguous write (the
+  // Put committed but the client timed out before seeing the response) -- the second write for
+  // the same id is a DynamoDB no-op, and the caller gets back the Flow that already exists
+  // rather than a second, distinct one.
+  async propose(input: CreateFlow, id: string = newId()): Promise<FlowResponse> {
     const record: FlowResponse = {
       entityType: 'Flow',
       id,
@@ -41,7 +50,8 @@ export class FlowsService {
       appliedAt: null,
       resultingVersion: null,
     };
-    await this.repo.put(entitySk('Flow', id), record);
+    const written = await this.repo.putIfAbsent(entitySk('Flow', id), record);
+    if (!written) return this.get(id);
     return record;
   }
 
