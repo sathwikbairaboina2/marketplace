@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { PersistenceModule } from './persistence/persistence.module';
 import { RedisModule } from './redis/redis.module';
 import { RegistryModule } from './registry/registry.module';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RegistryModule } from './registry/registry.module';
     PersistenceModule,
     RedisModule,
     RegistryModule,
+    ProductsModule,
   ],
 })
 export class AppModule {}
