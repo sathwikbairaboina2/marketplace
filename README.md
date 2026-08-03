@@ -1,7 +1,8 @@
 # Marketplace
 
-Multi-tenant commerce and booking platform. This repository currently contains
-**MarketplaceEngine**, the deterministic core service.
+Multi-tenant commerce and booking platform. This repository contains
+**MarketplaceEngine**, the deterministic core service, and
+**MarketplaceAgents**, the LangGraph orchestrator that talks to it.
 
 - Design spec: `docs/superpowers/specs/2026-08-03-marketplace-engine-design.md`
 - Implementation plan: `docs/superpowers/plans/2026-08-03-marketplace-engine.md`
@@ -11,18 +12,16 @@ Multi-tenant commerce and booking platform. This repository currently contains
 | Path | Contents |
 |---|---|
 | `apps/engine` | NestJS service: auth, products, events, orders, bookings, flows, and the SQS consumer that turns AI-proposed flows into records |
+| `apps/agents` | NestJS service: config, health, problem+json, and Redis wiring for the LangGraph orchestrator that will push `PROPOSE_FLOW` messages onto the queue `apps/engine`'s consumer reads (agent logic itself lands in later tasks) |
 | `packages/contracts` | Zod schemas — the single source of truth for entity shapes |
+| `packages/auth` | Shared JWT verifier and tenant context |
 | `docker/` | Compose stack and infrastructure seeding |
-
-`MarketplaceAgents`, the LangGraph orchestrator that pushes `PROPOSE_FLOW`
-messages onto the queue this service consumes, is specified separately and is
-not part of this repository.
 
 ## Running
 
 ```bash
 pnpm install
-pnpm docker:up      # dynamodb-local, localstack (sqs), redis, cognito-local, seed, engine
+pnpm docker:up      # dynamodb-local, localstack (sqs), redis, cognito-local, seed, engine, ollama, ollama-init, agents
 pnpm test           # unit + integration
 pnpm e2e            # full stack end to end, then tears down
 pnpm docker:down
@@ -30,7 +29,22 @@ pnpm docker:down
 
 `pnpm docker:up` runs the `seed` container first. It creates the DynamoDB table,
 the FIFO queue and its DLQ, and a Cognito user pool, then writes the generated
-identifiers to `docker/.env.generated`, which the engine container reads.
+identifiers to `docker/.env.generated`, which both the engine and agents
+containers read.
+
+`engine` serves on `:3000`, `agents` on `:3001`, both under `/api/v1`.
+`agents`' readiness (`GET /api/v1/health/ready`) is only green once Redis
+answers, the engine reports ready, *and* Ollama has actually pulled the
+configured model (`qwen2.5:7b-instruct` by default) — not just that Ollama is
+listening. That model is 4.7GB: the **first** `pnpm docker:up` on a machine
+with no cached volume can take several minutes while `ollama-init` pulls it.
+Subsequent runs reuse the `ollama-models` Docker volume and start in seconds.
+
+`pnpm docker:down` and `pnpm e2e`'s automatic teardown both preserve that
+volume deliberately — neither ever runs `docker compose down -v`, which would
+delete it and force the next `docker:up` to re-download 4.7GB. They do still
+wipe the rest of the stack's state (in particular the Cognito pool), so every
+run still starts from a clean data plane; only the cached model survives.
 
 ## API surface
 
