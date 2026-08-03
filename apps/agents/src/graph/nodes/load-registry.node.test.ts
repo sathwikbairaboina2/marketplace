@@ -5,6 +5,7 @@ import { EngineClient } from '../../engine-client/engine.client';
 const ctx = {
   principal: { tenantId: 'tenant_a', userId: 'user-1', role: null },
   authToken: 'token-abc',
+  threadId: '01J8Z5X9T7QK4W2M6N3P8R5V1C',
 };
 
 const base: AgentState = {

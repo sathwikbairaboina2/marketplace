@@ -2,6 +2,7 @@ import { ulid } from 'ulid';
 import { AgentStateSnapshotSchema } from '@marketplace/contracts';
 import { ScriptedLlmProvider } from '../llm/scripted.provider';
 import { EngineClient } from '../engine-client/engine.client';
+import { DispatchService } from '../dispatch/dispatch.service';
 import { GraphService } from './graph.service';
 import { createCheckpointer } from './checkpointer';
 import { EnvConfig } from '../config/env.schema';
@@ -28,7 +29,8 @@ describe('GraphService persistence', () => {
     const engine = {
       getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
     } as unknown as EngineClient;
-    service = new GraphService(env, llm, engine, await createCheckpointer(env));
+    const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-stub') } as unknown as DispatchService;
+    service = new GraphService(env, llm, engine, dispatch, await createCheckpointer(env));
   });
 
   it('halts at gathering and remembers the conversation across runs', async () => {
@@ -87,7 +89,8 @@ describe('GraphService full drafting path', () => {
     const engine = {
       getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
     } as unknown as EngineClient;
-    service = new GraphService(env, llm, engine, await createCheckpointer(env));
+    const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-stub') } as unknown as DispatchService;
+    service = new GraphService(env, llm, engine, dispatch, await createCheckpointer(env));
   });
 
   it('runs intent to awaiting_confirmation in one pass', async () => {
@@ -120,5 +123,29 @@ describe('GraphService full drafting path', () => {
     const out = await service.run({ threadId, ctx, action: 'message', content: 'more seats' });
     expect(out.phase).toBe('awaiting_confirmation');
     expect(out.draftPayload?.addedFields[0].name).toBe('extraSeats');
+  });
+});
+
+describe('GraphService confirmation', () => {
+  it('dispatches exactly once even if confirm arrives twice', async () => {
+    const llm = new ScriptedLlmProvider();
+    const engine = {
+      getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
+    } as unknown as EngineClient;
+    const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-1') };
+    const service = new GraphService(env, llm, engine, dispatch as never, await createCheckpointer(env));
+
+    const threadId = ulid();
+    llm.pushStructured({ targetEntity: 'Event', clarification: '' });
+    llm.pushStructured({ satisfied: true, missing: [], question: '' });
+    llm.pushStructured({ addedFields: [{ name: 'dietaryNeeds', type: 'string', required: false }] });
+    await service.run({ threadId, ctx, action: 'message', content: 'add dietaryNeeds text to events' });
+
+    const first = await service.run({ threadId, ctx, action: 'confirm' });
+    const second = await service.run({ threadId, ctx, action: 'confirm' });
+
+    expect(first.phase).toBe('done');
+    expect(second.phase).toBe('done');
+    expect(dispatch.dispatch).toHaveBeenCalledTimes(1);
   });
 });

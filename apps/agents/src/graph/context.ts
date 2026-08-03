@@ -8,4 +8,5 @@ import { TenantPrincipal } from '@marketplace/auth';
 export interface RunContext {
   principal: TenantPrincipal;
   authToken: string;
+  threadId: string;
 }

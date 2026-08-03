@@ -6,6 +6,7 @@ import { AgentStateSnapshot } from '@marketplace/contracts';
 import { ENV, EnvConfig } from '../config/env.schema';
 import { LLM, LlmProvider } from '../llm/llm.provider';
 import { EngineClient } from '../engine-client/engine.client';
+import { DispatchService } from '../dispatch/dispatch.service';
 import { AgentAnnotation, AgentState, PendingAction, defaultAgentState, toSnapshot } from './state';
 import { RunContext } from './context';
 import { CHECKPOINTER } from './checkpointer';
@@ -14,10 +15,12 @@ import { makeLoadRegistryNode } from './nodes/load-registry.node';
 import { makeRequirementCheckNode } from './nodes/requirement-check.node';
 import { makeDraftSchemaNode } from './nodes/draft-schema.node';
 import { makeValidateNode } from './nodes/validate.node';
+import { makeDispatchNode } from './nodes/dispatch.node';
+import { makeApplyRejectionNode } from './nodes/apply-rejection.node';
 
 export interface RunInput {
   threadId: string;
-  ctx: RunContext;
+  ctx: Omit<RunContext, 'threadId'>;
   action: PendingAction;
   content?: string;
 }
@@ -28,6 +31,7 @@ export class GraphService {
     @Inject(ENV) private readonly env: EnvConfig,
     @Inject(LLM) private readonly llm: LlmProvider,
     private readonly engine: EngineClient,
+    private readonly dispatch: DispatchService,
     @Inject(CHECKPOINTER) private readonly checkpointer: RedisSaver,
   ) {}
 
@@ -43,7 +47,21 @@ export class GraphService {
       .addNode('requirementCheck', makeRequirementCheckNode({ llm: this.llm }))
       .addNode('draftSchema', makeDraftSchemaNode({ llm: this.llm }))
       .addNode('validate', makeValidateNode({ maxAttempts: this.env.DRAFT_MAX_ATTEMPTS }))
-      .addEdge(START, 'analyzeIntent')
+      .addNode('dispatch', makeDispatchNode({ dispatch: this.dispatch }, ctx))
+      .addNode('applyRejection', makeApplyRejectionNode())
+      // A confirmation is a decision, not a sentence to interpret: it routes
+      // straight to dispatch without any model in the path. A confirm is also
+      // routed to dispatch once the thread is already `done` with a message
+      // id recorded, so a repeated confirm (double click, resumed thread)
+      // still reaches the node whose own `dispatchedMessageId` guard makes it
+      // a no-op, instead of falling through to `analyzeIntent`.
+      .addConditionalEdges(START, (state: AgentState) => {
+        if (state.pendingAction === 'confirm' && (state.phase === 'awaiting_confirmation' || state.dispatchedMessageId)) {
+          return 'dispatch';
+        }
+        if (state.phase === 'awaiting_confirmation' && state.pendingAction === 'reject') return 'applyRejection';
+        return 'analyzeIntent';
+      })
       .addConditionalEdges('analyzeIntent', (state: AgentState) =>
         state.targetEntity ? 'loadRegistry' : END,
       )
@@ -54,13 +72,15 @@ export class GraphService {
       .addEdge('draftSchema', 'validate')
       .addConditionalEdges('validate', (state: AgentState) =>
         state.phase === 'drafting' ? 'draftSchema' : END,
-      );
+      )
+      .addEdge('dispatch', END)
+      .addEdge('applyRejection', END);
 
     return graph.compile({ checkpointer: this.checkpointer });
   }
 
   async run(input: RunInput): Promise<AgentStateSnapshot> {
-    const app = this.build(input.ctx);
+    const app = this.build({ ...input.ctx, threadId: input.threadId });
     const config = { configurable: { thread_id: input.threadId } };
 
     await app.invoke(
@@ -75,7 +95,11 @@ export class GraphService {
   }
 
   async snapshot(threadId: string): Promise<AgentStateSnapshot> {
-    const app = this.build({ principal: { tenantId: '', userId: '', role: null }, authToken: '' });
+    const app = this.build({
+      principal: { tenantId: '', userId: '', role: null },
+      authToken: '',
+      threadId,
+    });
     const state = await app.getState({ configurable: { thread_id: threadId } });
     // A thread with no prior run has no checkpoint, so `state.values` is `{}`
     // (LangGraph's own `getState` fallback) rather than a full AgentState.

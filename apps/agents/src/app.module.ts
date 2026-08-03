@@ -5,6 +5,7 @@ import { RedisModule } from './redis/redis.module';
 import { LlmModule } from './llm/llm.module';
 import { HealthModule } from './health/health.module';
 import { EngineClientModule } from './engine-client/engine-client.module';
+import { DispatchModule } from './dispatch/dispatch.module';
 import { GraphModule } from './graph/graph.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { GraphModule } from './graph/graph.module';
     RedisModule,
     LlmModule,
     EngineClientModule,
+    DispatchModule,
     GraphModule,
     HealthModule,
   ],
