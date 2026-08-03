@@ -1,6 +1,6 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { AgentStateSnapshotSchema } from '@marketplace/contracts';
-import { toSnapshot, AgentState } from './state';
+import { AGENT_FIELD_DEFAULTS, AgentAnnotation, toSnapshot, AgentState } from './state';
 
 const threadId = '01J8Z5X9T7QK4W2M6N3P8R5V1C';
 
@@ -38,5 +38,18 @@ describe('toSnapshot', () => {
 
   it('produces a snapshot that satisfies the published contract', () => {
     expect(() => AgentStateSnapshotSchema.parse(toSnapshot(threadId, base))).not.toThrow();
+  });
+});
+
+describe('AGENT_FIELD_DEFAULTS', () => {
+  it('has exactly one entry per AgentAnnotation channel other than messages', () => {
+    // `AgentAnnotation.spec` is the plain StateDefinition object passed to
+    // `Annotation.Root` (messages plus every `replace<T>(...)` channel below
+    // it), so its keys are the full, current list of channels -- this is
+    // what would catch someone adding a channel to AgentAnnotation and hand
+    // -satisfying `defaultAgentState`'s literal type without also adding it
+    // here, which would compile silently.
+    const channelKeys = Object.keys(AgentAnnotation.spec).filter((key) => key !== 'messages');
+    expect(Object.keys(AGENT_FIELD_DEFAULTS).sort()).toEqual([...channelKeys].sort());
   });
 });
