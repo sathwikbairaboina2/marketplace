@@ -141,6 +141,9 @@ importers:
       '@marketplace/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@marketplace/openapi':
+        specifier: workspace:*
+        version: link:../../packages/openapi
       '@nestjs/common':
         specifier: ^11.0.0
         version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -150,6 +153,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.0.0
         version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)
+      '@nestjs/swagger':
+        specifier: ^11.4.6
+        version: 11.4.6(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)
       ioredis:
         specifier: ^5.4.1
         version: 5.11.1
