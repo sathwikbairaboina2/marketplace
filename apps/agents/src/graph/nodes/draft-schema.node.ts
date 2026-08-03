@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BlueprintDiff, FieldTypeSchema } from '@marketplace/contracts';
+import { BlueprintDiff, FieldNameSchema, FieldTypeSchema } from '@marketplace/contracts';
 import { LlmProvider } from '../../llm/llm.provider';
 import { AgentState, toChatMessages } from '../state';
 import { DRAFT_SYSTEM } from '../prompts';
@@ -10,7 +10,7 @@ import { DRAFT_SYSTEM } from '../prompts';
 // widened to the real contract below, where the defaults come from.
 const DraftSchema = z.object({
   addedFields: z
-    .array(z.object({ name: z.string(), type: FieldTypeSchema, required: z.boolean() }))
+    .array(z.object({ name: FieldNameSchema, type: FieldTypeSchema, required: z.boolean() }))
     .min(1),
 });
 
