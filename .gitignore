@@ -8,3 +8,4 @@ coverage/
 .claude/worktrees/
 docker/.env.generated
 .cognito/
+.superpowers/
