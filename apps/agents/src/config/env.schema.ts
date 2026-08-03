@@ -18,6 +18,15 @@ export const EnvSchema = z.object({
   DRAFT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
   THREAD_TTL_SECONDS: z.coerce.number().int().positive().default(2_592_000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  DOCS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  DEV_TENANT_ID: z.string().min(1).default('tenant-dev'),
+  DEV_USERNAME: z.string().min(1).default('dev@marketplace.local'),
+  COGNITO_ENDPOINT: z.string().url().optional(),
+  COGNITO_USER_POOL_ID: z.string().min(1).optional(),
+  COGNITO_CLIENT_ID: z.string().min(1).optional(),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;

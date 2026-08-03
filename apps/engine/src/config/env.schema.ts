@@ -16,6 +16,15 @@ export const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('true')
     .transform((v) => v === 'true'),
+  DOCS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  DEV_TENANT_ID: z.string().min(1).default('tenant-dev'),
+  DEV_USERNAME: z.string().min(1).default('dev@marketplace.local'),
+  COGNITO_ENDPOINT: z.string().url().optional(),
+  COGNITO_USER_POOL_ID: z.string().min(1).optional(),
+  COGNITO_CLIENT_ID: z.string().min(1).optional(),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;
