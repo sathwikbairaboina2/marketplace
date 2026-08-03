@@ -3542,7 +3542,7 @@ git commit -m "feat: dispatch confirmed proposals to the engine queue with deriv
 The client-facing surface. Two things carry the security weight here: the handshake is the only place a token is accepted, and every handler asserts thread ownership before touching the graph.
 
 **Files:**
-- Create: `apps/agents/src/auth/jwt-verifier.service.ts`, `src/auth/public.decorator.ts`, `src/auth/jwt-auth.guard.ts`, `src/auth/auth.module.ts`
+- Create: `apps/agents/src/auth/jwt-verifier.service.ts`, `src/auth/public.decorator.ts`, `src/auth/jwt-auth.guard.ts`, `src/auth/request-principal.ts`, `src/auth/tenant-context.interceptor.ts`, `src/auth/auth.module.ts`
 - Create: `apps/agents/src/chat/chat.gateway.ts`, `src/chat/chat.module.ts`
 - Create: `apps/agents/src/threads/threads.controller.ts`, `src/threads/threads.module.ts`
 - Modify: `apps/agents/src/app.module.ts`, `src/health/health.controller.ts`
@@ -3754,13 +3754,18 @@ export const Public = () => SetMetadata(IS_PUBLIC, true);
 
 `apps/agents/src/auth/jwt-auth.guard.ts`:
 
+**Do not call `enterTenant` from this guard.** The Engine hit this exact problem and worked around it; `apps/engine/src/auth/jwt-auth.guard.ts`, `request-principal.ts` and `tenant-context.interceptor.ts` carry the full explanation. In short: Nest's guards consumer awaits the guard's promise from a continuation scheduled *before* `verify()` resolved, so an `AsyncLocalStorage.enterWith()` performed after that `await` is never observed by the controller. `GET /threads/:id` calls `currentPrincipal()`, so it would throw "no tenant context" at runtime while every unit test passed.
+
+Mirror the Engine: the guard stashes the principal on the request, and an interceptor binds the async scope at the point Nest wraps the continuation with `AsyncResource.bind`.
+
 ```ts
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Request } from 'express';
-import { AuthError, enterTenant } from '@marketplace/auth';
+import { AuthError } from '@marketplace/auth';
 import { IS_PUBLIC } from './public.decorator';
 import { JwtVerifierService } from './jwt-verifier.service';
+import { setTenantPrincipal } from './request-principal';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -3784,13 +3789,63 @@ export class JwtAuthGuard implements CanActivate {
     const header = req.headers.authorization;
     if (!header?.startsWith('Bearer ')) throw new UnauthorizedException('missing bearer token');
 
+    let principal;
     try {
-      enterTenant(await this.verifier.verify(header.slice('Bearer '.length)));
+      principal = await this.verifier.verify(header.slice('Bearer '.length));
     } catch (err) {
       if (err instanceof AuthError) throw new UnauthorizedException(err.message);
       throw err;
     }
+
+    setTenantPrincipal(req, principal);
     return true;
+  }
+}
+```
+
+`apps/agents/src/auth/request-principal.ts`:
+
+```ts
+import { TenantPrincipal } from '@marketplace/auth';
+
+// Keyed by the Express request object (unique per request, garbage collected
+// with it) rather than a mutated property, so this stays type-safe without
+// augmenting Express's types.
+const principals = new WeakMap<object, TenantPrincipal>();
+
+export function setTenantPrincipal(req: object, principal: TenantPrincipal): void {
+  principals.set(req, principal);
+}
+
+export function getTenantPrincipal(req: object): TenantPrincipal | undefined {
+  return principals.get(req);
+}
+```
+
+`apps/agents/src/auth/tenant-context.interceptor.ts`:
+
+```ts
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { Request } from 'express';
+import { runWithTenant } from '@marketplace/auth';
+import { getTenantPrincipal } from './request-principal';
+
+/**
+ * Binds the verified principal to the request's async scope. This must be an
+ * interceptor rather than work the guard does directly — see the comment in
+ * jwt-auth.guard.ts. next.handle() is called synchronously inside
+ * runWithTenant's callback, which is what makes the binding stick.
+ */
+@Injectable()
+export class TenantContextInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    if (context.getType() !== 'http') return next.handle();
+    const req = context.switchToHttp().getRequest<Request>();
+    const principal = getTenantPrincipal(req);
+    // Public route: the guard never verified a token, so there is nothing to bind.
+    if (!principal) return next.handle();
+    return runWithTenant(principal, () => next.handle());
   }
 }
 ```
@@ -3799,13 +3854,20 @@ export class JwtAuthGuard implements CanActivate {
 
 ```ts
 import { Global, Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtVerifierService } from './jwt-verifier.service';
+import { TenantContextInterceptor } from './tenant-context.interceptor';
 
 @Global()
 @Module({
-  providers: [JwtVerifierService, { provide: APP_GUARD, useClass: JwtAuthGuard }],
+  providers: [
+    JwtVerifierService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Order matters: guards run before interceptors, so the principal is
+    // always stashed by the time this binds the async scope.
+    { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
+  ],
   exports: [JwtVerifierService],
 })
 export class AuthModule {}
