@@ -16,5 +16,15 @@ import { spawnSync } from 'node:child_process';
 
 const run = (cmd, args) => spawnSync(cmd, args, { stdio: 'inherit', shell: true }).status ?? 1;
 
-run('docker', ['compose', '-f', 'docker/docker-compose.yml', 'down']);
-run('docker', ['volume', 'rm', '-f', 'marketplace_cognito-data']);
+const downStatus = run('docker', ['compose', '-f', 'docker/docker-compose.yml', 'down']);
+// `docker volume rm -f` on a volume that's already gone exits 0 -- `-f` exists precisely to
+// make "nothing to remove" a no-op, not a failure (verified empirically: `docker volume rm -f
+// <nonexistent>` returns status 0). So a non-zero exit here is a genuine problem (permission
+// error, daemon unreachable mid-command), not a missing volume, and deserves to propagate
+// exactly like a `docker compose down` failure would -- this script's caller (`pnpm docker:down`
+// in the documented dev loop, and `pnpm docker:down` from inside scripts/e2e.mjs) both rely on
+// shell `&&`/exit-code semantics to detect a broken stack, and previously got a false green from
+// this file regardless of what either command actually did.
+const volStatus = run('docker', ['volume', 'rm', '-f', 'marketplace_cognito-data']);
+
+process.exit(downStatus !== 0 ? downStatus : volStatus);
