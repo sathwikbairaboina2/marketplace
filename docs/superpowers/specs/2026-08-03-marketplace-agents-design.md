@@ -96,6 +96,7 @@ Ollama's healthcheck polls `GET /api/tags`; readiness for the `agents` service a
 | `LLM_TEMPERATURE` | `0` |
 | `LLM_TIMEOUT_MS` | Per-call ceiling; exceeded produces `llm-unavailable` |
 | `ENGINE_BASE_URL` | Engine origin for read-only queries |
+| `ENGINE_TIMEOUT_MS` | Per-call ceiling; exceeded produces `engine-unavailable` |
 | `REDIS_URL` | Checkpointer and thread registry |
 | `SQS_ENDPOINT` | Optional. Unset means the SDK resolves real AWS |
 | `QUEUE_URL` | `marketplace-engine-jobs.fifo` |
@@ -136,7 +137,7 @@ export interface AgentState {
 The PRD's five nodes, plus one deterministic loader for grounding.
 
 1. **`analyzeIntentNode`** (LLM, structured output `{ targetEntity, action }`) — parses the conversation for the target entity. A null entity sets phase `gathering` and halts with a clarifying question.
-2. **`loadRegistryNode`** (deterministic, added) — calls `GET /schemas/:entityType` through the engine-client, forwarding the caller's JWT, and populates `registrySnapshot`. A 404 from the Engine means the tenant has no schema for that entity yet, which is a valid empty snapshot, not an error.
+2. **`loadRegistryNode`** (deterministic, added) — calls `GET /schemas/:entityType` through the engine-client, forwarding the caller's JWT, and populates `registrySnapshot`. An entity the tenant has never extended is not an error: the Engine answers 200 with `{ version: 0, fields: {} }`, which truthfully means "no dynamic fields yet". The Engine reserves 404 for an entity type that is not one of the four dynamic entities.
 3. **`requirementCheckNode`** (LLM) — evaluates the conversation against the registry snapshot. Missing specs set `missingRequirements`, phase `gathering`, and halt for user input.
 4. **`draftSchemaNode`** (LLM, structured output constrained to the `BlueprintDiff` JSON schema) — constructs the diff. On a redraft, `validationErrors` are included in the prompt.
 5. **`validationNode`** (deterministic) — `BlueprintDiffSchema.parse`, plus the semantic checks a schema alone cannot make:
@@ -147,7 +148,9 @@ The PRD's five nodes, plus one deterministic loader for grounding.
    Failure returns to `draftSchemaNode` with `validationErrors` set and `draftAttempts` incremented. On exhausting `DRAFT_MAX_ATTEMPTS`, the graph drops to `gathering` with an explanatory message rather than looping further. Success sets phase `awaiting_confirmation` and halts.
 6. **`dispatchNode`** (deterministic) — sends the message to the FIFO queue and sets phase `done`.
 
-Halts are LangGraph `interrupt()` calls, checkpointed to Redis and resumed with `Command({ resume })`. Because the checkpointer is the only durable store, a resumed thread re-enters at exactly the node that halted.
+**A halt is a run that ends, not a suspended one.** Every client event is one `invoke` that runs from the entry point until it either finishes the work or reaches a point where it needs the user, at which point it routes to `END`. State survives between runs because the checkpointer holds it, and the next event starts a fresh run that a conditional entry edge routes according to the stored phase.
+
+This is preferred over LangGraph `interrupt()` for one reason: with no run ever in flight between events, a dropped socket cannot strand a suspended execution. Reconnection then needs no recovery path at all — it is just another run against the same thread id.
 
 ### Confirmation
 
@@ -187,7 +190,7 @@ Alongside the socket there is a minimal REST surface: `/health/live`, `/health/r
 
 ## 6. Auth and tenant isolation
 
-Browsers cannot set headers on a WebSocket upgrade, so the JWT is supplied in the socket.io handshake `auth.token` and verified at connection time by the shared `packages/auth` verifier — RS256 against a cached JWKS refreshed on an unrecognized `kid`, checking `iss`, `aud` and `exp`. A failed verification disconnects the socket with `unauthorized`; no unauthenticated socket reaches an event handler.
+Browsers cannot set headers on a WebSocket upgrade, so the JWT is supplied in the socket.io handshake `auth.token` and verified in connection middleware — before the connection is established, so an unauthenticated client is refused rather than connected and then disconnected — by the shared `packages/auth` verifier — RS256 against a cached JWKS refreshed on an unrecognized `kid`, checking `iss`, `aud` and `exp`. A failed verification refuses the handshake, which the client observes as a connection error; no unauthenticated socket reaches an event handler.
 
 Verified claims are stored on `socket.data` and every graph run is wrapped in the `TenantContext` `AsyncLocalStorage` scope, so `tenantId` reaches the dispatcher and the engine-client without being threaded through the graph signature.
 
