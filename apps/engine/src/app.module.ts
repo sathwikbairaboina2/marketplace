@@ -12,6 +12,7 @@ import { OrdersModule } from './orders/orders.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { FlowsModule } from './flows/flows.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
+import { MessagingModule } from './messaging/messaging.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { IdempotencyModule } from './idempotency/idempotency.module';
     BookingsModule,
     FlowsModule,
     IdempotencyModule,
+    MessagingModule,
   ],
 })
 export class AppModule {}
