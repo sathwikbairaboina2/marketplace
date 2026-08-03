@@ -41,5 +41,16 @@ export class ProblemException extends HttpException {
     };
     super(problem, status);
     this.problem = problem;
+    // HttpException.initMessage() only reads `response.message`, which the
+    // RFC 9457 body deliberately omits (it uses `title`/`detail` instead) so
+    // that field never leaks into the wire format. Without this, `.message`
+    // falls back to a useless class-name-derived string ("Problem
+    // Exception") for every instance, and anything asserting on it via
+    // `.rejects.toThrow(/pattern/)` — a standard, idiomatic way to assert on
+    // a thrown error's content — would fail no matter what actually went
+    // wrong. This only overrides the in-process Error#message; the
+    // client-facing body still comes from `this.problem` via
+    // ProblemFilter, so the wire format is unaffected.
+    this.message = detail ? `${title}: ${detail}` : title;
   }
 }

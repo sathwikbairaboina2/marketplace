@@ -8,6 +8,7 @@ import { RedisModule } from './redis/redis.module';
 import { RegistryModule } from './registry/registry.module';
 import { ProductsModule } from './products/products.module';
 import { EventsModule } from './events/events.module';
+import { IdempotencyModule } from './idempotency/idempotency.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { EventsModule } from './events/events.module';
     RegistryModule,
     ProductsModule,
     EventsModule,
+    IdempotencyModule,
   ],
 })
 export class AppModule {}
