@@ -4,6 +4,7 @@ import { ConfigModule } from './config/config.module';
 import { RedisModule } from './redis/redis.module';
 import { LlmModule } from './llm/llm.module';
 import { HealthModule } from './health/health.module';
+import { EngineClientModule } from './engine-client/engine-client.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HealthModule } from './health/health.module';
     ConfigModule,
     RedisModule,
     LlmModule,
+    EngineClientModule,
     HealthModule,
   ],
 })
