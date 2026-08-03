@@ -1459,7 +1459,10 @@ describe('ThreadsController OpenAPI documentation', () => {
 
   it('documents the 200 response with the AgentStateSnapshot schema', () => {
     const document = SwaggerModule.createDocument(app, new DocumentBuilder().build());
-    const ok = document.paths['/threads/{id}'].get!.responses['200'] as {
+    // Double assertion: the declared type is `ResponseObject | ReferenceObject`,
+    // and a $ref response carries no `content`, so TypeScript rejects the
+    // direct cast. The assertion below is what the test is asserting about.
+    const ok = document.paths['/threads/{id}'].get!.responses['200'] as unknown as {
       content: { 'application/json': { schema: Record<string, any> } };
     };
     const schema = ok.content['application/json'].schema;
