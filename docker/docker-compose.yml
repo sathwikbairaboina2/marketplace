@@ -22,7 +22,12 @@ services:
       retries: 30
 
   redis:
-    image: redis:7-alpine
+    # redis-stack-server, not plain redis: @langchain/langgraph-checkpoint-redis's
+    # RedisSaver stores checkpoints via JSON.SET and indexes them via FT.CREATE,
+    # both of which require the RedisJSON and RediSearch modules. It is a strict
+    # superset of plain Redis (redis-cli PING and every command ThreadRegistryService
+    # and RedisModule use still work), so nothing else on this instance is affected.
+    image: redis/redis-stack-server:7.4.0-v3
     ports: ['6379:6379']
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
