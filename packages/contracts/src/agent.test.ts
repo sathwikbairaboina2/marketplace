@@ -1,8 +1,10 @@
 import {
   AgentStateSnapshotSchema,
   AGENT_EVENTS,
+  ConfirmSchema,
   RejectSchema,
   SendMessageSchema,
+  ThreadResumeSchema,
 } from './agent';
 
 const ulid = '01J8Z5X9T7QK4W2M6N3P8R5V1C';
@@ -68,5 +70,24 @@ describe('event payloads', () => {
   it('names every event once', () => {
     const names = Object.values(AGENT_EVENTS);
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  // Each of these four wire schemas is .strict(): an unrecognized key (a
+  // client typo, or a stale field) must be rejected outright rather than
+  // silently stripped, or a client/server disagreement would go undetected.
+  it('rejects a thread.resume payload with an unknown key', () => {
+    expect(() => ThreadResumeSchema.parse({ threadId: ulid, extra: 'x' })).toThrow();
+  });
+
+  it('rejects a message payload with an unknown key (e.g. a typo like `contnet`)', () => {
+    expect(() => SendMessageSchema.parse({ threadId: ulid, content: 'hi', contnet: 'hi' })).toThrow();
+  });
+
+  it('rejects a confirm payload with an unknown key', () => {
+    expect(() => ConfirmSchema.parse({ threadId: ulid, extra: 'x' })).toThrow();
+  });
+
+  it('rejects a reject payload with an unknown key', () => {
+    expect(() => RejectSchema.parse({ threadId: ulid, notes: 'no', extra: 'x' })).toThrow();
   });
 });

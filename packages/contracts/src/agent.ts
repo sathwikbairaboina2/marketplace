@@ -31,22 +31,32 @@ export const AgentStateSnapshotSchema = z.object({
 });
 export type AgentStateSnapshot = z.infer<typeof AgentStateSnapshotSchema>;
 
-export const ThreadResumeSchema = z.object({ threadId: UlidSchema });
+// .strict() on the four wire-event schemas below is what makes a
+// client/server disagreement detectable: an unrecognized key (a typo like
+// `contnet`, or a field a stale client still sends) is rejected instead of
+// silently stripped. AgentStateSnapshotSchema deliberately stays non-strict --
+// the server authors it, and a strict snapshot would turn any future
+// additive field into a hard break for older clients.
+export const ThreadResumeSchema = z.object({ threadId: UlidSchema }).strict();
 export type ThreadResume = z.infer<typeof ThreadResumeSchema>;
 
-export const SendMessageSchema = z.object({
-  threadId: UlidSchema,
-  content: z.string().min(1).max(4000),
-});
+export const SendMessageSchema = z
+  .object({
+    threadId: UlidSchema,
+    content: z.string().min(1).max(4000),
+  })
+  .strict();
 export type SendMessage = z.infer<typeof SendMessageSchema>;
 
-export const ConfirmSchema = z.object({ threadId: UlidSchema });
+export const ConfirmSchema = z.object({ threadId: UlidSchema }).strict();
 export type Confirm = z.infer<typeof ConfirmSchema>;
 
-export const RejectSchema = z.object({
-  threadId: UlidSchema,
-  notes: z.string().max(4000).optional(),
-});
+export const RejectSchema = z
+  .object({
+    threadId: UlidSchema,
+    notes: z.string().max(4000).optional(),
+  })
+  .strict();
 export type Reject = z.infer<typeof RejectSchema>;
 
 export const AGENT_EVENTS = {
