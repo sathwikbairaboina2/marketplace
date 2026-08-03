@@ -54,9 +54,18 @@ export class GraphService {
       // routed to dispatch once the thread is already `done` with a message
       // id recorded, so a repeated confirm (double click, resumed thread)
       // still reaches the node whose own `dispatchedMessageId` guard makes it
-      // a no-op, instead of falling through to `analyzeIntent`.
+      // a no-op, instead of falling through to `analyzeIntent`. The second
+      // disjunct requires `phase === 'done'` alongside `dispatchedMessageId`:
+      // without it, ANY confirm would route to dispatch as soon as a prior
+      // proposal on this thread had ever been dispatched, even one sent while
+      // a brand new proposal is still mid gathering/drafting -- which would
+      // hit the dispatch node's own guard and silently report `phase: 'done'`
+      // having sent nothing for the new proposal.
       .addConditionalEdges(START, (state: AgentState) => {
-        if (state.pendingAction === 'confirm' && (state.phase === 'awaiting_confirmation' || state.dispatchedMessageId)) {
+        if (
+          state.pendingAction === 'confirm' &&
+          (state.phase === 'awaiting_confirmation' || (state.dispatchedMessageId && state.phase === 'done'))
+        ) {
           return 'dispatch';
         }
         if (state.phase === 'awaiting_confirmation' && state.pendingAction === 'reject') return 'applyRejection';

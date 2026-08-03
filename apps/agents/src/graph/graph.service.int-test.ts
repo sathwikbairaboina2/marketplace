@@ -199,4 +199,43 @@ describe('GraphService confirmation', () => {
     expect(repeatB.phase).toBe('done');
     expect(dispatch.dispatch).toHaveBeenCalledTimes(2);
   });
+
+  it('does not dispatch or report done for a premature confirm sent mid-gathering on a new proposal', async () => {
+    const llm = new ScriptedLlmProvider();
+    const engine = {
+      getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
+    } as unknown as EngineClient;
+    const dispatch = { dispatch: jest.fn().mockResolvedValue('msg-a') };
+    const service = new GraphService(env, llm, engine, dispatch as never, await createCheckpointer(env));
+
+    const threadId = ulid();
+
+    // Proposal A: dispatched and confirmed, leaving dispatchedMessageId set.
+    llm.pushStructured({ targetEntity: 'Event', clarification: '' });
+    llm.pushStructured({ satisfied: true, missing: [], question: '' });
+    llm.pushStructured({ addedFields: [{ name: 'dietaryNeeds', type: 'string', required: false }] });
+    await service.run({ threadId, ctx, action: 'message', content: 'add dietaryNeeds text to events' });
+    const confirmA = await service.run({ threadId, ctx, action: 'confirm' });
+    expect(confirmA.phase).toBe('done');
+    expect(confirmA.dispatchedMessageId).toBe('msg-a');
+
+    // A new message on the same thread that does NOT reach a fresh proposal:
+    // requirementCheck halts at `gathering` again, leaving the stale
+    // draftPayload and dispatchedMessageId from proposal A untouched.
+    llm.pushStructured({ satisfied: false, missing: ['field name'], question: 'Which field this time?' });
+    const midGathering = await service.run({ threadId, ctx, action: 'message', content: 'one more thing' });
+    expect(midGathering.phase).toBe('gathering');
+
+    // A premature confirm now must not hit the stale `dispatchedMessageId`
+    // short-circuit: with the old `phase === 'awaiting_confirmation' ||
+    // dispatchedMessageId` router, this would route straight to the dispatch
+    // node, which would itself short-circuit on the stale id and report
+    // `phase: 'done'` without ever calling dispatch() again -- silently
+    // "confirming" a proposal that was never drafted or shown to the user.
+    llm.pushStructured({ satisfied: false, missing: ['field name'], question: 'Which field this time?' });
+    const prematureConfirm = await service.run({ threadId, ctx, action: 'confirm' });
+    expect(prematureConfirm.phase).not.toBe('done');
+    expect(prematureConfirm.phase).toBe('gathering');
+    expect(dispatch.dispatch).toHaveBeenCalledTimes(1);
+  });
 });
