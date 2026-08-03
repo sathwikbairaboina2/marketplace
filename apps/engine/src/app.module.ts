@@ -10,6 +10,7 @@ import { ProductsModule } from './products/products.module';
 import { EventsModule } from './events/events.module';
 import { OrdersModule } from './orders/orders.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { FlowsModule } from './flows/flows.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 
 @Module({
@@ -34,6 +35,7 @@ import { IdempotencyModule } from './idempotency/idempotency.module';
     EventsModule,
     OrdersModule,
     BookingsModule,
+    FlowsModule,
     IdempotencyModule,
   ],
 })
