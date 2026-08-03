@@ -47,7 +47,14 @@ export class ProblemFilter implements ExceptionFilter {
         };
       }
 
-      const slug = status === HttpStatus.UNAUTHORIZED ? 'unauthorized' : status === HttpStatus.NOT_FOUND ? 'not-found' : 'invalid-request';
+      let slug: string;
+      if (status === HttpStatus.UNAUTHORIZED) {
+        slug = 'unauthorized';
+      } else if (status === HttpStatus.NOT_FOUND) {
+        slug = 'not-found';
+      } else {
+        slug = 'invalid-request';
+      }
       const response = exception.getResponse();
       const detail =
         typeof response === 'string'

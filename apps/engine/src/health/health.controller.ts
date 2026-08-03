@@ -24,7 +24,16 @@ export class HealthController {
   @Get('ready')
   async ready(): Promise<{ dynamodb: string; redis: string }> {
     await this.ddb.send(new DescribeTableCommand({ TableName: this.env.TABLE_NAME }));
-    await this.redis.connect().catch(() => undefined);
+    // `lazyConnect: true` means the client only connects on first use, so the first poll must
+    // call `connect()` itself. Every poll after that must NOT: ioredis throws "Redis is already
+    // connecting/connected" if `connect()` is called again on an already-connected client, and
+    // the old unconditional `.catch(() => undefined)` swallowed that error unconditionally --
+    // which also swallowed a genuine reconnect failure on the same line, hiding it behind a
+    // response that still went on to attempt `ping()`. Only call `connect()` when the client is
+    // in a state where it genuinely needs to (re)connect.
+    if (!['connect', 'connecting', 'ready'].includes(this.redis.status)) {
+      await this.redis.connect();
+    }
     await this.redis.ping();
     return { dynamodb: 'ok', redis: 'ok' };
   }

@@ -50,10 +50,6 @@ export class SchemaRegistryService {
     return stored ? EntitySchemaRecordSchema.parse({ version: stored.version, fields: stored.fields }) : EMPTY;
   }
 
-  async invalidate(entityType: DynamicEntityType): Promise<void> {
-    await this.redis.del(this.cacheKey(entityType));
-  }
-
   async validate(
     entityType: DynamicEntityType,
     attributes: Record<string, unknown>,

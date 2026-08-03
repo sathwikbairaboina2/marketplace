@@ -1,17 +1,8 @@
 import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
-import { z } from 'zod';
 import { CreateFlow, CreateFlowSchema, Page } from '@marketplace/contracts';
 import { ZodBody, ZodQuery } from '../common/zod-validation.pipe';
+import { ListQuery, ListQuerySchema } from '../common/list-query.schema';
 import { FlowsService, FlowResponse } from './flows.service';
-
-// Query params arrive as strings (or are absent); z.coerce.number() converts a present
-// `limit` and rejects it with a 400 problem (via ZodQuery) if it isn't a valid integer in
-// range, instead of letting `NaN` reach DynamoDB's `Limit` and surface as an opaque 500.
-const ListFlowsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(25),
-  cursor: z.string().optional(),
-});
-type ListFlowsQuery = z.infer<typeof ListFlowsQuerySchema>;
 
 @Controller('flows')
 export class FlowsController {
@@ -30,7 +21,7 @@ export class FlowsController {
   }
 
   @Get()
-  list(@ZodQuery(ListFlowsQuerySchema) query: ListFlowsQuery): Promise<Page<FlowResponse>> {
+  list(@ZodQuery(ListQuerySchema) query: ListQuery): Promise<Page<FlowResponse>> {
     return this.flows.list(query.limit, query.cursor ?? null);
   }
 
