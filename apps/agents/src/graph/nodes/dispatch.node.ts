@@ -1,4 +1,5 @@
 import { AIMessage } from '@langchain/core/messages';
+import { ProblemException } from '../../common/problem';
 import { DispatchService } from '../../dispatch/dispatch.service';
 import { RunContext } from '../context';
 import { AgentState } from '../state';
@@ -6,7 +7,15 @@ import { AgentState } from '../state';
 export function makeDispatchNode(deps: { dispatch: DispatchService }, ctx: RunContext) {
   return async (state: AgentState): Promise<Partial<AgentState>> => {
     if (!state.draftPayload || !state.targetEntity) {
-      throw new Error('dispatch requires a validated draft');
+      // Unreachable through the graph's edges; raised as a typed problem, not
+      // a bare Error, so a future edge change that made this reachable would
+      // surface as `internal-error` rather than an untyped 500.
+      throw new ProblemException(
+        'internal-error',
+        500,
+        'Internal Server Error',
+        'dispatch requires a validated draft',
+      );
     }
 
     // Already sent: a duplicate confirm must not produce a second proposal.

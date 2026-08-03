@@ -20,8 +20,14 @@ export type PendingAction = 'message' | 'confirm' | 'reject';
  * public API to ask one "what is your default value" at runtime, which is why
  * this is a plain constant rather than something derived from `AgentAnnotation`
  * after the fact.)
+ *
+ * Exported (only) so a test can assert its keys stay in sync with
+ * `AgentAnnotation`'s channels -- see the "channel keys" test in
+ * `state.test.ts`, which enumerates `AgentAnnotation.spec` (a plain object of
+ * channel name -> channel/factory, and public) to catch a channel added to
+ * the annotation without a matching entry here.
  */
-const AGENT_FIELD_DEFAULTS = {
+export const AGENT_FIELD_DEFAULTS = {
   phase: 'gathering' as AgentPhase,
   targetEntity: null as DynamicEntityType | null,
   draftPayload: null as BlueprintDiff | null,
