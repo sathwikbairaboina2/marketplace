@@ -83,7 +83,7 @@
 
 **Interfaces:**
 - Consumes: `CreateProductSchema`, `SearchProductsSchema` from `@marketplace/contracts` (`packages/contracts/src/product.ts`); `FieldDefinitionSchema` from `@marketplace/contracts` (`packages/contracts/src/registry.ts`).
-- Produces: `toOpenApi(schema: ZodSchema): SchemaObject` (`SchemaObject` from `@nestjs/swagger`) — every later task in this plan that documents a request or response calls this exact function.
+- Produces: `toOpenApi(schema: ZodSchema): SchemaObject` (`SchemaObject` from `@nestjs/swagger/dist/interfaces/open-api-spec.interface` -- it is not re-exported from the package root) — every later task in this plan that documents a request or response calls this exact function.
 
 - [ ] **Step 1: Write the package scaffold and the failing test**
 
@@ -173,7 +173,12 @@ describe('toOpenApi', () => {
       expect(result.required).toEqual(
         expect.arrayContaining(['name', 'description', 'priceMinor', 'currency', 'category', 'stock']),
       );
-      expect(result.required).not.toEqual(expect.arrayContaining(['images', 'status', 'attributes']));
+      // Asserted one at a time on purpose: `not.toEqual(arrayContaining([a, b, c]))`
+      // only fails when ALL of a, b and c are present, so a single defaulted field
+      // leaking into `required` would slip past it.
+      expect(result.required).not.toContain('images');
+      expect(result.required).not.toContain('status');
+      expect(result.required).not.toContain('attributes');
     });
 
     it('renders the .url() array as a string array with a uri format', () => {
@@ -241,7 +246,7 @@ Create `packages/openapi/src/zod-openapi.ts`:
 ```ts
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodSchema } from 'zod';
-import type { SchemaObject } from '@nestjs/swagger';
+import type { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
 /**
  * Converts a Zod schema into an inline OpenAPI 3 schema object. Schemas are
@@ -254,8 +259,21 @@ import type { SchemaObject } from '@nestjs/swagger';
  * so Swagger UI's "Try it out" pre-fills a body that already passes
  * `ZodValidationPipe`.
  */
+// zodToJsonSchema's return type is a conditional over its `Target` generic that
+// resolves into the recursive `JsonSchema7Type`. Calling it generically makes
+// `tsc --declaration` give up with TS2589 ("type instantiation is excessively
+// deep") while ts-jest, which emits no declarations, compiles it fine. Pinning
+// the call behind this narrow signature stops the compiler instantiating that
+// conditional at all; the runtime function is unchanged.
+type ConvertToOpenApi3 = (
+  schema: ZodSchema,
+  options: { target: 'openApi3'; $refStrategy: 'none' },
+) => SchemaObject;
+
+const convert = zodToJsonSchema as unknown as ConvertToOpenApi3;
+
 export function toOpenApi(schema: ZodSchema): SchemaObject {
-  return zodToJsonSchema(schema, { target: 'openApi3', $refStrategy: 'none' }) as SchemaObject;
+  return convert(schema, { target: 'openApi3', $refStrategy: 'none' });
 }
 ```
 
@@ -323,7 +341,7 @@ Expected: FAIL — `Cannot find module './problem' from 'src/problem.test.ts'`
 Create `packages/openapi/src/problem.ts`:
 
 ```ts
-import type { SchemaObject } from '@nestjs/swagger';
+import type { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
 export const PROBLEM_SCHEMA_NAME = 'Problem';
 
