@@ -67,6 +67,16 @@ services:
     # config` before any container is created. `docker:up` brings the stack up in two steps (see
     # package.json) so the second step re-reads the project after `seed` has written the file;
     # `required: false` just means the first step's project load can't fail on its absence.
+    #
+    # The second step also passes `--force-recreate` (scoped to this service only, in
+    # package.json). Each `docker:down -v` deletes the `cognito-data` volume, so the next
+    # `seed` run mints a brand new user pool id and rewrites JWT_ISSUER/JWT_AUDIENCE/JWKS_URI
+    # here -- but Compose does not reliably recreate a container just because the *contents* of
+    # a referenced env_file changed; the service definition itself is unchanged. Without
+    # `--force-recreate`, `engine` can be left running with the previous run's issuer/audience
+    # while cognito-local now serves a different pool, and every authenticated request 401s.
+    # `--force-recreate` makes that pairing structurally impossible; it is scoped to `engine`
+    # so the infra services above are not needlessly rebuilt on every run.
     env_file: [{ path: ./.env.generated, required: false }]
     environment:
       PORT: '3000'

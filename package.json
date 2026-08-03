@@ -6,7 +6,7 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
-    "docker:up": "docker compose -f docker/docker-compose.yml up -d --wait --build dynamodb-local localstack redis cognito-local seed && node scripts/wait-for-seed-env.mjs && docker compose -f docker/docker-compose.yml up -d --wait --build engine",
+    "docker:up": "docker compose -f docker/docker-compose.yml up -d --wait --build dynamodb-local localstack redis cognito-local seed && node scripts/wait-for-seed-env.mjs && docker compose -f docker/docker-compose.yml up -d --wait --build --force-recreate engine",
     "docker:down": "docker compose -f docker/docker-compose.yml down -v",
     "e2e": "node scripts/e2e.mjs"
   },
