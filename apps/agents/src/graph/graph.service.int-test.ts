@@ -1,4 +1,5 @@
 import { ulid } from 'ulid';
+import { AgentStateSnapshotSchema } from '@marketplace/contracts';
 import { ScriptedLlmProvider } from '../llm/scripted.provider';
 import { EngineClient } from '../engine-client/engine.client';
 import { GraphService } from './graph.service';
@@ -63,5 +64,11 @@ describe('GraphService persistence', () => {
 
     const snapshot = await service.snapshot(b);
     expect(snapshot.messages).toEqual([]);
+  });
+
+  it('returns a schema-valid snapshot for a thread that was never run', async () => {
+    const threadId = ulid();
+    const snapshot = await service.snapshot(threadId);
+    expect(() => AgentStateSnapshotSchema.parse(snapshot)).not.toThrow();
   });
 });

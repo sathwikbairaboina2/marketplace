@@ -11,23 +11,57 @@ import {
 
 export type PendingAction = 'message' | 'confirm' | 'reject';
 
+/**
+ * The non-message fields' defaults, named once. `AgentAnnotation`'s channels
+ * and `defaultAgentState` below both read from this object rather than each
+ * hand-writing the initial values, so the two can't drift apart.
+ *
+ * (`AnnotationRoot.spec` holds already-constructed channel instances with no
+ * public API to ask one "what is your default value" at runtime, which is why
+ * this is a plain constant rather than something derived from `AgentAnnotation`
+ * after the fact.)
+ */
+const AGENT_FIELD_DEFAULTS = {
+  phase: 'gathering' as AgentPhase,
+  targetEntity: null as DynamicEntityType | null,
+  draftPayload: null as BlueprintDiff | null,
+  missingRequirements: [] as string[],
+  registrySnapshot: null as EntitySchemaRecord | null,
+  validationErrors: [] as string[],
+  draftAttempts: 0,
+  dispatchedMessageId: null as string | null,
+  pendingAction: 'message' as PendingAction,
+};
+
 const replace = <T>(defaultValue: () => T) =>
   Annotation<T>({ reducer: (_current: T, next: T) => next, default: defaultValue });
 
 export const AgentAnnotation = Annotation.Root({
   ...MessagesAnnotation.spec,
-  phase: replace<AgentPhase>(() => 'gathering'),
-  targetEntity: replace<DynamicEntityType | null>(() => null),
-  draftPayload: replace<BlueprintDiff | null>(() => null),
-  missingRequirements: replace<string[]>(() => []),
-  registrySnapshot: replace<EntitySchemaRecord | null>(() => null),
-  validationErrors: replace<string[]>(() => []),
-  draftAttempts: replace<number>(() => 0),
-  dispatchedMessageId: replace<string | null>(() => null),
-  pendingAction: replace<PendingAction>(() => 'message'),
+  phase: replace<AgentPhase>(() => AGENT_FIELD_DEFAULTS.phase),
+  targetEntity: replace<DynamicEntityType | null>(() => AGENT_FIELD_DEFAULTS.targetEntity),
+  draftPayload: replace<BlueprintDiff | null>(() => AGENT_FIELD_DEFAULTS.draftPayload),
+  missingRequirements: replace<string[]>(() => AGENT_FIELD_DEFAULTS.missingRequirements),
+  registrySnapshot: replace<EntitySchemaRecord | null>(() => AGENT_FIELD_DEFAULTS.registrySnapshot),
+  validationErrors: replace<string[]>(() => AGENT_FIELD_DEFAULTS.validationErrors),
+  draftAttempts: replace<number>(() => AGENT_FIELD_DEFAULTS.draftAttempts),
+  dispatchedMessageId: replace<string | null>(() => AGENT_FIELD_DEFAULTS.dispatchedMessageId),
+  pendingAction: replace<PendingAction>(() => AGENT_FIELD_DEFAULTS.pendingAction),
 });
 
 export type AgentState = typeof AgentAnnotation.State;
+
+/**
+ * The state of a thread `getState()` has never seen a checkpoint for:
+ * LangGraph's `getState()` returns `{ values: {} }` in that case (verified
+ * against the installed @langchain/langgraph@1.4.8's `_prepareStateSnapshot`),
+ * so a never-run thread needs an explicit initial state rather than one
+ * assembled implicitly from a prior run.
+ */
+export const defaultAgentState: AgentState = {
+  messages: [],
+  ...AGENT_FIELD_DEFAULTS,
+};
 
 function toChatMessage(message: BaseMessage): ChatMessage {
   const content = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);

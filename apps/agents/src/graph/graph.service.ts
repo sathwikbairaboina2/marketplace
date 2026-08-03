@@ -6,7 +6,7 @@ import { AgentStateSnapshot } from '@marketplace/contracts';
 import { ENV, EnvConfig } from '../config/env.schema';
 import { LLM, LlmProvider } from '../llm/llm.provider';
 import { EngineClient } from '../engine-client/engine.client';
-import { AgentAnnotation, AgentState, PendingAction, toSnapshot } from './state';
+import { AgentAnnotation, AgentState, PendingAction, defaultAgentState, toSnapshot } from './state';
 import { RunContext } from './context';
 import { CHECKPOINTER } from './checkpointer';
 import { makeAnalyzeIntentNode } from './nodes/analyze-intent.node';
@@ -64,6 +64,9 @@ export class GraphService {
   async snapshot(threadId: string): Promise<AgentStateSnapshot> {
     const app = this.build({ principal: { tenantId: '', userId: '', role: null }, authToken: '' });
     const state = await app.getState({ configurable: { thread_id: threadId } });
-    return toSnapshot(threadId, state.values as AgentState);
+    // A thread with no prior run has no checkpoint, so `state.values` is `{}`
+    // (LangGraph's own `getState` fallback) rather than a full AgentState.
+    // Defaults fill in what a real run would otherwise have produced.
+    return toSnapshot(threadId, { ...defaultAgentState, ...(state.values as Partial<AgentState>) });
   }
 }
