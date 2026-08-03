@@ -36,6 +36,7 @@ describe('AgentStateSnapshotSchema', () => {
       dispatchedMessageId: null,
     });
     expect(parsed.draftPayload?.addedFields[0].required).toBe(false);
+    expect(parsed.draftPayload?.addedFields[0].default).toBeNull();
   });
 
   it('rejects an unknown phase', () => {
