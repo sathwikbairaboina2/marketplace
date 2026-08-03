@@ -1,4 +1,5 @@
-import { Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { z } from 'zod';
 import {
   CreateProduct,
   CreateProductSchema,
@@ -6,8 +7,17 @@ import {
   SearchProducts,
   SearchProductsSchema,
 } from '@marketplace/contracts';
-import { ZodBody } from '../common/zod-validation.pipe';
+import { ZodBody, ZodQuery } from '../common/zod-validation.pipe';
 import { ProductsService, ProductResponse } from './products.service';
+
+// Query params arrive as strings (or are absent); z.coerce.number() converts a present
+// `limit` and rejects it with a 400 problem (via ZodQuery) if it isn't a valid integer in
+// range, instead of letting `NaN` reach DynamoDB's `Limit` and surface as an opaque 500.
+const ListProductsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  cursor: z.string().optional(),
+});
+type ListProductsQuery = z.infer<typeof ListProductsQuerySchema>;
 
 @Controller('products')
 export class ProductsController {
@@ -19,11 +29,8 @@ export class ProductsController {
   }
 
   @Get()
-  list(
-    @Query('limit') limit?: string,
-    @Query('cursor') cursor?: string,
-  ): Promise<Page<ProductResponse>> {
-    return this.products.list(limit ? Number(limit) : 25, cursor ?? null);
+  list(@ZodQuery(ListProductsQuerySchema) query: ListProductsQuery): Promise<Page<ProductResponse>> {
+    return this.products.list(query.limit, query.cursor ?? null);
   }
 
   @Get(':id')

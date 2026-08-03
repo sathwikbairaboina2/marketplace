@@ -41,8 +41,18 @@ describe('products', () => {
       headers: headersA,
       body: JSON.stringify(product),
     });
+    // Guard the destructure: if creation didn't actually succeed, `id` would be `undefined`
+    // and the cross-tenant lookup below would 404 for the wrong reason (no such SK exists at
+    // all), proving nothing about isolation. Asserting 201 first keeps the isolation claim
+    // meaningful.
+    expect(created.status).toBe(201);
     const { id } = (await created.json()) as { id: string };
 
+    // Positive half: the owning tenant can see it.
+    const ownTenant = await fetch(`${baseUrl}/api/v1/products/${id}`, { headers: headersA });
+    expect(ownTenant.status).toBe(200);
+
+    // Negative half: a different tenant cannot, and gets 404 (never 403, never the record).
     const crossTenant = await fetch(`${baseUrl}/api/v1/products/${id}`, { headers: headersB });
     expect(crossTenant.status).toBe(404);
   });
@@ -76,10 +86,46 @@ describe('products', () => {
     expect(body.items.length).toBeGreaterThan(0);
   });
 
+  it('rejects a non-numeric limit', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/products?limit=abc`, { headers: headersA });
+    expect(res.status).toBe(400);
+  });
+
   it('paginates the list endpoint', async () => {
-    const res = await fetch(`${baseUrl}/api/v1/products?limit=1`, { headers: headersA });
-    const body = (await res.json()) as { items: unknown[]; nextCursor: string | null };
-    expect(body.items).toHaveLength(1);
-    expect(body.nextCursor).not.toBeNull();
+    // Seed at least two products for tenant A so pagination has something to page through,
+    // independent of how many other tests in this file happened to run first.
+    await fetch(`${baseUrl}/api/v1/products`, {
+      method: 'POST',
+      headers: headersA,
+      body: JSON.stringify(product),
+    });
+    await fetch(`${baseUrl}/api/v1/products`, {
+      method: 'POST',
+      headers: headersA,
+      body: JSON.stringify(product),
+    });
+
+    const page1Res = await fetch(`${baseUrl}/api/v1/products?limit=1`, { headers: headersA });
+    expect(page1Res.status).toBe(200);
+    const page1 = (await page1Res.json()) as { items: { id: string }[]; nextCursor: string | null };
+    expect(page1.items).toHaveLength(1);
+    expect(page1.nextCursor).not.toBeNull();
+
+    // Round-trip the cursor through the HTTP layer -- this exercises the controller's query
+    // parsing, the service, and DynamoRepository's `ExclusiveStartKey` PK-pinning together,
+    // not just the encode/decode unit tested in isolation.
+    const page2Res = await fetch(
+      `${baseUrl}/api/v1/products?limit=1&cursor=${encodeURIComponent(page1.nextCursor as string)}`,
+      { headers: headersA },
+    );
+    expect(page2Res.status).toBe(200);
+    const page2 = (await page2Res.json()) as { items: { id: string }[]; nextCursor: string | null };
+    expect(page2.items).toHaveLength(1);
+
+    // Don't assert exact ids -- other tests in this suite create products for tenant_a too, so
+    // the only stable property is that page 2 doesn't repeat what page 1 already returned.
+    const page1Ids = page1.items.map((i) => i.id);
+    const page2Ids = page2.items.map((i) => i.id);
+    expect(page2Ids.some((id) => page1Ids.includes(id))).toBe(false);
   });
 });

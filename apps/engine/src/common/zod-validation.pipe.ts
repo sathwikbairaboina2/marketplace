@@ -1,4 +1,4 @@
-import { ArgumentMetadata, Body, PipeTransform } from '@nestjs/common';
+import { ArgumentMetadata, Body, PipeTransform, Query } from '@nestjs/common';
 import { ZodSchema } from 'zod';
 import { ProblemException } from './problem';
 
@@ -18,3 +18,6 @@ export class ZodValidationPipe implements PipeTransform {
 
 export const ZodBody = (schema: ZodSchema): ParameterDecorator =>
   Body(new ZodValidationPipe(schema));
+
+export const ZodQuery = (schema: ZodSchema): ParameterDecorator =>
+  Query(new ZodValidationPipe(schema));
