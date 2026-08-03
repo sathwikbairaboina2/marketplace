@@ -8,6 +8,7 @@ import { RedisModule } from './redis/redis.module';
 import { RegistryModule } from './registry/registry.module';
 import { ProductsModule } from './products/products.module';
 import { EventsModule } from './events/events.module';
+import { OrdersModule } from './orders/orders.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { IdempotencyModule } from './idempotency/idempotency.module';
     RegistryModule,
     ProductsModule,
     EventsModule,
+    OrdersModule,
     IdempotencyModule,
   ],
 })
