@@ -55,6 +55,14 @@ delete it and force the next `docker:up` to re-download 4.7GB. They do still
 wipe the rest of the stack's state (in particular the Cognito pool), so every
 run still starts from a clean data plane; only the cached model survives.
 
+With the stack up, Swagger UI is at `http://localhost:3000/api/v1/docs` (engine)
+and `http://localhost:3001/api/v1/docs` (agents). Each page authorizes itself on
+load: it calls its own `POST /api/v1/dev/token`, a dev-only endpoint that mints a
+Cognito ID token for a fixed identity (`DEV_TENANT_ID`/`DEV_USERNAME`) and hands
+it to Swagger UI's "Try it out". Neither the docs page nor `/dev/token` exists
+unless `DOCS_ENABLED=true` **and** `COGNITO_ENDPOINT` is set — true only in
+`docker/docker-compose.yml`, never in a deployed build.
+
 ## The conversation
 
 A client connects a WebSocket to `/agents` on port 3001, passing a Cognito ID
