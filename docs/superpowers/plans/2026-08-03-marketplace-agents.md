@@ -1861,7 +1861,7 @@ The checkpointer stores conversation state keyed by thread id, but it does not k
 - Produces: `ThreadRegistryService` with
   - `create(principal: TenantPrincipal): Promise<string>` — returns a new ULID thread id
   - `assertOwned(threadId: string, principal: TenantPrincipal): Promise<void>` — throws `thread-not-found` (404) when absent, expired, or owned by another tenant
-  - `touch(threadId: string): Promise<void>` — refreshes the TTL
+  - `touch(threadId: string, principal: TenantPrincipal): Promise<void>` — asserts ownership, then refreshes the TTL. It takes the principal so an unchecked refresh is unreachable from the public API: otherwise anyone holding a leaked thread id could keep another tenant's conversation alive indefinitely, and the guarantee would rest on every future caller remembering to check first.
 
 - [ ] **Step 1: Write the failing integration test**
 
@@ -1913,8 +1913,23 @@ describe('ThreadRegistryService', () => {
   it('refreshes the expiry on touch', async () => {
     const threadId = await registry.create(alice);
     await redis.expire(`thread:${threadId}`, 5);
-    await registry.touch(threadId);
+    await registry.touch(threadId, alice);
     expect(await redis.ttl(`thread:${threadId}`)).toBeGreaterThan(5);
+  });
+
+  it('refuses to refresh another tenant thread', async () => {
+    const threadId = await registry.create(alice);
+    await expect(registry.touch(threadId, bob)).rejects.toMatchObject({
+      problem: { status: 404 },
+    });
+  });
+
+  it('treats a corrupt ownership record as not found', async () => {
+    const threadId = await registry.create(alice);
+    await redis.set(`thread:${threadId}`, 'not json');
+    await expect(registry.assertOwned(threadId, alice)).rejects.toMatchObject({
+      problem: { status: 404 },
+    });
   });
 });
 ```
@@ -1983,7 +1998,15 @@ export class ThreadRegistryService {
     }
   }
 
-  async touch(threadId: string): Promise<void> {
+  /**
+   * Ownership is asserted here rather than left to the caller. A bare TTL
+   * refresh would let anyone holding a leaked thread id keep another tenant's
+   * conversation alive indefinitely, and this is the one class of gap this
+   * service exists to close — so the public API must make that unreachable
+   * rather than rely on every future caller remembering to check first.
+   */
+  async touch(threadId: string, principal: TenantPrincipal): Promise<void> {
+    await this.assertOwned(threadId, principal);
     await this.redis.expire(this.key(threadId), this.env.THREAD_TTL_SECONDS);
   }
 }
@@ -3955,8 +3978,7 @@ export class ChatGateway implements OnGatewayInit {
   async onThreadResume(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId } = this.parse(ThreadResumeSchema, body);
-      await this.threads.assertOwned(threadId, data.principal);
-      await this.threads.touch(threadId);
+      await this.threads.touch(threadId, data.principal);
       return this.graph.snapshot(threadId);
     });
   }
@@ -3965,8 +3987,7 @@ export class ChatGateway implements OnGatewayInit {
   async onMessage(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId, content } = this.parse(SendMessageSchema, body);
-      await this.threads.assertOwned(threadId, data.principal);
-      await this.threads.touch(threadId);
+      await this.threads.touch(threadId, data.principal);
       return this.graph.run({
         threadId,
         ctx: { principal: data.principal, authToken: data.token, threadId },
@@ -3980,8 +4001,7 @@ export class ChatGateway implements OnGatewayInit {
   async onConfirm(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId } = this.parse(ConfirmSchema, body);
-      await this.threads.assertOwned(threadId, data.principal);
-      await this.threads.touch(threadId);
+      await this.threads.touch(threadId, data.principal);
       return this.graph.run({
         threadId,
         ctx: { principal: data.principal, authToken: data.token, threadId },
@@ -3994,8 +4014,7 @@ export class ChatGateway implements OnGatewayInit {
   async onReject(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId, notes } = this.parse(RejectSchema, body);
-      await this.threads.assertOwned(threadId, data.principal);
-      await this.threads.touch(threadId);
+      await this.threads.touch(threadId, data.principal);
       return this.graph.run({
         threadId,
         ctx: { principal: data.principal, authToken: data.token, threadId },
