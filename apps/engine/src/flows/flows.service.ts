@@ -54,6 +54,10 @@ export class FlowsService {
     if (flow.status === 'applied') return flow;
 
     if (flow.status === 'rejected') {
+      // Reusing 'unsupported-schema-change' deliberately: the union has no closer fit for a
+      // Flow state-machine violation, but this is a different failure than the registry ones
+      // that type normally denotes -- nothing about the diff itself is unsupported here, the
+      // Flow was simply rejected before it could be applied.
       throw new ProblemException(
         'unsupported-schema-change',
         422,
