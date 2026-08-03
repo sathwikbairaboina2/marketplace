@@ -12,7 +12,11 @@ describe('flows', () => {
     headers = await authHeaders(`tenant_flows_${Math.random().toString(36).slice(2, 8)}`, `flows-${Date.now()}@example.com`);
   });
 
-  it('proposes a flow without applying it', async () => {
+  it('proposes a flow without applying it, recording the proposer', async () => {
+    const me = await fetch(`${baseUrl}/api/v1/me`, { headers });
+    expect(me.status).toBe(200);
+    const { userId } = (await me.json()) as { userId: string };
+
     const field = uniqueField();
     const res = await fetch(`${baseUrl}/api/v1/flows`, {
       method: 'POST',
@@ -24,7 +28,12 @@ describe('flows', () => {
       }),
     });
     expect(res.status).toBe(201);
-    expect(((await res.json()) as { status: string }).status).toBe('proposed');
+    const body = (await res.json()) as { status: string; proposedBy: string; executedBy: string | null };
+    expect(body.status).toBe('proposed');
+    // A Flow is a tenant-wide, unowned mutation of the data model -- `proposedBy` is the only
+    // record of who requested it, so it must name the caller, not be silently absent.
+    expect(body.proposedBy).toBe(userId);
+    expect(body.executedBy).toBeNull();
   });
 
   it('rejects a destructive diff', async () => {

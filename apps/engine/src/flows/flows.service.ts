@@ -5,6 +5,7 @@ import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { entitySk, skPrefix } from '../persistence/keys';
 import { newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
+import { currentPrincipal } from '../common/tenant-context';
 
 // The HTTP-facing shape of a flow. `FlowRecord` (from @marketplace/contracts) mirrors exactly
 // what is stored in DynamoDB, including the single-table `PK`/`SK` attributes. Those are a
@@ -39,6 +40,10 @@ export class FlowsService {
   // the same id is a DynamoDB no-op, and the caller gets back the Flow that already exists
   // rather than a second, distinct one.
   async propose(input: CreateFlow, id: string = newId()): Promise<FlowResponse> {
+    // `currentPrincipal()` covers both entry points: the HTTP path runs inside the JWT guard's
+    // `runWithTenant`, and the SQS consumer runs inside its own `runWithTenant({ userId:
+    // 'system:agents', ... })` (see `messaging/sqs-consumer.service.ts`) -- so an AI-proposed
+    // Flow is attributed to that system identity rather than silently recording nothing.
     const record: FlowResponse = {
       entityType: 'Flow',
       id,
@@ -47,6 +52,8 @@ export class FlowsService {
       status: 'proposed',
       blueprintDiff: input.blueprintDiff,
       createdAt: new Date().toISOString(),
+      proposedBy: currentPrincipal().userId,
+      executedBy: null,
       appliedAt: null,
       resultingVersion: null,
     };
@@ -84,6 +91,7 @@ export class FlowsService {
     const applied: FlowResponse = {
       ...flow,
       status: 'applied',
+      executedBy: currentPrincipal().userId,
       appliedAt: new Date().toISOString(),
       resultingVersion,
     };

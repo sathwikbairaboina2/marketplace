@@ -23,6 +23,8 @@ function makeFlow(overrides: Partial<FlowRecord> = {}): FlowRecord {
     status: 'proposed',
     blueprintDiff: { addedFields: [{ name: 'color', type: 'string', required: false, default: null }] },
     createdAt: '2026-01-01T00:00:00.000Z',
+    proposedBy: 'user-flows-test',
+    executedBy: null,
     appliedAt: null,
     resultingVersion: null,
     ...overrides,

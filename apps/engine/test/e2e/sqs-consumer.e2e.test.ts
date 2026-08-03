@@ -13,10 +13,12 @@ const sqs = new SQSClient({
 // flows suite follows the same pattern with `tenant_flows_<random>`).
 const tenantId = `tenant_sqs_${Math.random().toString(36).slice(2, 8)}`;
 
-async function flowsFor(headers: Record<string, string>): Promise<{ items: { blueprintDiff: { addedFields: { name: string }[] } }[] }> {
+type FlowSummary = { blueprintDiff: { addedFields: { name: string }[] }; proposedBy: string };
+
+async function flowsFor(headers: Record<string, string>): Promise<{ items: FlowSummary[] }> {
   const res = await fetch(`${baseUrl}/api/v1/flows?limit=50`, { headers });
   expect(res.status).toBe(200);
-  return (await res.json()) as { items: { blueprintDiff: { addedFields: { name: string }[] } }[] };
+  return (await res.json()) as { items: FlowSummary[] };
 }
 
 async function waitForFlow(headers: Record<string, string>, field: string, timeoutMs = 30_000): Promise<boolean> {
@@ -58,6 +60,10 @@ describe('sqs consumer', () => {
     const { items } = await flowsFor(headers);
     const matching = items.filter((f) => f.blueprintDiff.addedFields.some((a) => a.name === field));
     expect(matching).toHaveLength(1);
+    // The consumer runs `runWithTenant({ userId: 'system:agents', ... })` (see
+    // `messaging/sqs-consumer.service.ts`) specifically so an AI-proposed Flow is attributed to
+    // that system identity rather than the identity being silently discarded.
+    expect(matching[0].proposedBy).toBe('system:agents');
   });
 
   it('does not auto-apply the schema change', async () => {
