@@ -11,6 +11,9 @@ import { RunContext } from './context';
 import { CHECKPOINTER } from './checkpointer';
 import { makeAnalyzeIntentNode } from './nodes/analyze-intent.node';
 import { makeLoadRegistryNode } from './nodes/load-registry.node';
+import { makeRequirementCheckNode } from './nodes/requirement-check.node';
+import { makeDraftSchemaNode } from './nodes/draft-schema.node';
+import { makeValidateNode } from './nodes/validate.node';
 
 export interface RunInput {
   threadId: string;
@@ -37,11 +40,21 @@ export class GraphService {
     const graph = new StateGraph(AgentAnnotation)
       .addNode('analyzeIntent', makeAnalyzeIntentNode({ llm: this.llm }))
       .addNode('loadRegistry', makeLoadRegistryNode({ engine: this.engine }, ctx))
+      .addNode('requirementCheck', makeRequirementCheckNode({ llm: this.llm }))
+      .addNode('draftSchema', makeDraftSchemaNode({ llm: this.llm }))
+      .addNode('validate', makeValidateNode({ maxAttempts: this.env.DRAFT_MAX_ATTEMPTS }))
       .addEdge(START, 'analyzeIntent')
       .addConditionalEdges('analyzeIntent', (state: AgentState) =>
         state.targetEntity ? 'loadRegistry' : END,
       )
-      .addEdge('loadRegistry', END);
+      .addEdge('loadRegistry', 'requirementCheck')
+      .addConditionalEdges('requirementCheck', (state: AgentState) =>
+        state.phase === 'gathering' ? END : 'draftSchema',
+      )
+      .addEdge('draftSchema', 'validate')
+      .addConditionalEdges('validate', (state: AgentState) =>
+        state.phase === 'drafting' ? 'draftSchema' : END,
+      );
 
     return graph.compile({ checkpointer: this.checkpointer });
   }

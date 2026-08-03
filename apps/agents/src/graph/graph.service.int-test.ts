@@ -40,6 +40,10 @@ describe('GraphService persistence', () => {
     expect(first.messages).toHaveLength(2);
 
     llm.pushStructured({ targetEntity: 'Event', clarification: '' });
+    // The graph now continues past loadRegistry into requirementCheck; this scenario is only
+    // about intent persisting across runs, so the request is left underspecified to halt there
+    // without needing to script the drafting/validation nodes too.
+    llm.pushStructured({ satisfied: false, missing: ['field name'], question: 'Which field?' });
     const second = await service.run({ threadId, ctx, action: 'message', content: 'events' });
     expect(second.targetEntity).toBe('Event');
     // The first exchange is still there: nothing was lost between runs.
@@ -60,6 +64,7 @@ describe('GraphService persistence', () => {
     const a = ulid();
     const b = ulid();
     llm.pushStructured({ targetEntity: 'Event', clarification: '' });
+    llm.pushStructured({ satisfied: false, missing: ['field name'], question: 'Which field?' });
     await service.run({ threadId: a, ctx, action: 'message', content: 'events' });
 
     const snapshot = await service.snapshot(b);
@@ -70,5 +75,50 @@ describe('GraphService persistence', () => {
     const threadId = ulid();
     const snapshot = await service.snapshot(threadId);
     expect(() => AgentStateSnapshotSchema.parse(snapshot)).not.toThrow();
+  });
+});
+
+describe('GraphService full drafting path', () => {
+  let llm: ScriptedLlmProvider;
+  let service: GraphService;
+
+  beforeAll(async () => {
+    llm = new ScriptedLlmProvider();
+    const engine = {
+      getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
+    } as unknown as EngineClient;
+    service = new GraphService(env, llm, engine, await createCheckpointer(env));
+  });
+
+  it('runs intent to awaiting_confirmation in one pass', async () => {
+    const threadId = ulid();
+    llm.pushStructured({ targetEntity: 'Event', clarification: '' });
+    llm.pushStructured({ satisfied: true, missing: [], question: '' });
+    llm.pushStructured({ addedFields: [{ name: 'dietaryNeeds', type: 'string', required: false }] });
+
+    const out = await service.run({
+      threadId,
+      ctx,
+      action: 'message',
+      content: 'add a dietaryNeeds text field to events',
+    });
+
+    expect(out.phase).toBe('awaiting_confirmation');
+    expect(out.draftPayload).toEqual({
+      addedFields: [{ name: 'dietaryNeeds', type: 'string', required: false, default: null }],
+    });
+  });
+
+  it('redrafts once after a validation failure, then succeeds', async () => {
+    const threadId = ulid();
+    llm.pushStructured({ targetEntity: 'Event', clarification: '' });
+    llm.pushStructured({ satisfied: true, missing: [], question: '' });
+    // First draft collides with a core field; second one does not.
+    llm.pushStructured({ addedFields: [{ name: 'capacity', type: 'number', required: false }] });
+    llm.pushStructured({ addedFields: [{ name: 'extraSeats', type: 'number', required: false }] });
+
+    const out = await service.run({ threadId, ctx, action: 'message', content: 'more seats' });
+    expect(out.phase).toBe('awaiting_confirmation');
+    expect(out.draftPayload?.addedFields[0].name).toBe('extraSeats');
   });
 });
