@@ -90,6 +90,22 @@ export class OrdersService {
       unitPriceMinor: products[i].priceMinor,
     }));
     const totalAmountMinor = lineItems.reduce((sum, i) => sum + i.unitPriceMinor * i.quantity, 0);
+    // Belt-and-braces: `MinorAmountSchema`/`QuantitySchema` bound `unitPriceMinor` and `quantity`
+    // so that MAX_ORDER_LINE_ITEMS line items at the maximum of both can never leave exact-integer
+    // range (see the arithmetic in `packages/contracts/src/common.ts`), but this arithmetic is
+    // still IEEE-754 addition/multiplication in JavaScript, not integer arithmetic -- if those
+    // bounds are ever loosened without re-checking this invariant, silently storing a drifted
+    // total would be exactly the "no floats" guarantee this project exists to uphold. Raise a
+    // problem instead.
+    if (!Number.isSafeInteger(totalAmountMinor)) {
+      throw new ProblemException(
+        'internal-error',
+        500,
+        'Order total lost precision',
+        'the computed order total left Number.MAX_SAFE_INTEGER range',
+        { totalAmountMinor },
+      );
+    }
 
     const principal = currentPrincipal();
     const id = newId();
