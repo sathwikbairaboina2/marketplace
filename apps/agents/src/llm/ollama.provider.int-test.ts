@@ -36,6 +36,29 @@ describe('OllamaLlmProvider', () => {
     ).rejects.toMatchObject({ problem: { status: 503, title: 'Model call failed' } });
   });
 
+  it('reports a synchronous throw from the model call as llm-unavailable via the wrap branch', async () => {
+    // Regression test: `guard()`'s call to `fn()` must stay inside its own try
+    // block. A prior revision moved `fn()` (and its `.catch` sink) above the
+    // `try`, so a *synchronous* throw -- as opposed to an async rejection, which
+    // is all the other tests here produce -- escaped `guard()` entirely instead
+    // of being classified as 503 llm-unavailable, and also skipped the `finally`
+    // that clears the timeout timer. `guard` is private and has no public seam
+    // for injecting a synchronously-throwing call, so it is invoked directly
+    // here, bypassing TypeScript's compile-time-only privacy, to exercise the
+    // exact code path a synchronous throw from `fn()` takes.
+    const provider = new OllamaLlmProvider(env);
+    const throwsSynchronously = (): Promise<string> => {
+      throw new Error('boom: synchronous failure before any promise was returned');
+    };
+    const guard = (
+      provider as unknown as { guard<T>(fn: () => Promise<T>): Promise<T> }
+    ).guard.bind(provider);
+
+    await expect(guard(throwsSynchronously)).rejects.toMatchObject({
+      problem: { status: 503, title: 'Model call failed' },
+    });
+  });
+
   describe('a model call that hangs', () => {
     // A raw TCP server that accepts the connection and then never responds and
     // never closes it. This makes the underlying HTTP request hang indefinitely,
