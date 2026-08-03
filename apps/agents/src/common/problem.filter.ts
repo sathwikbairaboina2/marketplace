@@ -8,14 +8,21 @@ export function toProblem(exception: unknown): ProblemBody {
 
   if (exception instanceof HttpException) {
     const status = exception.getStatus();
+
+    if (status >= 500) {
+      return {
+        type: 'https://marketplace.local/problems/internal-error',
+        title: 'Internal Server Error',
+        status,
+      };
+    }
+
     const slug =
       status === HttpStatus.UNAUTHORIZED
         ? 'unauthorized'
         : status === HttpStatus.NOT_FOUND
           ? 'not-found'
-          : status < 500
-            ? 'invalid-request'
-            : 'internal-error';
+          : 'invalid-request';
     const response = exception.getResponse();
     const detail =
       typeof response === 'string'
