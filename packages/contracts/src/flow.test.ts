@@ -39,4 +39,15 @@ describe('CreateFlowSchema', () => {
       }),
     ).toThrow();
   });
+
+  it('rejects an unknown core field', () => {
+    expect(() =>
+      CreateFlowSchema.parse({
+        targetEntity: 'Product',
+        actionType: 'ADD_FIELDS',
+        blueprintDiff: { addedFields: [{ name: 'x', type: 'string' }] },
+        requestedBy: 'agent-42',
+      }),
+    ).toThrow();
+  });
 });

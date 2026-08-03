@@ -1,19 +1,21 @@
 import { z } from 'zod';
-import { AttributesSchema, CurrencySchema, UlidSchema } from './common';
+import { AttributesSchema, CurrencySchema, QuantitySchema, UlidSchema } from './common';
 
 export const OrderStatusSchema = z.enum(['pending', 'confirmed', 'cancelled']);
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
 
 export const MAX_ORDER_LINE_ITEMS = 50;
 
-export const CreateOrderSchema = z.object({
-  items: z
-    .array(z.object({ productId: UlidSchema, quantity: z.number().int().positive() }))
-    .min(1),
-  currency: CurrencySchema,
-  shippingAddress: z.record(z.string(), z.string()),
-  attributes: AttributesSchema.default({}),
-});
+export const CreateOrderSchema = z
+  .object({
+    items: z
+      .array(z.object({ productId: UlidSchema, quantity: QuantitySchema }))
+      .min(1),
+    currency: CurrencySchema,
+    shippingAddress: z.record(z.string(), z.string()),
+    attributes: AttributesSchema.default({}),
+  })
+  .strict();
 export type CreateOrder = z.infer<typeof CreateOrderSchema>;
 
 export interface OrderLineItem {

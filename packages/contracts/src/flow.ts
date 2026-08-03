@@ -19,11 +19,13 @@ export const BlueprintDiffSchema = z
   .strict();
 export type BlueprintDiff = z.infer<typeof BlueprintDiffSchema>;
 
-export const CreateFlowSchema = z.object({
-  targetEntity: DynamicEntityTypeSchema,
-  actionType: z.literal('ADD_FIELDS'),
-  blueprintDiff: BlueprintDiffSchema,
-});
+export const CreateFlowSchema = z
+  .object({
+    targetEntity: DynamicEntityTypeSchema,
+    actionType: z.literal('ADD_FIELDS'),
+    blueprintDiff: BlueprintDiffSchema,
+  })
+  .strict();
 export type CreateFlow = z.infer<typeof CreateFlowSchema>;
 
 export interface FlowRecord {
@@ -36,6 +38,13 @@ export interface FlowRecord {
   status: FlowStatus;
   blueprintDiff: BlueprintDiff;
   createdAt: string;
+  // A Flow permanently mutates the tenant's data model with no per-record ownership check
+  // (any authenticated member of the tenant may propose or execute one), so these are the only
+  // record of who did it -- `proposedBy` is the principal's `userId` on `POST /flows` (or the
+  // SQS consumer's system identity for an AI-proposed flow), `executedBy` is the principal's
+  // `userId` on `POST /flows/:id/execute`, null until executed.
+  proposedBy: string;
+  executedBy: string | null;
   appliedAt: string | null;
   resultingVersion: number | null;
 }

@@ -1,16 +1,26 @@
 import { z } from 'zod';
-import { AttributesSchema, CurrencySchema, IsoDateTimeSchema, MinorAmountSchema } from './common';
+import {
+  AttributesSchema,
+  CurrencySchema,
+  IsoDateTimeSchema,
+  MinorAmountSchema,
+  QuantitySchema,
+} from './common';
 
+// `.strict()` must be applied to the object before `.refine()`: `.refine()` returns a
+// `ZodEffects` wrapper, which has no `.strict()` of its own -- unknown-field rejection has to be
+// baked into the underlying `ZodObject` first.
 export const CreateEventSchema = z
   .object({
     title: z.string().min(1).max(200),
-    capacity: z.number().int().positive(),
+    capacity: QuantitySchema,
     startDate: IsoDateTimeSchema,
     endDate: IsoDateTimeSchema,
     basePriceMinor: MinorAmountSchema,
     currency: CurrencySchema,
     attributes: AttributesSchema.default({}),
   })
+  .strict()
   .refine((e) => Date.parse(e.endDate) > Date.parse(e.startDate), {
     message: 'endDate must be after startDate',
     path: ['endDate'],

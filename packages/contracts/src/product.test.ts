@@ -1,4 +1,4 @@
-import { CreateProductSchema } from './product';
+import { CreateProductSchema, SearchProductsSchema } from './product';
 
 const valid = {
   name: 'Chair',
@@ -27,5 +27,36 @@ describe('CreateProductSchema', () => {
 
   it('rejects negative stock', () => {
     expect(() => CreateProductSchema.parse({ ...valid, stock: -1 })).toThrow();
+  });
+
+  it('rejects stock above the bound', () => {
+    expect(() => CreateProductSchema.parse({ ...valid, stock: 10_001 })).toThrow();
+  });
+
+  it('accepts stock at the bound', () => {
+    expect(CreateProductSchema.parse({ ...valid, stock: 10_000 }).stock).toBe(10_000);
+  });
+
+  it('rejects priceMinor above the bound', () => {
+    expect(() => CreateProductSchema.parse({ ...valid, priceMinor: 10_000_000_001 })).toThrow();
+  });
+
+  it('rejects an unknown core field', () => {
+    // The design spec states unknown core fields are rejected -- a client typo like
+    // `atributes: {...}` must be a validation error, not silently stripped and written with an
+    // empty `attributes`.
+    expect(() => CreateProductSchema.parse({ ...valid, atributes: { color: 'red' } })).toThrow();
+  });
+});
+
+describe('SearchProductsSchema', () => {
+  it('accepts an empty search and applies defaults', () => {
+    const parsed = SearchProductsSchema.parse({});
+    expect(parsed.limit).toBe(25);
+    expect(parsed.attributes).toEqual({});
+  });
+
+  it('rejects an unknown core field', () => {
+    expect(() => SearchProductsSchema.parse({ categroy: 'chairs' })).toThrow();
   });
 });

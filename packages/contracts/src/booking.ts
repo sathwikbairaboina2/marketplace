@@ -4,11 +4,13 @@ import { AttributesSchema, UlidSchema } from './common';
 export const BookingStatusSchema = z.enum(['confirmed', 'cancelled']);
 export type BookingStatus = z.infer<typeof BookingStatusSchema>;
 
-export const CreateBookingSchema = z.object({
-  eventId: UlidSchema,
-  ticketQuantity: z.number().int().positive().max(100),
-  attributes: AttributesSchema.default({}),
-});
+export const CreateBookingSchema = z
+  .object({
+    eventId: UlidSchema,
+    ticketQuantity: z.number().int().positive().max(100),
+    attributes: AttributesSchema.default({}),
+  })
+  .strict();
 export type CreateBooking = z.infer<typeof CreateBookingSchema>;
 
 export interface BookingRecord {
