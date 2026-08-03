@@ -3254,7 +3254,24 @@ describe('DispatchService', () => {
 });
 ```
 
-This test consumes from the shared queue. Run it while the Engine's consumer is also running and the Engine will simply propose a Flow for the same message — which is the intended behaviour, not interference.
+**This test must NOT use the shared `QUEUE_URL`.** The Engine's SQS consumer runs in the same stack and wins the race for every message deterministically, so a test that polls the shared queue for its own message never observes it — the message is correct, it has simply already been consumed and turned into a Flow.
+
+Instead the test creates its own FIFO queue at run time and points `DispatchService` at it:
+
+```ts
+const testQueueName = `agents-dispatch-int-test.fifo`;
+const created = await sqs.send(
+  new CreateQueueCommand({
+    QueueName: testQueueName,
+    Attributes: { FifoQueue: 'true' },
+  }),
+);
+const env = { ...baseEnv, QUEUE_URL: created.QueueUrl! } as EnvConfig;
+```
+
+`CreateQueue` is idempotent for an identical name and attribute set, so repeated runs reuse the queue. Note `ContentBasedDeduplication` is deliberately NOT set: this suite asserts on the explicitly supplied `MessageDeduplicationId`, and content-based dedup would mask a broken derivation.
+
+That keeps this an integration test of `DispatchService` alone — what it puts on a queue, and that the same proposal twice yields one message. Proof that the real queue reaches the Engine and produces a proposed Flow belongs to the end-to-end suite in Task 12, where it is asserted through the Engine's API rather than by racing its consumer.
 
 - [ ] **Step 3: Run them to verify they fail**
 
