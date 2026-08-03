@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createServer, Server, Socket, AddressInfo } from 'node:net';
+import { ChatMessage } from '@marketplace/contracts';
 import { OllamaLlmProvider } from './ollama.provider';
 import { EnvConfig } from '../config/env.schema';
 
@@ -42,19 +43,24 @@ describe('OllamaLlmProvider', () => {
     // `try`, so a *synchronous* throw -- as opposed to an async rejection, which
     // is all the other tests here produce -- escaped `guard()` entirely instead
     // of being classified as 503 llm-unavailable, and also skipped the `finally`
-    // that clears the timeout timer. `guard` is private and has no public seam
-    // for injecting a synchronously-throwing call, so it is invoked directly
-    // here, bypassing TypeScript's compile-time-only privacy, to exercise the
-    // exact code path a synchronous throw from `fn()` takes.
+    // that clears the timeout timer.
+    //
+    // `guard` is private, but there is a public seam: `toLangChain(...)` runs
+    // synchronously as an argument to `this.model.invoke(...)` inside the
+    // closure `text()` passes to `guard`, so it executes during `guard`'s own
+    // `fn()` call -- inside its try block -- exactly like the direct
+    // synchronous throw this test used to construct by reaching into `guard`
+    // via a cast. A `messages` array `.map` can't be called on forces that
+    // same synchronous throw, reachable through the public `text()` API.
+    // `messages` is cast at the call site (not typed as `any`) because this is
+    // deliberately exercising runtime behaviour at a typed boundary that
+    // TypeScript itself would otherwise reject.
     const provider = new OllamaLlmProvider(env);
-    const throwsSynchronously = (): Promise<string> => {
-      throw new Error('boom: synchronous failure before any promise was returned');
-    };
-    const guard = (
-      provider as unknown as { guard<T>(fn: () => Promise<T>): Promise<T> }
-    ).guard.bind(provider);
+    const notAnArray = null as unknown as ChatMessage[];
 
-    await expect(guard(throwsSynchronously)).rejects.toMatchObject({
+    await expect(
+      provider.text({ system: '', messages: notAnArray }),
+    ).rejects.toMatchObject({
       problem: { status: 503, title: 'Model call failed' },
     });
   });
