@@ -41,16 +41,44 @@ export class ThreadRegistryService {
 
   async assertOwned(threadId: string, principal: TenantPrincipal): Promise<void> {
     const stored = await this.redis.get(this.key(threadId));
-    const owner = stored ? (JSON.parse(stored) as ThreadOwner) : null;
+    const owner = this.parseOwner(stored);
 
-    // Absent, expired and another tenant's are one outcome on purpose: a
-    // distinguishable error would confirm that the thread exists.
-    if (!owner || owner.tenantId !== principal.tenantId) {
+    // Absent, expired, corrupt and another tenant's are one outcome on
+    // purpose: a distinguishable error (including a 500 from a parse
+    // failure) would confirm that the thread exists.
+    if (
+      !owner ||
+      !owner.tenantId ||
+      !principal.tenantId ||
+      owner.tenantId !== principal.tenantId
+    ) {
       throw new ProblemException('thread-not-found', 404, 'No such thread', threadId);
     }
   }
 
-  async touch(threadId: string): Promise<void> {
+  private parseOwner(stored: string | null): ThreadOwner | null {
+    if (!stored) {
+      return null;
+    }
+    try {
+      return JSON.parse(stored) as ThreadOwner;
+    } catch {
+      // A record that fails to parse (schema drift, a bug elsewhere, or
+      // tampering) must be indistinguishable from an absent one.
+      return null;
+    }
+  }
+
+  /**
+   * Ownership is asserted here rather than left to the caller. A bare TTL
+   * refresh would let anyone holding a leaked thread id keep another
+   * tenant's conversation alive indefinitely, and this is the one class of
+   * gap this service exists to close — so the public API must make that
+   * unreachable rather than rely on every future caller remembering to
+   * check first.
+   */
+  async touch(threadId: string, principal: TenantPrincipal): Promise<void> {
+    await this.assertOwned(threadId, principal);
     await this.redis.expire(this.key(threadId), this.env.THREAD_TTL_SECONDS);
   }
 }

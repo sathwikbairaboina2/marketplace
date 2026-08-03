@@ -43,7 +43,22 @@ describe('ThreadRegistryService', () => {
   it('refreshes the expiry on touch', async () => {
     const threadId = await registry.create(alice);
     await redis.expire(`thread:${threadId}`, 5);
-    await registry.touch(threadId);
+    await registry.touch(threadId, alice);
     expect(await redis.ttl(`thread:${threadId}`)).toBeGreaterThan(5);
+  });
+
+  it('refuses to refresh another tenant thread', async () => {
+    const threadId = await registry.create(alice);
+    await expect(registry.touch(threadId, bob)).rejects.toMatchObject({
+      problem: { status: 404 },
+    });
+  });
+
+  it('treats a corrupt ownership record as not found', async () => {
+    const threadId = await registry.create(alice);
+    await redis.set(`thread:${threadId}`, 'not json');
+    await expect(registry.assertOwned(threadId, alice)).rejects.toMatchObject({
+      problem: { status: 404 },
+    });
   });
 });
