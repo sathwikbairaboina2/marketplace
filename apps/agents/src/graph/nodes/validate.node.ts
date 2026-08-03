@@ -38,6 +38,12 @@ export function makeValidateNode(deps: { maxAttempts: number }) {
       return {
         phase: 'awaiting_confirmation',
         validationErrors: [],
+        // Clear any previous dispatch. dispatchedMessageId guards against
+        // dispatching the SAME proposal twice; left uncleared it becomes a
+        // permanent per-thread lock, and a second legitimate proposal on this
+        // thread would hit the stale value, short-circuit, and report success
+        // while sending nothing.
+        dispatchedMessageId: null,
         messages: [
           new AIMessage(
             `Ready to propose adding ${describeDiff(state)} to ${state.targetEntity}. Confirm to send it for approval.`,

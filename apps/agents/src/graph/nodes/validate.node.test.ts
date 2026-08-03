@@ -24,6 +24,15 @@ describe('validateNode', () => {
     expect(out.messages).toHaveLength(1);
   });
 
+  it('clears a stale dispatchedMessageId when approving a new draft', async () => {
+    // A prior proposal on this same thread was already dispatched; approving a
+    // second, distinct draft must not let that stale id survive and silently
+    // short-circuit the next confirm.
+    const out = await validate({ ...base, dispatchedMessageId: 'msg-from-a-previous-proposal' });
+    expect(out.phase).toBe('awaiting_confirmation');
+    expect(out.dispatchedMessageId).toBeNull();
+  });
+
   it('rejects a field that already exists in the registry', async () => {
     const out = await validate({
       ...base,

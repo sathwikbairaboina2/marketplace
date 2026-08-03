@@ -148,4 +148,55 @@ describe('GraphService confirmation', () => {
     expect(second.phase).toBe('done');
     expect(dispatch.dispatch).toHaveBeenCalledTimes(1);
   });
+
+  it('dispatches a second, distinct proposal on the same thread instead of hitting a stale dispatch guard', async () => {
+    const llm = new ScriptedLlmProvider();
+    const engine = {
+      getSchema: jest.fn().mockResolvedValue({ version: 0, fields: {} }),
+    } as unknown as EngineClient;
+    const dispatch = { dispatch: jest.fn().mockResolvedValueOnce('msg-a').mockResolvedValueOnce('msg-b') };
+    const service = new GraphService(env, llm, engine, dispatch as never, await createCheckpointer(env));
+
+    const threadId = ulid();
+
+    // Proposal A: dispatched and confirmed.
+    llm.pushStructured({ targetEntity: 'Event', clarification: '' });
+    llm.pushStructured({ satisfied: true, missing: [], question: '' });
+    llm.pushStructured({ addedFields: [{ name: 'dietaryNeeds', type: 'string', required: false }] });
+    await service.run({ threadId, ctx, action: 'message', content: 'add dietaryNeeds text to events' });
+    const confirmA = await service.run({ threadId, ctx, action: 'confirm' });
+    expect(confirmA.phase).toBe('done');
+    expect(confirmA.dispatchedMessageId).toBe('msg-a');
+
+    // Same thread continues to a second, distinct proposal. If validate did
+    // not clear the stale dispatchedMessageId from proposal A, the dispatch
+    // node's guard would fire here and silently report success without ever
+    // calling DispatchService.dispatch() for proposal B.
+    llm.pushStructured({ satisfied: true, missing: [], question: '' });
+    llm.pushStructured({ addedFields: [{ name: 'accessibilityNotes', type: 'string', required: false }] });
+    await service.run({ threadId, ctx, action: 'message', content: 'also add accessibilityNotes text' });
+    const confirmB = await service.run({ threadId, ctx, action: 'confirm' });
+    expect(confirmB.phase).toBe('done');
+    expect(confirmB.dispatchedMessageId).toBe('msg-b');
+
+    expect(dispatch.dispatch).toHaveBeenCalledTimes(2);
+    expect(dispatch.dispatch).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        payload: { addedFields: [{ name: 'dietaryNeeds', type: 'string', required: false, default: null }] },
+      }),
+    );
+    expect(dispatch.dispatch).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        payload: { addedFields: [{ name: 'accessibilityNotes', type: 'string', required: false, default: null }] },
+      }),
+    );
+
+    // The double-confirm guard must still hold for proposal B: repeating the
+    // confirm must not dispatch it a third time.
+    const repeatB = await service.run({ threadId, ctx, action: 'confirm' });
+    expect(repeatB.phase).toBe('done');
+    expect(dispatch.dispatch).toHaveBeenCalledTimes(2);
+  });
 });

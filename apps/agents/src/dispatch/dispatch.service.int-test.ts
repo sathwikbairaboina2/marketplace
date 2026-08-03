@@ -40,6 +40,28 @@ async function drain(queueUrl: string, predicate: (body: any) => boolean): Promi
 }
 
 /**
+ * Like `drain`, but never stops early on the first match: it exhausts the
+ * whole window so a genuine duplicate delivery (the bug this is meant to
+ * catch) has a chance to show up even if it doesn't arrive in the same
+ * receive batch as the first message.
+ */
+async function collectAll(queueUrl: string, predicate: (body: any) => boolean, windowMs: number): Promise<any[]> {
+  const found: any[] = [];
+  const deadline = Date.now() + windowMs;
+  while (Date.now() < deadline) {
+    const out = await sqs.send(
+      new ReceiveMessageCommand({ QueueUrl: queueUrl, MaxNumberOfMessages: 10, WaitTimeSeconds: 2 }),
+    );
+    for (const m of out.Messages ?? []) {
+      const body = JSON.parse(m.Body!);
+      if (predicate(body)) found.push(body);
+      await sqs.send(new DeleteMessageCommand({ QueueUrl: queueUrl, ReceiptHandle: m.ReceiptHandle! }));
+    }
+  }
+  return found;
+}
+
+/**
  * Deletes every message currently on the queue, not just the ones a test is
  * looking for. Used to start each run from an empty queue: unlike the shared
  * job queue, this one is reused across test runs (`CreateQueue` is
@@ -109,6 +131,24 @@ describe('DispatchService', () => {
     expect(() => EngineJobMessageSchema.parse(body)).not.toThrow();
     expect(body.tenantId).toBe('TENANT#tenant_disp');
     expect(body.metadata.threadId).toBe(threadId);
+  });
+
+  it('collapses two dispatches of the same proposal into one message on the queue', async () => {
+    // This is the property `ContentBasedDeduplication` was deliberately left
+    // off for: it proves the WIRED `MessageDeduplicationId` -- not some
+    // implicit SQS behaviour -- is what collapses a genuine duplicate send.
+    // Passing the derived id to the wrong SendMessageCommand field, or
+    // deriving it from the wrong inputs, would sail through the static
+    // `deduplicationId()` case below without this one to catch it.
+    const threadId = ulid();
+    const field = `f_${Math.random().toString(36).slice(2, 8)}`;
+    const payload = { addedFields: [{ name: field, type: 'string' as const, required: false, default: null }] };
+
+    await service.dispatch({ threadId, tenantId: 'tenant_disp', targetEntity: 'Event', payload });
+    await service.dispatch({ threadId, tenantId: 'tenant_disp', targetEntity: 'Event', payload });
+
+    const matches = await collectAll(env.QUEUE_URL, (b) => b?.payload?.addedFields?.[0]?.name === field, 8_000);
+    expect(matches).toHaveLength(1);
   });
 
   it('rejects a payload the engine contract would not accept', async () => {
