@@ -100,7 +100,7 @@ the common path.
 
 ### Backend changes
 
-Two, both small, both off by default.
+Three. Two are runtime changes that default to off; the third is type-level only.
 
 **1. `docker/seed/cognito.ts`** — add `role` to the pool's `Schema`, then create
 demo users with permanent passwords and both custom attributes:
@@ -122,22 +122,24 @@ seed requires. The password is a development convenience with no path into a
 deployed build, exactly like `/dev/token`; `/api/personas` returns an empty list
 unless the same flag that enables it is set.
 
-On a real Cognito user pool the schema is immutable after creation, and the seed
-finds the pool by name rather than recreating it, so an existing pool would
-silently lack `custom:role` and `AdminCreateUser` would reject the attribute.
-Whether cognito-local enforces the declared schema at all is **unverified** — it
-is a mock and may well accept the attribute regardless. Probe it first: attempt
-`AdminCreateUser` with `custom:role` against the existing pool. If it fails, the
-fix is a one-time `docker volume rm marketplace_cognito-data`, which is targeted
-and does not touch the 4.7GB `ollama-models` volume that `docker:down` and the
-e2e teardown deliberately preserve. The drop is harmless either way — the seed
-recreates the pool — so it is the documented remedy in the README regardless of
-how the probe lands.
+**No migration is needed**, contrary to what a reading of "pool schemas are
+immutable" would suggest. `scripts/docker-teardown.mjs` already runs
+`docker volume rm -f marketplace_cognito-data` on every `pnpm docker:down`,
+precisely so a stale pool can never be reused; only `ollama-models` is
+deliberately preserved. The pool is therefore recreated from scratch on the next
+`docker:up`, and picks up the new `role` attribute with no manual step. Nothing
+about this goes in the README.
 
 **2. Engine CORS** — `app.factory.ts` calls `app.enableCors` when a new
 `CORS_ORIGINS` env var is non-empty, following the `DOCS_ENABLED` pattern already
 in `apps/engine/src/config/env.schema.ts`. Empty is the default, so deployed
 builds are byte-for-byte unchanged in behaviour.
+
+**3. Response schemas in `packages/contracts`**, with the engine's response
+interfaces re-expressed as `z.infer` aliases of them. No runtime behaviour
+changes — the values on the wire are identical — but the client gains something
+to validate against, and the producer and consumer share one definition. See
+[API client and errors](#api-client-and-errors).
 
 Nothing else in engine or agents changes.
 
@@ -290,12 +292,24 @@ polling window is the honest cost of the decoupled queue.
 request(path, { method, body, query, schema, idempotencyKey })
 ```
 
-It attaches the bearer token, parses the response, and validates it with the Zod
-schema imported from `@marketplace/contracts`. Per-resource modules
-(`products.ts`, `orders.ts`, …) are thin wrappers choosing a path and a schema.
-No client generator: the contracts package is already in the workspace, so types
-and runtime validation come free and drift is impossible. Generating a client
-would add a build step to re-derive what exists.
+It attaches the bearer token, parses the response, and validates it with a Zod
+schema from `@marketplace/contracts`. Per-resource modules (`products.ts`,
+`orders.ts`, …) are thin wrappers choosing a path and a schema. No client
+generator: the contracts package is already in the workspace, so types and
+runtime validation come free. Generating a client would add a build step to
+re-derive what exists.
+
+**Contracts covers request bodies only — response schemas do not exist yet.**
+Every response shape is a hand-written TypeScript interface in the engine
+(`ProductResponse = Omit<ProductRecord, 'PK' | 'SK'>`, `SchemaView`,
+`FlowResponse`, and so on) with no runtime schema behind it. Writing a second
+set of them inside `apps/web` would create exactly the drift this repository is
+organised to prevent, so instead the response schemas are added to
+`packages/contracts` and the engine's response interfaces become `z.infer`
+aliases of them. One definition, used by the service that produces the value and
+the client that consumes it. Seven schemas cover the surface: product, event,
+order, booking, flow, the `/me` principal, and `SchemaView`, plus a generic
+`PageSchema(item)` wrapper for `{ items, nextCursor }`.
 
 Failure has three shapes, and collapsing them would lose information:
 
