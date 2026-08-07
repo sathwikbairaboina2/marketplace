@@ -80,6 +80,24 @@ likely first-run failure:
 
 Container hostnames are unresolvable from the browser.
 
+### Dependencies and the container
+
+Two ANTD packages are non-optional on App Router and easy to omit:
+
+- **`@ant-design/nextjs-registry`** — wraps the root layout so ANTD's CSS-in-JS
+  is extracted during SSR. Without it every page flashes unstyled before
+  hydration.
+- **`@ant-design/v5-patch-for-react-19`** — Next.js ships React 19, and ANTD v5
+  was built against React 18's rendering entry points. Without the patch,
+  `message`, `notification` and `Modal` — all of which the error path in this
+  design depends on — log compatibility errors and can fail to mount.
+
+The `web` service builds a production image (`next build` then `next start`), not
+a dev server. The e2e suite should exercise what a build produces, and a dev
+server in a container would need a bind mount and would make the suite's timing
+depend on on-demand compilation. Docker layer caching keeps the rebuild cost off
+the common path.
+
 ### Backend changes
 
 Two, both small, both off by default.
@@ -94,17 +112,27 @@ demo users with permanent passwords and both custom attributes:
 | `globex-admin` | `globex` | `admin` |
 
 The third tenant exists so isolation can be demonstrated in the UI rather than
-asserted in a test file. All three share one fixed development password, set by
-the seed and surfaced to the login screen as `NEXT_PUBLIC_DEV_PASSWORD` so the
-persona dropdown can prefill both fields. The password is a development
-convenience with no path into a deployed build, exactly like `/dev/token`.
+asserted in a test file. All three share one fixed development password, a
+literal constant in the seed. The login screen reads the persona list and that
+password from a Next route handler, `GET /api/personas`, **not** from a
+`NEXT_PUBLIC_*` variable: `NEXT_PUBLIC_*` values are inlined into the bundle at
+`next build`, so anything compose supplies afterwards is ignored. A route handler
+reads its environment at request time, which is what a value originating from the
+seed requires. The password is a development convenience with no path into a
+deployed build, exactly like `/dev/token`; `/api/personas` returns an empty list
+unless the same flag that enables it is set.
 
-A Cognito user pool's schema is immutable after creation, and the seed finds the
-pool by name rather than recreating it. An existing pool would therefore silently
-lack `custom:role`, and `AdminCreateUser` would reject the attribute. The
-migration is a one-time `docker volume rm marketplace_cognito-data`, which is
-targeted and does not touch the 4.7GB `ollama-models` volume that `docker:down`
-and the e2e teardown deliberately preserve. This goes in the README.
+On a real Cognito user pool the schema is immutable after creation, and the seed
+finds the pool by name rather than recreating it, so an existing pool would
+silently lack `custom:role` and `AdminCreateUser` would reject the attribute.
+Whether cognito-local enforces the declared schema at all is **unverified** — it
+is a mock and may well accept the attribute regardless. Probe it first: attempt
+`AdminCreateUser` with `custom:role` against the existing pool. If it fails, the
+fix is a one-time `docker volume rm marketplace_cognito-data`, which is targeted
+and does not touch the 4.7GB `ollama-models` volume that `docker:down` and the
+e2e teardown deliberately preserve. The drop is harmless either way — the seed
+recreates the pool — so it is the documented remedy in the README regardless of
+how the probe lands.
 
 **2. Engine CORS** — `app.factory.ts` calls `app.enableCors` when a new
 `CORS_ORIGINS` env var is non-empty, following the `DOCS_ENABLED` pattern already
@@ -153,10 +181,14 @@ no array matching. `toFilterItems` therefore emits controls for `string`,
 but exact-match on a timestamp is useless, so it is skipped as well. Range
 filtering exists only on the core `priceMinor` field, as a hand-written control.
 
-`useSchema(entityType)` fetches `/schemas/:entityType` and caches per entity
-type. Executing a flow raises the registry `version`, so the execute success
-handler invalidates that cache. That invalidation is the mechanism by which a
-new field appears without a page reload.
+`GET /schemas` returns every dynamic entity's schema in one response —
+`{ items: SchemaView[] }`, where `SchemaView` is
+`{ entityType, version, fields }`. So `useSchemas()` makes that single call and
+caches all four, and `useSchema(entityType)` is a selector over the cache rather
+than a fetch of its own. Executing a flow raises the registry `version`, so the
+execute success handler evicts the one cache entry and every consumer re-reads.
+That eviction is the mechanism by which a new field appears without a page
+reload.
 
 ### Screens
 
@@ -178,7 +210,7 @@ time for no benefit on a development console.
 /admin/products/new         core fields + generated attribute fields
 /admin/events/new           same
 /admin/flows                proposed and executed
-/admin/flows/[id]           the diff, and Execute
+/admin/flows/[id]           the added fields, and Execute
 /admin/chat                 the agent WebSocket
 ```
 
@@ -187,8 +219,20 @@ the admin set plus the buyer set, because admins browse their own catalogue.
 
 **This is navigation, not authorization.** The engine enforces tenant isolation
 on every route and enforces nothing whatsoever about role. An admin URL typed by
-hand will work for a buyer. Stating it here so the spec cannot be read as
+hand will work for a buyer. `packages/contracts/src/flow.ts` says so directly
+about the most consequential route in the system: a Flow "permanently mutates the
+tenant's data model with no per-record ownership check (any authenticated member
+of the tenant may propose or execute one)", with `proposedBy`/`executedBy` as the
+only record of who did it. Stating this here so the spec cannot be read as
 claiming a security boundary it does not build.
+
+**Flows are add-only, so the flow UI is add-only.** `CreateFlowSchema` fixes
+`actionType` to the literal `'ADD_FIELDS'`, and `BlueprintDiffSchema` is
+`.strict()` around `addedFields` alone — `removedFields` and `changedFields` are
+unrecognized keys and are rejected. The flow detail page therefore renders a list
+of added fields, not a two-sided diff, and no removal or type-change affordance
+is built anywhere. The same holds for the chat's `draftPayload`, which is a
+`BlueprintDiff`.
 
 Cart is client-only state — a context mirrored to `sessionStorage`, keyed by
 product id, holding `{ productId, name, priceMinor, qty }`. The engine has no
@@ -295,7 +339,9 @@ dates, `ProblemError`/`ContractMismatchError` mapping, the idempotency key
 lifecycle, the cart reducer.
 
 **End to end — Playwright.** `web` joins `docker-compose.yml` and
-`scripts/e2e.mjs` gains a third suite after the engine and agents suites.
+`scripts/e2e.mjs` gains a third `--filter @marketplace/web test:e2e` step after
+the agents suite and **before** the `pnpm docker:down` teardown, following the
+existing `if (code === 0)` chain so a failure short-circuits the rest.
 Playwright drives `http://localhost:3002` from the host, which makes
 `npx playwright install` a one-time setup cost beside `pnpm install`. Teardown
 continues to preserve `ollama-models`.
