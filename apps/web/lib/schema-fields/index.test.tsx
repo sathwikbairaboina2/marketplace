@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { Form } from 'antd';
 import dayjs from 'dayjs';
 import type { FieldDefinition } from '@marketplace/contracts';
-import { toFormItems, toFilterItems, toDescriptionRows, toAttributes } from './index';
+import { toFormItems, toFilterItems, toDescriptionRows, toAttributes, toLabel } from './index';
 
 const field = (over: Partial<FieldDefinition>): FieldDefinition => ({
   type: 'string',
@@ -60,17 +60,41 @@ describe('toAttributes', () => {
   });
 });
 
+describe('toLabel', () => {
+  it('splits camel case into sentence case', () => {
+    expect(toLabel('assemblyRequired')).toBe('Assembly required');
+  });
+
+  it('splits snake and kebab case', () => {
+    expect(toLabel('warranty_months')).toBe('Warranty months');
+    expect(toLabel('lead-time')).toBe('Lead time');
+  });
+
+  it('separates a trailing number from the word before it', () => {
+    expect(toLabel('warranty1786143813286')).toBe('Warranty 1786143813286');
+  });
+
+  it('leaves an acronym in upper case', () => {
+    expect(toLabel('SKU')).toBe('SKU');
+    expect(toLabel('vendorSKU')).toBe('Vendor SKU');
+  });
+
+  it('falls back to the raw name when there is nothing to split', () => {
+    expect(toLabel('_')).toBe('_');
+  });
+});
+
 describe('toFilterItems', () => {
   it('emits controls only for scalar equality-filterable types', () => {
     render(<Form>{toFilterItems(fields)}</Form>);
-    expect(screen.getByLabelText('colour')).toBeInTheDocument();
-    expect(screen.getByLabelText('weight')).toBeInTheDocument();
-    expect(screen.getByLabelText('fragile')).toBeInTheDocument();
+    expect(screen.getByLabelText('Colour')).toBeInTheDocument();
+    expect(screen.getByLabelText('Weight')).toBeInTheDocument();
+    expect(screen.getByLabelText('Fragile')).toBeInTheDocument();
     // SearchProductsSchema types `attributes` as string | number | boolean:
     // arrays cannot be matched at all, and exact-match on a timestamp is
     // useless, so neither gets a control.
-    expect(screen.queryByLabelText('tags')).toBeNull();
-    expect(screen.queryByLabelText('releasedOn')).toBeNull();
+    expect(screen.queryByLabelText('Tags')).toBeNull();
+    expect(screen.queryByLabelText('Released on')).toBeNull();
   });
 });
 
@@ -78,13 +102,13 @@ describe('toFormItems', () => {
   it('renders one labelled control per field', () => {
     render(<Form>{toFormItems(fields)}</Form>);
     for (const name of Object.keys(fields)) {
-      expect(screen.getByLabelText(name)).toBeInTheDocument();
+      expect(screen.getByLabelText(toLabel(name))).toBeInTheDocument();
     }
   });
 
   it('marks a required field as required', () => {
     render(<Form>{toFormItems({ colour: field({ required: true }) })}</Form>);
-    expect(screen.getByLabelText('colour')).toBeRequired();
+    expect(screen.getByLabelText('Colour')).toBeRequired();
   });
 });
 
@@ -92,6 +116,7 @@ describe('toDescriptionRows', () => {
   it('renders a row per field and shows an em dash for a missing value', () => {
     const rows = toDescriptionRows(fields, { colour: 'red' });
     expect(rows).toHaveLength(5);
+    expect(rows.find((r) => r.key === 'releasedOn')!.label).toBe('Released on');
     expect(rows.find((r) => r.key === 'colour')!.children).toBe('red');
     expect(rows.find((r) => r.key === 'weight')!.children).toBe('—');
   });

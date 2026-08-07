@@ -1,4 +1,36 @@
 /* ==========================================================================
+   Sign in
+   ========================================================================== */
+
+/* The login route has no shell of its own, so it centres against the viewport
+   rather than sitting under chrome that is not there. */
+.mp-auth {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mp-space-6);
+  padding: var(--mp-space-8) var(--mp-space-4);
+  background: var(--mp-surface-sunken);
+}
+
+.mp-auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mp-space-2);
+  font-weight: 700;
+  font-size: var(--mp-text-lg);
+  letter-spacing: -0.02em;
+  color: var(--mp-ink);
+}
+
+.mp-auth-card {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* ==========================================================================
    Storefront chrome
    ========================================================================== */
 

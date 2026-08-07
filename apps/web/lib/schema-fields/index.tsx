@@ -21,6 +21,27 @@ export const FILTERABLE_TYPES = [
 const isArrayType = (type: FieldType) => type.endsWith('[]');
 const scalarOf = (type: FieldType) => type.replace('[]', '') as FieldType;
 
+/**
+ * Tenants name their fields for code, not for reading: `assemblyRequired`,
+ * `warranty_months`. Splitting on case and separator boundaries turns those
+ * into sentence case for display. The field name itself is untouched -- it is
+ * still what the form submits and what the wire carries.
+ */
+export function toLabel(name: string): string {
+  const words = name
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+    .replace(/([A-Za-z])(\d)/g, '$1 $2')
+    .trim()
+    .split(/\s+/)
+    // An all-caps word is an acronym the tenant meant: SKU stays SKU, not Sku.
+    .map((word) => (word === word.toUpperCase() ? word : word.toLowerCase()));
+
+  if (words.length === 0 || words[0] === '') return name;
+  words[0] = words[0].charAt(0).toUpperCase() + words[0].slice(1);
+  return words.join(' ');
+}
+
 function scalarControl(type: FieldType): ReactNode {
   switch (scalarOf(type)) {
     case 'number':
@@ -41,14 +62,15 @@ const nameOf = (field: string) => ['attributes', field];
 
 export function toFormItems(fields: Record<string, FieldDefinition>): ReactNode[] {
   return Object.entries(fields).map(([name, def]) => {
-    const rules = def.required ? [{ required: true, message: `${name} is required` }] : undefined;
+    const label = toLabel(name);
+    const rules = def.required ? [{ required: true, message: `${label} is required` }] : undefined;
 
     // Tag-mode Select handles free-form string and number arrays in one
     // control. `boolean[]` and `date[]` have no sensible tag input, so they get
     // a repeatable list of the scalar control instead.
     if (def.type === 'string[]' || def.type === 'number[]') {
       return (
-        <Form.Item key={name} name={nameOf(name)} label={name} rules={rules}>
+        <Form.Item key={name} name={nameOf(name)} label={label} rules={rules}>
           <Select mode="tags" tokenSeparators={[',']} open={false} />
         </Form.Item>
       );
@@ -56,7 +78,7 @@ export function toFormItems(fields: Record<string, FieldDefinition>): ReactNode[
 
     if (isArrayType(def.type)) {
       return (
-        <Form.Item key={name} label={name} required={def.required}>
+        <Form.Item key={name} label={label} required={def.required}>
           <Form.List name={nameOf(name)}>
             {(entries, { add, remove }) => (
               <>
@@ -68,7 +90,7 @@ export function toFormItems(fields: Record<string, FieldDefinition>): ReactNode[
                     <Button onClick={() => remove(entry.name)}>Remove</Button>
                   </Space>
                 ))}
-                <Button onClick={() => add()}>Add {name}</Button>
+                <Button onClick={() => add()}>Add {label.toLowerCase()}</Button>
               </>
             )}
           </Form.List>
@@ -80,7 +102,7 @@ export function toFormItems(fields: Record<string, FieldDefinition>): ReactNode[
       <Form.Item
         key={name}
         name={nameOf(name)}
-        label={name}
+        label={label}
         rules={rules}
         initialValue={def.default ?? undefined}
         valuePropName={def.type === 'boolean' ? 'checked' : undefined}
@@ -98,7 +120,7 @@ export function toFilterItems(fields: Record<string, FieldDefinition>): ReactNod
       <Form.Item
         key={name}
         name={nameOf(name)}
-        label={name}
+        label={toLabel(name)}
         valuePropName={def.type === 'boolean' ? 'checked' : undefined}
       >
         {scalarControl(def.type)}
@@ -119,7 +141,7 @@ export function toDescriptionRows(
 ): Array<{ key: string; label: string; children: ReactNode }> {
   return Object.keys(fields).map((name) => ({
     key: name,
-    label: name,
+    label: toLabel(name),
     children: display(attributes[name]),
   }));
 }
