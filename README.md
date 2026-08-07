@@ -22,6 +22,7 @@ Specs and plans:
 |---|---|
 | `apps/engine` | NestJS service: auth, products, events, orders, bookings, flows, and the SQS consumer that turns AI-proposed flows into records |
 | `apps/agents` | NestJS service: an authenticated WebSocket gateway backed by a LangGraph.js state machine that turns a chat into a validated schema-change proposal and, on confirmation, pushes a `PROPOSE_FLOW` message onto the queue `apps/engine`'s consumer reads |
+| `apps/web` | Next.js console: a browser client for both services, whose forms, filters and detail rows for tenant-defined `attributes` are generated from the schema registry rather than hand-written |
 | `packages/contracts` | Zod schemas — the single source of truth for entity shapes |
 | `packages/auth` | Shared JWT verifier and tenant context |
 | `docker/` | Compose stack and infrastructure seeding |
@@ -30,7 +31,8 @@ Specs and plans:
 
 ```bash
 pnpm install
-pnpm docker:up      # dynamodb-local, localstack (sqs), redis, cognito-local, seed, engine, ollama, ollama-init, agents
+pnpm --filter @marketplace/web exec playwright install chromium   # one-time, for `pnpm e2e`
+pnpm docker:up      # dynamodb-local, localstack (sqs), redis, cognito-local, seed, engine, ollama, ollama-init, agents, web
 pnpm test           # unit + integration
 pnpm e2e            # engine suite, then agents suite, then tears down
 pnpm docker:down
@@ -41,7 +43,8 @@ the FIFO queue and its DLQ, and a Cognito user pool, then writes the generated
 identifiers to `docker/.env.generated`, which both the engine and agents
 containers read.
 
-`engine` serves on `:3000`, `agents` on `:3001`, both under `/api/v1`.
+`engine` serves on `:3000`, `agents` on `:3001`, both under `/api/v1`; the `web`
+console is on `:3002`.
 `agents`' readiness (`GET /api/v1/health/ready`) is only green once Redis
 answers, the engine reports ready, *and* Ollama has actually pulled the
 configured model (`qwen2.5:7b-instruct` by default) — not just that Ollama is
@@ -62,6 +65,37 @@ Cognito ID token for a fixed identity (`DEV_TENANT_ID`/`DEV_USERNAME`) and hands
 it to Swagger UI's "Try it out". Neither the docs page nor `/dev/token` exists
 unless `DOCS_ENABLED=true` **and** `COGNITO_ENDPOINT` is set — true only in
 `docker/docker-compose.yml`, never in a deployed build.
+
+## The console
+
+`http://localhost:3002` is a browser client for both services. Sign in with one
+of three seeded personas, all sharing the password `Passw0rd!`:
+
+| Username | Tenant | Role |
+|---|---|---|
+| `acme-admin` | `acme` | `admin` |
+| `acme-buyer` | `acme` | `buyer` |
+| `globex-admin` | `globex` | `admin` |
+
+`globex-admin` exists so tenant isolation is visible rather than merely
+asserted: signed in as Globex, none of Acme's catalogue is reachable, including
+by pasting a product URL.
+
+Sign-in posts to `/api/login`, a Next.js route handler that calls Cognito
+server-side; every other request goes straight from the browser to the engine's
+REST API or the agents' WebSocket. The persona list and that password come from
+`DEV_PERSONAS`/`DEV_PASSWORD`, read per request by `/api/personas` and absent
+from any build that does not set them.
+
+Role selects which navigation is shown and nothing more. **It is not an
+authorization boundary** — the engine enforces tenant isolation on every route
+and enforces nothing about role, so an admin URL typed by hand works perfectly
+well for a buyer.
+
+Forms, search filters and detail rows for tenant-defined `attributes` are
+generated from `GET /schemas`. Executing a flow raises the registry version and
+the console re-reads it, so a field an agent proposed appears everywhere it
+belongs without a page reload and without a line of UI code naming it.
 
 ## The conversation
 

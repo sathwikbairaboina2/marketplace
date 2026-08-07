@@ -94,6 +94,10 @@ services:
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: info
       DOCS_ENABLED: 'true'
+      # The browser console runs on a different origin, so the engine's REST
+      # surface needs an explicit allow-list. Empty everywhere else, including
+      # every deployed build.
+      CORS_ORIGINS: http://localhost:3002
       COGNITO_ENDPOINT: http://cognito-local:9229
     depends_on:
       seed: { condition: service_completed_successfully }
@@ -153,6 +157,32 @@ services:
       # (confirmed via `curl`/`wget 127.0.0.1` inside the container). `engine`'s healthcheck
       # already sidesteps this the same way.
       test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3001/api/v1/health/live || exit 1']
+      interval: 3s
+      retries: 30
+
+  web:
+    build: { context: .., dockerfile: apps/web/Dockerfile }
+    ports: ['3002:3002']
+    # Same rationale as `engine` and `agents`: `.env.generated` may not exist on a clean clone
+    # when this file is first loaded, and it supplies COGNITO_CLIENT_ID -- which the login
+    # route handler needs to call InitiateAuth.
+    env_file: [{ path: ./.env.generated, required: false }]
+    environment:
+      # Read at request time by route handlers running IN this container. Contrast with the
+      # NEXT_PUBLIC_* pair, which are baked into the browser bundle at image build time and
+      # therefore cannot be set here -- see apps/web/Dockerfile.
+      COGNITO_ENDPOINT: http://cognito-local:9229
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      DEV_PERSONAS: acme-admin,acme-buyer,globex-admin
+      DEV_PASSWORD: Passw0rd!
+    depends_on:
+      engine: { condition: service_healthy }
+      agents: { condition: service_healthy }
+    healthcheck:
+      # `127.0.0.1`, not `localhost`, for the same busybox IPv6 reason documented on `agents`.
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3002/api/health || exit 1']
       interval: 3s
       retries: 30
 

@@ -27,6 +27,7 @@ function makeEnv(overrides: Partial<EnvConfig> = {}): EnvConfig {
     LOG_LEVEL: 'info',
     SQS_CONSUMER_ENABLED: true,
     DOCS_ENABLED: false,
+    CORS_ORIGINS: '',
     DEV_TENANT_ID: 'tenant-dev',
     DEV_USERNAME: 'dev@marketplace.local',
     ...overrides,

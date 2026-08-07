@@ -4,6 +4,7 @@ import {
   MAX_ORDER_LINE_ITEMS,
   OrderLineItem,
   OrderRecord,
+  OrderResponse,
   Page,
   ProductRecord,
 } from '@marketplace/contracts';
@@ -20,7 +21,11 @@ import { conflictedTransactionIndexes, failedTransactionIndexes } from '../commo
 // `GSI1PK`/`GSI1SK` attributes used to index orders by owning user. Those are a
 // persistence-layer implementation detail and are deliberately not part of the public API
 // surface: clients should never see, depend on, or be able to parse the internal key scheme.
-export type OrderResponse = Omit<OrderRecord, 'PK' | 'SK' | 'GSI1PK' | 'GSI1SK'>;
+//
+// Defined as `z.infer<typeof OrderResponseSchema>` in @marketplace/contracts rather than as an
+// `Omit<OrderRecord, ...>` here, so the browser client has a runtime schema to validate against
+// and cannot drift from the type this service returns.
+export type { OrderResponse };
 
 function toResponse(record: OrderRecord): OrderResponse {
   const { PK: _pk, SK: _sk, GSI1PK: _gsi1pk, GSI1SK: _gsi1sk, ...rest } = record;

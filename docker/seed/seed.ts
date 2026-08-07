@@ -1,7 +1,7 @@
 import { writeFileSync, rmSync } from 'node:fs';
 import { ensureTable } from './dynamo';
 import { ensureQueues } from './sqs';
-import { ensureUserPool } from './cognito';
+import { ensureUserPool, ensureDemoUsers } from './cognito';
 
 async function main(): Promise<void> {
   // A stale .env.generated from a previous successful run must not survive a
@@ -14,6 +14,7 @@ async function main(): Promise<void> {
   await ensureTable();
   const { queueUrl, dlqUrl } = await ensureQueues();
   const { userPoolId, clientId } = await ensureUserPool();
+  await ensureDemoUsers(userPoolId);
 
   // The issuer and the JWKS URI deliberately use different hosts locally.
   //
