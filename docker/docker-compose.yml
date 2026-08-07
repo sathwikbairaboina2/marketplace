@@ -93,6 +93,8 @@ services:
       SQS_ENDPOINT: http://localstack:4566
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: info
+      DOCS_ENABLED: 'true'
+      COGNITO_ENDPOINT: http://cognito-local:9229
     depends_on:
       seed: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
@@ -138,6 +140,8 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
       LLM_MODEL: qwen2.5:7b-instruct
       LOG_LEVEL: info
+      DOCS_ENABLED: 'true'
+      COGNITO_ENDPOINT: http://cognito-local:9229
     depends_on:
       redis: { condition: service_healthy }
       engine: { condition: service_healthy }

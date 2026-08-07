@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { DevTokenModule } from '@marketplace/openapi';
 import { ConfigModule } from './config/config.module';
+import { DevTokenEnvSchema } from './config/env.schema';
 import { RedisModule } from './redis/redis.module';
 import { LlmModule } from './llm/llm.module';
 import { HealthModule } from './health/health.module';
@@ -24,6 +26,7 @@ import { ChatModule } from './chat/chat.module';
       },
     }),
     ConfigModule,
+    DevTokenModule.registerIfEnabled(DevTokenEnvSchema.parse(process.env)),
     RedisModule,
     LlmModule,
     EngineClientModule,

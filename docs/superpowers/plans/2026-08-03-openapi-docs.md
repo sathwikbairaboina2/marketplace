@@ -83,7 +83,7 @@
 
 **Interfaces:**
 - Consumes: `CreateProductSchema`, `SearchProductsSchema` from `@marketplace/contracts` (`packages/contracts/src/product.ts`); `FieldDefinitionSchema` from `@marketplace/contracts` (`packages/contracts/src/registry.ts`).
-- Produces: `toOpenApi(schema: ZodSchema): SchemaObject` (`SchemaObject` from `@nestjs/swagger`) — every later task in this plan that documents a request or response calls this exact function.
+- Produces: `toOpenApi(schema: ZodSchema): SchemaObject` (`SchemaObject` from `@nestjs/swagger/dist/interfaces/open-api-spec.interface` -- it is not re-exported from the package root) — every later task in this plan that documents a request or response calls this exact function.
 
 - [ ] **Step 1: Write the package scaffold and the failing test**
 
@@ -110,6 +110,7 @@ Create `packages/openapi/package.json`:
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.665.0",
     "@marketplace/contracts": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
@@ -173,7 +174,12 @@ describe('toOpenApi', () => {
       expect(result.required).toEqual(
         expect.arrayContaining(['name', 'description', 'priceMinor', 'currency', 'category', 'stock']),
       );
-      expect(result.required).not.toEqual(expect.arrayContaining(['images', 'status', 'attributes']));
+      // Asserted one at a time on purpose: `not.toEqual(arrayContaining([a, b, c]))`
+      // only fails when ALL of a, b and c are present, so a single defaulted field
+      // leaking into `required` would slip past it.
+      expect(result.required).not.toContain('images');
+      expect(result.required).not.toContain('status');
+      expect(result.required).not.toContain('attributes');
     });
 
     it('renders the .url() array as a string array with a uri format', () => {
@@ -241,7 +247,7 @@ Create `packages/openapi/src/zod-openapi.ts`:
 ```ts
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ZodSchema } from 'zod';
-import type { SchemaObject } from '@nestjs/swagger';
+import type { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
 /**
  * Converts a Zod schema into an inline OpenAPI 3 schema object. Schemas are
@@ -254,8 +260,21 @@ import type { SchemaObject } from '@nestjs/swagger';
  * so Swagger UI's "Try it out" pre-fills a body that already passes
  * `ZodValidationPipe`.
  */
+// zodToJsonSchema's return type is a conditional over its `Target` generic that
+// resolves into the recursive `JsonSchema7Type`. Calling it generically makes
+// `tsc --declaration` give up with TS2589 ("type instantiation is excessively
+// deep") while ts-jest, which emits no declarations, compiles it fine. Pinning
+// the call behind this narrow signature stops the compiler instantiating that
+// conditional at all; the runtime function is unchanged.
+type ConvertToOpenApi3 = (
+  schema: ZodSchema,
+  options: { target: 'openApi3'; $refStrategy: 'none' },
+) => SchemaObject;
+
+const convert = zodToJsonSchema as unknown as ConvertToOpenApi3;
+
 export function toOpenApi(schema: ZodSchema): SchemaObject {
-  return zodToJsonSchema(schema, { target: 'openApi3', $refStrategy: 'none' }) as SchemaObject;
+  return convert(schema, { target: 'openApi3', $refStrategy: 'none' });
 }
 ```
 
@@ -306,6 +325,11 @@ describe('ProblemSchema', () => {
     expect(ProblemSchema.required).not.toContain('detail');
   });
 
+  it('documents the instance and traceId fields ProblemFilter always appends', () => {
+    expect(ProblemSchema.properties?.instance).toEqual({ type: 'string' });
+    expect(ProblemSchema.properties?.traceId).toEqual({ type: 'string' });
+  });
+
   it('allows any other field, to cover the per-type extra fields ProblemException accepts', () => {
     expect(ProblemSchema.additionalProperties).toBe(true);
   });
@@ -323,17 +347,22 @@ Expected: FAIL — `Cannot find module './problem' from 'src/problem.test.ts'`
 Create `packages/openapi/src/problem.ts`:
 
 ```ts
-import type { SchemaObject } from '@nestjs/swagger';
+import type { SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
 export const PROBLEM_SCHEMA_NAME = 'Problem';
 
 /**
  * The RFC 9457 problem body every `ProblemFilter` in both services writes to
  * the wire (see `apps/engine/src/common/problem.ts` / `problem.filter.ts`,
- * mirrored in agents). `additionalProperties: true` covers the per-type
- * `extra` fields `ProblemException` accepts (e.g. `errors[]` on a 400 from
- * `ZodValidationPipe`) and the `instance`/`traceId` fields `ProblemFilter`
- * adds after the exception is built.
+ * mirrored in agents).
+ *
+ * `instance` and `traceId` are documented explicitly because the filter adds
+ * them to every response it writes, not just some. They stay out of `required`
+ * so this schema keeps describing exactly what RFC 9457 itself mandates.
+ *
+ * `additionalProperties: true` covers the per-type `extra` fields
+ * `ProblemException` accepts -- for example the `errors[]` array
+ * `ZodValidationPipe` attaches to a 400.
  */
 export const ProblemSchema: SchemaObject = {
   type: 'object',
@@ -342,6 +371,8 @@ export const ProblemSchema: SchemaObject = {
     title: { type: 'string' },
     status: { type: 'number' },
     detail: { type: 'string' },
+    instance: { type: 'string' },
+    traceId: { type: 'string' },
   },
   required: ['type', 'title', 'status'],
   additionalProperties: true,
@@ -1428,7 +1459,10 @@ describe('ThreadsController OpenAPI documentation', () => {
 
   it('documents the 200 response with the AgentStateSnapshot schema', () => {
     const document = SwaggerModule.createDocument(app, new DocumentBuilder().build());
-    const ok = document.paths['/threads/{id}'].get!.responses['200'] as {
+    // Double assertion: the declared type is `ResponseObject | ReferenceObject`,
+    // and a $ref response carries no `content`, so TypeScript rejects the
+    // direct cast. The assertion below is what the test is asserting about.
+    const ok = document.paths['/threads/{id}'].get!.responses['200'] as unknown as {
       content: { 'application/json': { schema: Record<string, any> } };
     };
     const schema = ok.content['application/json'].schema;

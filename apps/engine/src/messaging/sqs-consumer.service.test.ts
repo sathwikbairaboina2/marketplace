@@ -26,6 +26,9 @@ function makeEnv(overrides: Partial<EnvConfig> = {}): EnvConfig {
     JWT_AUDIENCE: 'client',
     LOG_LEVEL: 'info',
     SQS_CONSUMER_ENABLED: true,
+    DOCS_ENABLED: false,
+    DEV_TENANT_ID: 'tenant-dev',
+    DEV_USERNAME: 'dev@marketplace.local',
     ...overrides,
   };
 }
