@@ -97,6 +97,12 @@ export default function ProductsPage() {
             />
           ) : (
             <>
+              <div className="mp-results-bar">
+                <span className="mp-results-count">
+                  {items.length} product{items.length === 1 ? '' : 's'}
+                  {filters ? ' matching your filters' : ''}
+                </span>
+              </div>
               <ProductGrid>
                 {items.map((product) => (
                   <ProductCard key={product.id} product={product} />
@@ -104,7 +110,7 @@ export default function ProductsPage() {
               </ProductGrid>
               {!done && (
                 <Button
-                  style={{ marginTop: 16 }}
+                  style={{ marginTop: 'var(--mp-space-6)' }}
                   loading={loading}
                   onClick={() => void fetchPage(cursor, true, filters)}
                 >

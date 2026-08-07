@@ -22,7 +22,7 @@ describe('StatusTag', () => {
       // Colour is never the only carrier. A colour-blind viewer has to tell
       // `proposed` from `applied`, and those two gate whether a tenant's data
       // model gets irreversibly mutated.
-      expect(screen.getByText(status.replace('_', ' '))).toBeInTheDocument();
+      expect(screen.getByText(status.replaceAll('_', ' '))).toBeInTheDocument();
       unmount();
     }
   });
