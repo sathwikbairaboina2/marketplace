@@ -10,7 +10,6 @@ import { AuthProvider } from '../lib/auth/auth-context';
 import { SchemaProvider } from '../lib/schemas/schema-cache';
 import { CartProvider } from '../lib/cart/cart-context';
 import { ContractBanner } from '../components/contract-banner';
-import { AppShell } from '../components/app-shell';
 
 // Downloaded at build time and self-hosted, so nothing fetches a font at
 // runtime -- which matters because the container is the only place this ever
@@ -33,9 +32,9 @@ const THEME_BOOTSTRAP = `
 }catch(e){}})();`;
 
 // SchemaProvider sits inside AuthProvider because it fetches whenever `token`
-// changes. ContractBanner is a sibling above the shell rather than a wrapper:
-// it renders nothing until something reports a mismatch, and it has to stay
-// mounted while the page below it keeps working.
+// changes. The shells live in the route groups -- (shop) and (admin) each own
+// their chrome -- so this layout carries only the providers both share, which
+// is what lets a cart survive a walk through the back office.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={inter.variable}>
@@ -49,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <SchemaProvider>
                 <CartProvider>
                   <ContractBanner />
-                  <AppShell>{children}</AppShell>
+                  {children}
                 </CartProvider>
               </SchemaProvider>
             </AuthProvider>
