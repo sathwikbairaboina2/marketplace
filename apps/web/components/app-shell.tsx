@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Button, Layout, Menu, Space, Tag } from 'antd';
 import { useAuth } from '../lib/auth/auth-context';
 import { onUnauthorized } from '../lib/api/http';
+import { ThemeToggle } from './theme-toggle';
 
 const BUYER_ITEMS = [
   { key: '/products', label: <Link href="/products">Products</Link> },
@@ -58,6 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Space>
           <Tag color="blue">{principal.tenantId}</Tag>
           <Tag>{principal.role ?? 'no role'}</Tag>
+          <ThemeToggle />
           <Button size="small" onClick={signOut}>
             Sign out
           </Button>

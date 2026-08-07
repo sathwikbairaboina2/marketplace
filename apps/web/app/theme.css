@@ -1,0 +1,13 @@
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--mp-surface, #f8fafc);
+  color: var(--mp-ink, #0f172a);
+}
