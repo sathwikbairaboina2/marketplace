@@ -1,0 +1,332 @@
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--mp-surface, #f8fafc);
+  color: var(--mp-ink, #0f172a);
+}
+
+/* ---------- storefront ---------- */
+
+.mp-shop-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--mp-line);
+  background: var(--mp-surface-raised);
+  flex-wrap: wrap;
+}
+
+.mp-shop-brand {
+  font-weight: 750;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  color: var(--mp-ink) !important;
+}
+
+.mp-shop-nav {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.mp-shop-nav a {
+  color: var(--mp-muted);
+  padding-bottom: 2px;
+  border-bottom: 2px solid transparent;
+}
+
+.mp-shop-nav a[data-active] {
+  color: var(--mp-ink);
+  font-weight: 650;
+  border-bottom-color: var(--mp-primary);
+}
+
+.mp-shop-main {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ---------- back office ---------- */
+
+.mp-admin {
+  display: flex;
+  min-height: 100vh;
+}
+
+.mp-admin-main {
+  flex: 1;
+  padding: 24px;
+  min-width: 0;
+}
+
+.mp-admin-menu {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 50;
+}
+
+.mp-sidebar {
+  width: 240px;
+  flex: 0 0 240px;
+  background: var(--mp-sidebar);
+  color: var(--mp-sidebar-text);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 12px;
+  min-height: 100vh;
+}
+
+.mp-sidebar-brand {
+  color: #fff !important;
+  font-weight: 750;
+  font-size: 15px;
+  padding: 0 8px 14px;
+}
+
+.mp-sidebar-nav {
+  flex: 1;
+}
+
+.mp-sidebar-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #64748b;
+  margin: 14px 8px 5px;
+}
+
+.mp-sidebar-nav a {
+  display: block;
+  padding: 6px 8px;
+  border-radius: var(--mp-radius-sm);
+  color: var(--mp-sidebar-text) !important;
+}
+
+.mp-sidebar-nav a:hover {
+  background: var(--mp-sidebar-item);
+  color: #fff !important;
+}
+
+.mp-sidebar-nav a[data-active] {
+  background: var(--mp-sidebar-item);
+  color: #fff !important;
+  font-weight: 600;
+}
+
+/* Identity block. Deliberately heavy: this is the only place the tenant is
+   shown in the back office, and swapping acme for globex is how tenant
+   isolation reads. */
+.mp-sidebar-foot {
+  border-top: 1px solid #1e293b;
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.mp-sidebar-tenant {
+  background: var(--mp-sidebar-item);
+  border-left: 3px solid var(--mp-primary);
+  color: #fff;
+  font-weight: 650;
+  font-size: 15px;
+  padding: 6px 9px;
+  border-radius: var(--mp-radius-sm);
+}
+
+.mp-sidebar-role {
+  color: #64748b;
+  font-size: 11px;
+  padding: 4px 9px 8px;
+}
+
+.mp-sidebar-actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+/* ---------- shared page furniture ---------- */
+
+.mp-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.mp-page-header h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--mp-ink);
+}
+
+.mp-page-header p {
+  margin: 4px 0 0;
+  color: var(--mp-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 991px) {
+  .mp-admin-main {
+    padding: 56px 16px 16px;
+  }
+  .mp-shop-main {
+    padding: 16px;
+  }
+}
+
+/* ---------- storefront hero, rail and grid ---------- */
+
+.mp-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(120deg, #0f172a, #1f2937);
+  color: #fff;
+  border-radius: var(--mp-radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.mp-hero-text { flex: 1; min-width: 0; }
+
+.mp-hero h1 {
+  margin: 0 0 4px;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.mp-hero p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.mp-hero-shot img,
+.mp-hero-shot span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 88px;
+  border-radius: var(--mp-radius-md);
+  object-fit: cover;
+  font-weight: 700;
+  color: #334155;
+}
+
+.mp-shop-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.mp-rail {
+  width: 220px;
+  flex: 0 0 220px;
+  background: var(--mp-surface-raised);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-md);
+  padding: 16px;
+  position: sticky;
+  top: 16px;
+}
+
+.mp-rail-form .ant-form-item { margin-bottom: 12px; }
+.mp-rail-trigger { margin-bottom: 16px; }
+.mp-shop-results { flex: 1; min-width: 0; }
+
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.mp-card {
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-md);
+  overflow: hidden;
+  background: var(--mp-surface-raised);
+  transition: box-shadow 0.15s ease;
+}
+
+.mp-card:hover { box-shadow: 0 4px 16px rgb(15 23 42 / 10%); }
+
+.mp-card-media {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: var(--mp-surface);
+}
+
+.mp-card-media img,
+.mp-card-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.mp-card-body { padding: 12px 14px 14px; }
+
+.mp-card-name {
+  display: block;
+  font-weight: 620;
+  color: var(--mp-ink) !important;
+  margin-bottom: 6px;
+}
+
+.mp-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mp-card-price {
+  color: var(--mp-primary);
+  font-weight: 650;
+}
+
+.mp-card-sub {
+  color: var(--mp-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+@media (max-width: 767px) {
+  .mp-shop-layout { flex-direction: column; }
+  .mp-rail { width: 100%; flex: 1 1 auto; position: static; }
+  .mp-hero { flex-direction: column; align-items: flex-start; }
+  .mp-grid { grid-template-columns: 1fr; }
+}
+
+.mp-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--mp-radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
