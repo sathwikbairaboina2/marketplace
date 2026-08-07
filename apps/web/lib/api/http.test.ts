@@ -47,7 +47,7 @@ describe('request', () => {
             status: 400,
             detail: 'name is required',
             traceId: 'trace-9',
-            errors: [{ path: 'name', message: 'Required' }],
+            errors: [{ field: 'name', message: 'Required' }],
           },
           400,
           'application/problem+json',

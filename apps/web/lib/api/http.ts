@@ -2,8 +2,13 @@ import { z } from 'zod';
 import { ENGINE_URL } from '../env';
 import { getToken } from '../auth/auth-context';
 
+/**
+ * One entry of the `errors[]` array `ZodValidationPipe` attaches to a 400.
+ * The key is `field`, not `path` -- see apps/engine/src/common/zod-validation.pipe.ts,
+ * which builds it as `{ field: issue.path.join('.'), message }`.
+ */
 export interface ProblemField {
-  path: string;
+  field: string;
   message: string;
 }
 

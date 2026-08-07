@@ -46,6 +46,6 @@ export function notifyProblem(err: unknown): void {
 export function toFormErrors(err: unknown): { name: string; errors: string[] }[] {
   if (!(err instanceof ProblemError)) return [];
   return err.errors
-    .filter((e) => typeof e.path === 'string' && e.path.length > 0)
-    .map((e) => ({ name: e.path, errors: [e.message] }));
+    .filter((e) => typeof e?.field === 'string' && e.field.length > 0)
+    .map((e) => ({ name: e.field, errors: [e.message] }));
 }
