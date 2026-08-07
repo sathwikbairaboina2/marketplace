@@ -54,15 +54,30 @@ export function onUnauthorized(handler: () => void): void {
   unauthorizedHandler = handler;
 }
 
-export interface RequestOptions<T> {
+export interface RequestOptions<S extends z.ZodTypeAny> {
   method?: string;
   body?: unknown;
   query?: Record<string, string | number | undefined>;
-  schema: z.ZodType<T>;
+  schema: S;
   idempotencyKey?: string;
 }
 
-export async function request<T>(path: string, opts: RequestOptions<T>): Promise<T> {
+/**
+ * Generic over the schema rather than over a result type, and returning
+ * `z.output<S>` explicitly.
+ *
+ * With a `z.ZodType<T>` parameter, TypeScript is free to bind `T` to either the
+ * schema's input or its output type, and it picks differently at different call
+ * sites. Any schema with a `.default()` -- `AddedFieldSchema.required` is one --
+ * has an input where that key is optional and an output where it is required,
+ * so the two bindings are not interchangeable and the mismatch surfaces as an
+ * unreadable assignability error far from its cause. Parsing always yields the
+ * output type, so that is what this promises.
+ */
+export async function request<S extends z.ZodTypeAny>(
+  path: string,
+  opts: RequestOptions<S>,
+): Promise<z.output<S>> {
   const url = new URL(`${ENGINE_URL}${path}`);
   for (const [key, value] of Object.entries(opts.query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
