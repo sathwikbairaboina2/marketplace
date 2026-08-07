@@ -32,9 +32,9 @@ Specs and plans:
 ```bash
 pnpm install
 pnpm --filter @marketplace/web exec playwright install chromium   # one-time, for `pnpm e2e`
-pnpm docker:up      # dynamodb-local, localstack (sqs), redis, cognito-local, seed, engine, ollama, ollama-init, agents, web
+pnpm docker:up      # dynamodb-local, localstack (sqs + s3), redis, cognito-local, seed, engine, ollama, ollama-init, agents, web
 pnpm test           # unit + integration
-pnpm e2e            # engine suite, then agents suite, then tears down
+pnpm e2e            # engine suite, then agents suite, then web suite, then tears down
 pnpm docker:down
 ```
 
@@ -92,6 +92,15 @@ authorization boundary** — the engine enforces tenant isolation on every route
 and enforces nothing about role, so an admin URL typed by hand works perfectly
 well for a buyer.
 
+An admin can attach photographs when creating a product. The browser posts each
+file to the engine, which checks its size and reads its magic number — a
+declared `image/png` that is really an HTML document is refused — and then
+writes it to the `marketplace-media` bucket in LocalStack. The stored objects
+are **public-read by design**, so an `<img>` can load one with no credentials
+and no signing round-trip; tenant isolation therefore does not extend to an
+image URL. Images can only be set when a product is created, because the engine
+has no update routes.
+
 Forms, search filters and detail rows for tenant-defined `attributes` are
 generated from `GET /schemas`. Executing a flow raises the registry version and
 the console re-reads it, so a field an agent proposed appears everywhere it
@@ -133,6 +142,7 @@ All routes are under `/api/v1` and require a valid Cognito ID token (`Authorizat
 | `POST /flows/:id/execute` | Apply a proposed Flow's diff to the tenant's registry |
 | `GET /flows` | List the tenant's flows (paginated) |
 | `GET /flows/:id` | Get a flow by id |
+| `POST /uploads/product-image` | Store a product image (multipart `file`); returns its public URL |
 | `GET /me` | Return the caller's verified tenant/user/role, for debugging |
 
 List endpoints accept `?limit=` (1-100, default 25) and `?cursor=` (an opaque, base64-encoded
