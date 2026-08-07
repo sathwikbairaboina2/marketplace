@@ -187,3 +187,134 @@ body {
     padding: 16px;
   }
 }
+
+/* ---------- storefront hero, rail and grid ---------- */
+
+.mp-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(120deg, #0f172a, #1f2937);
+  color: #fff;
+  border-radius: var(--mp-radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.mp-hero-text { flex: 1; min-width: 0; }
+
+.mp-hero h1 {
+  margin: 0 0 4px;
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.mp-hero p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.mp-hero-shot img,
+.mp-hero-shot span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 88px;
+  border-radius: var(--mp-radius-md);
+  object-fit: cover;
+  font-weight: 700;
+  color: #334155;
+}
+
+.mp-shop-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.mp-rail {
+  width: 220px;
+  flex: 0 0 220px;
+  background: var(--mp-surface-raised);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-md);
+  padding: 16px;
+  position: sticky;
+  top: 16px;
+}
+
+.mp-rail-form .ant-form-item { margin-bottom: 12px; }
+.mp-rail-trigger { margin-bottom: 16px; }
+.mp-shop-results { flex: 1; min-width: 0; }
+
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.mp-card {
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-md);
+  overflow: hidden;
+  background: var(--mp-surface-raised);
+  transition: box-shadow 0.15s ease;
+}
+
+.mp-card:hover { box-shadow: 0 4px 16px rgb(15 23 42 / 10%); }
+
+.mp-card-media {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: var(--mp-surface);
+}
+
+.mp-card-media img,
+.mp-card-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.mp-card-body { padding: 12px 14px 14px; }
+
+.mp-card-name {
+  display: block;
+  font-weight: 620;
+  color: var(--mp-ink) !important;
+  margin-bottom: 6px;
+}
+
+.mp-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mp-card-price {
+  color: var(--mp-primary);
+  font-weight: 650;
+}
+
+.mp-card-sub {
+  color: var(--mp-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+@media (max-width: 767px) {
+  .mp-shop-layout { flex-direction: column; }
+  .mp-rail { width: 100%; flex: 1 1 auto; position: static; }
+  .mp-hero { flex-direction: column; align-items: flex-start; }
+  .mp-grid { grid-template-columns: 1fr; }
+}

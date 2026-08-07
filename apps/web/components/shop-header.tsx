@@ -24,8 +24,11 @@ export function ShopHeader() {
 
   return (
     <header className="mp-shop-header">
+      {/* A wordmark, not the tenant. The storefront hero announces the tenant
+          in full, and showing it in both places made `acme` ambiguous on the
+          page as well as redundant to read. */}
       <Link href="/products" className="mp-shop-brand">
-        {principal?.tenantId}
+        Marketplace
       </Link>
 
       <nav className="mp-shop-nav">
