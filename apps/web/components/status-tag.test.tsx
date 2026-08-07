@@ -30,8 +30,8 @@ describe('StatusTag', () => {
   it('distinguishes a success from a terminal failure', () => {
     const { container: applied } = render(<StatusTag status="applied" />);
     const { container: rejected } = render(<StatusTag status="rejected" />);
-    expect(applied.querySelector('.ant-tag')?.className).not.toBe(
-      rejected.querySelector('.ant-tag')?.className,
+    expect(applied.querySelector<HTMLElement>('.mp-tag')?.dataset.tone).not.toBe(
+      rejected.querySelector<HTMLElement>('.mp-tag')?.dataset.tone,
     );
   });
 
@@ -41,8 +41,8 @@ describe('StatusTag', () => {
   it('treats cancelled as a failure and confirmed as a success', () => {
     const { container: cancelled } = render(<StatusTag status="cancelled" />);
     const { container: confirmed } = render(<StatusTag status="confirmed" />);
-    expect(cancelled.querySelector('.ant-tag')?.className).not.toBe(
-      confirmed.querySelector('.ant-tag')?.className,
+    expect(cancelled.querySelector<HTMLElement>('.mp-tag')?.dataset.tone).not.toBe(
+      confirmed.querySelector<HTMLElement>('.mp-tag')?.dataset.tone,
     );
   });
 

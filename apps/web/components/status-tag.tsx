@@ -1,7 +1,5 @@
 'use client';
 
-import { Tag } from 'antd';
-
 /**
  * Mapped explicitly rather than derived from the string.
  *
@@ -11,28 +9,39 @@ import { Tag } from 'antd';
  * particular values gate whether someone irreversibly mutates a tenant's data
  * model.
  */
-const COLOURS: Record<string, string> = {
+const TONES: Record<string, string> = {
   // successes
-  applied: 'green',
-  confirmed: 'green',
-  active: 'green',
+  applied: 'success',
+  confirmed: 'success',
+  active: 'success',
   // in flight / awaiting a human
-  proposed: 'gold',
-  pending: 'gold',
+  proposed: 'pending',
+  pending: 'pending',
   // neutral lifecycle states
-  draft: 'default',
-  archived: 'default',
-  out_of_stock: 'orange',
+  draft: 'neutral',
+  archived: 'neutral',
+  out_of_stock: 'pending',
   // failures
-  rejected: 'red',
-  cancelled: 'red',
+  rejected: 'danger',
+  cancelled: 'danger',
 };
 
+/**
+ * Not ANTD's <Tag color="orange">. Its preset pairs a saturated pastel with a
+ * near-white tint -- the `out of stock` badge measured 2.07:1, which axe flags
+ * as serious and a reader in daylight simply cannot see. These four tones draw
+ * their text from the status tokens and sit on the sunken surface, a pairing
+ * that clears 4.5:1 in both themes.
+ */
 export function StatusTag({ status }: { status: string }) {
   // The text is always rendered, so colour is never the only carrier of
   // meaning -- required for a colour-blind reader, and it keeps the existing
   // e2e specs able to match on status text.
   // replaceAll, not replace: a string pattern replaces only the first match,
   // so `out_of_stock` rendered as "out of_stock".
-  return <Tag color={COLOURS[status] ?? 'default'}>{status.replaceAll('_', ' ')}</Tag>;
+  return (
+    <span className="mp-tag" data-tone={TONES[status] ?? 'neutral'}>
+      {status.replaceAll('_', ' ')}
+    </span>
+  );
 }

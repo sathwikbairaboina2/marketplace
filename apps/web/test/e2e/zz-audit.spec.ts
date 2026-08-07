@@ -1,7 +1,7 @@
 import { test, type Page } from '@playwright/test';
 import { signIn, signOut } from './helpers/session';
 
-const OUT = process.env.SHOT_DIR!;
+const OUT = process.env.SHOT_DIR ?? 'test-results/audit';
 const DESKTOP = { width: 1440, height: 950 };
 const TABLET = { width: 834, height: 1100 };
 const MOBILE = { width: 390, height: 844 };
@@ -214,6 +214,10 @@ test('login and empty states', async ({ page }) => {
   // The skip link is invisible until focused, so it is only photographable
   // mid-tab. One press from a fresh load lands on it.
   await page.goto('/products');
+  await page.waitForTimeout(900);
   await page.keyboard.press('Tab');
-  await shot(page, 'X-08-skip-link-focused');
+  // Viewport, not fullPage: capturing the full page drops the focus this shot
+  // exists to show, and the link is pinned to the top of the viewport anyway.
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}/X-08-skip-link-focused.png` });
 });

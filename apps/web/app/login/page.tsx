@@ -43,6 +43,9 @@ export default function LoginPage() {
       {personas.length > 0 && (
         <Select
           data-testid="persona"
+          // A placeholder is not a label: it disappears on selection and axe
+          // reports the control as unlabelled either way.
+          aria-label="Demo persona"
           style={{ width: '100%', marginBottom: 16 }}
           placeholder="Pick a demo persona"
           options={personas.map((p) => ({ value: p.username, label: p.username }))}

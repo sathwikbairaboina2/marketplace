@@ -138,7 +138,7 @@
   font-weight: 640;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: #5a6b83;
+  color: #8b9cb3;
   margin: var(--mp-space-5) var(--mp-space-2) var(--mp-space-2);
 }
 
@@ -175,11 +175,11 @@
   background: var(--mp-sidebar-item);
   color: #fff !important;
   font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--mp-primary);
+  box-shadow: inset 2px 0 0 var(--mp-sidebar-accent);
 }
 
 .mp-sidebar-nav a[data-active] .anticon {
-  color: var(--mp-primary);
+  color: var(--mp-sidebar-accent);
   opacity: 1;
 }
 
@@ -198,7 +198,7 @@
   gap: var(--mp-space-2);
   background: var(--mp-sidebar-item);
   border: 1px solid #26364d;
-  border-left: 3px solid var(--mp-primary);
+  border-left: 3px solid var(--mp-sidebar-accent);
   color: #fff;
   font-weight: 640;
   font-size: 15px;
@@ -208,7 +208,7 @@
 }
 
 .mp-sidebar-role {
-  color: #5a6b83;
+  color: #8b9cb3;
   font-size: var(--mp-text-xs);
   font-weight: 500;
   text-transform: uppercase;
@@ -578,6 +578,34 @@
   background: var(--mp-surface-raised);
   border: 1px solid var(--mp-line);
   border-radius: var(--mp-radius-lg);
+}
+
+/* Status tags. Text colour comes from the status tokens and the background is
+   always the sunken surface, so every tone clears 4.5:1 in both themes -- see
+   status-tag.tsx for why ANTD's colour presets are not used. */
+.mp-tag {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: var(--mp-radius-pill, 999px);
+  background: var(--mp-surface-sunken);
+  border: 1px solid var(--mp-line);
+  font-size: var(--mp-text-xs);
+  font-weight: 560;
+  line-height: 1.7;
+  white-space: nowrap;
+  color: var(--mp-muted);
+}
+
+.mp-tag[data-tone='success'] {
+  color: var(--mp-success);
+}
+
+.mp-tag[data-tone='pending'] {
+  color: var(--mp-warning);
+}
+
+.mp-tag[data-tone='danger'] {
+  color: var(--mp-danger);
 }
 
 .mp-empty-icon .anticon {

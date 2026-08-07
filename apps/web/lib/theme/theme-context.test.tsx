@@ -79,7 +79,7 @@ describe('ThemeProvider', () => {
   it('applies the CSS variables for the active mode', async () => {
     renderProbe();
     await act(async () => {});
-    expect(document.documentElement.style.getPropertyValue('--mp-primary')).toBe('#0d9488');
+    expect(document.documentElement.style.getPropertyValue('--mp-primary')).toBe('#0f766e');
   });
 
   it('ignores a stored value that is not a mode', async () => {

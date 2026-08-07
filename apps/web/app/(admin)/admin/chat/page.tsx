@@ -22,12 +22,14 @@ const COMPOSING = new Set(['gathering', 'drafting', 'validating']);
 
 const EXAMPLE = 'Add a colour field to Product';
 
-const PHASE_COLOUR: Record<string, string> = {
-  gathering: 'default',
-  drafting: 'blue',
-  validating: 'blue',
-  awaiting_confirmation: 'gold',
-  done: 'green',
+// Tones, not ANTD colour presets: those pair a saturated pastel with a
+// near-white tint and measure as low as 2.07:1. See status-tag.tsx.
+const PHASE_TONE: Record<string, string> = {
+  gathering: 'neutral',
+  drafting: 'neutral',
+  validating: 'neutral',
+  awaiting_confirmation: 'pending',
+  done: 'success',
 };
 
 export default function ChatPage() {
@@ -59,11 +61,13 @@ export default function ChatPage() {
         subtitle="Describe a change in plain language. Nothing is applied until you confirm it, and even then a human executes the flow."
         extra={
           phase ? (
-            <Tag data-testid="phase" color={PHASE_COLOUR[phase]}>
+            <span className="mp-tag" data-testid="phase" data-tone={PHASE_TONE[phase] ?? 'neutral'}>
               {phase}
-            </Tag>
+            </span>
           ) : (
-            <Tag>{connected ? 'connecting…' : 'offline'}</Tag>
+            <span className="mp-tag" data-tone="neutral">
+              {connected ? 'connecting…' : 'offline'}
+            </span>
           )
         }
       />

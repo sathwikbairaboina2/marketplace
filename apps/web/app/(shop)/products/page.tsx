@@ -81,7 +81,11 @@ export default function ProductsPage() {
 
   return (
     <>
-      <StorefrontHero tenantId={principal?.tenantId ?? ''} products={items} />
+      <StorefrontHero
+        tenantId={principal?.tenantId ?? ''}
+        products={items}
+        known={!loading && !error}
+      />
 
       <div className="mp-shop-layout">
         <FilterRail

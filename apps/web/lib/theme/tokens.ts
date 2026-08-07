@@ -7,9 +7,16 @@ export type Mode = 'light' | 'dark';
  * product that is not theirs would read as borrowed rather than referenced.
  */
 export const palette = {
-  primary: '#0d9488',
-  primaryHover: '#0f766e',
-  primaryDeep: '#115e59',
+  // Teal-700, not teal-600. This is a *fill* with white text on it, and white
+  // on #0d9488 is 3.74:1 -- every primary button in the app failed. Each step
+  // below moves down one notch so hover and deep keep their relationship.
+  primary: '#0f766e',
+  primaryHover: '#115e59',
+  primaryDeep: '#134e4a',
+  // The back-office sidebar is dark in both themes, so an accent that works on
+  // white does not work on it: #0f766e on #0f172a is 3.26:1. This is the same
+  // hue two steps lighter (7.17:1) and is used only against sidebar surfaces.
+  sidebarAccent: '#14b8a6',
   ink: '#0f172a',
   inkSoft: '#334155',
   // Was #64748b, which is 4.34:1 against the sunken surface it sits on in table
@@ -29,7 +36,7 @@ export const palette = {
   sidebarItem: '#1e293b',
   sidebarText: '#94a3b8',
   sidebarTextStrong: '#e2e8f0',
-  success: '#0d9488',
+  success: '#0f766e',
   warning: '#b45309',
   danger: '#b91c1c',
 } as const;
@@ -101,7 +108,7 @@ export function antdTheme(mode: Mode): ThemeConfig {
       // ANTD derives colorLink from colorPrimary, which is a fill colour: as
       // text on a white container it is 3.74:1. Set explicitly so ANTD's own
       // links and text buttons clear the same floor the custom ones do.
-      colorLink: dark ? '#2dd4bf' : palette.primaryHover,
+      colorLink: dark ? '#2dd4bf' : palette.primary,
       colorSuccess: palette.success,
       colorWarning: palette.warning,
       colorError: palette.danger,
@@ -156,9 +163,10 @@ export function cssVars(mode: Mode): Record<string, string> {
     // own contrast against the page never mattered. As text it did: #0d9488 on
     // white is 3.74:1, and every link in the app was drawn in it. These clear
     // 4.5:1 on every surface of their theme (5.47 light, 9.65 dark).
-    '--mp-primary-text': dark ? '#2dd4bf' : palette.primaryHover,
-    '--mp-primary-text-hover': dark ? '#5eead4' : palette.primaryDeep,
+    '--mp-primary-text': dark ? '#2dd4bf' : palette.primary,
+    '--mp-primary-text-hover': dark ? '#5eead4' : palette.primaryHover,
     '--mp-primary-hover': palette.primaryHover,
+    '--mp-sidebar-accent': palette.sidebarAccent,
     '--mp-primary-deep': palette.primaryDeep,
     '--mp-primary-wash': dark ? 'rgb(13 148 136 / 16%)' : 'rgb(13 148 136 / 10%)',
     '--mp-ink': c.ink,
@@ -172,7 +180,7 @@ export function cssVars(mode: Mode): Record<string, string> {
     // Status colours the custom surfaces need. They were being hardcoded in
     // theme.css -- `#b45309` appeared there literally, which is `warning`
     // copied by hand and free to drift from it.
-    '--mp-success': palette.success,
+    '--mp-success': dark ? '#2dd4bf' : palette.success,
     // The light amber is 3.58:1 on a dark surface. Both status colours take a
     // lighter value in dark mode for the same reason ink does.
     '--mp-warning': dark ? '#f59e0b' : palette.warning,
@@ -191,6 +199,7 @@ export function cssVars(mode: Mode): Record<string, string> {
     '--mp-radius-md': `${radius.md}px`,
     '--mp-radius-lg': `${radius.lg}px`,
     '--mp-radius-xl': `${radius.xl}px`,
+    '--mp-radius-pill': `${radius.pill}px`,
 
     '--mp-space-1': `${space[1]}px`,
     '--mp-space-2': `${space[2]}px`,

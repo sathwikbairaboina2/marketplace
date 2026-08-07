@@ -52,7 +52,12 @@
   opacity: 0.75;
 }
 
-.mp-card[data-soldout='true'] .mp-card-media {
+/* The artwork, not the container. Dimming .mp-card-media dimmed the "out of
+   stock" badge sitting inside it too, blending its text down to 2.44:1 against
+   the card -- the badge is the one thing on a sold-out card that has to stay
+   readable. */
+.mp-card[data-soldout='true'] .mp-card-media img,
+.mp-card[data-soldout='true'] .mp-card-placeholder {
   opacity: 0.62;
   filter: saturate(0.5);
 }
