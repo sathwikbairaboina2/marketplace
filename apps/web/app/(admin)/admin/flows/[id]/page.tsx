@@ -1,32 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Button, Card, Descriptions, Spin, Table, message } from 'antd';
+import { Button, Card, Descriptions, Table, message } from 'antd';
 import type { FlowResponse } from '@marketplace/contracts';
 import { executeFlow, getFlow } from '../../../../../lib/api/flows';
 import { useSchemas } from '../../../../../lib/schemas/schema-cache';
+import { useResource } from '../../../../../lib/use-resource';
 import { notifyProblem } from '../../../../../lib/problem-notify';
 import { StatusTag } from '../../../../../components/status-tag';
+import { ErrorPanel } from '../../../../../components/error-panel';
+import { DetailSkeleton } from '../../../../../components/skeletons';
 import { formatDateTime } from '../../../../../lib/format';
 
 export default function FlowDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { refresh } = useSchemas();
-  const [flow, setFlow] = useState<FlowResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  // Executing returns the applied flow. Holding it here rather than refetching
+  // means the status and resulting version update from the response that
+  // authorised them, with no second round trip that could disagree.
+  const [executed, setExecuted] = useState<FlowResponse | null>(null);
 
-  useEffect(() => {
-    getFlow(id).then(setFlow).catch(notifyProblem);
-  }, [id]);
+  const { data, error, loading, retry } = useResource<FlowResponse>(() => getFlow(id), [id]);
+  const flow = executed ?? data;
 
-  if (!flow) return <Spin />;
+  if (loading) return <DetailSkeleton />;
+  if (error) return <ErrorPanel error={error} onRetry={retry} />;
+  if (!flow) return null;
 
   const execute = async () => {
     setBusy(true);
     try {
       const applied = await executeFlow(flow.id);
-      setFlow(applied);
+      setExecuted(applied);
       // Executing raises the registry version. Re-reading the schema cache is
       // what makes the new field show up in every form, filter and detail page
       // without a reload -- it is the whole point of the feature.

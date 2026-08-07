@@ -45,12 +45,20 @@ export function ShopHeader() {
       </Link>
 
       <nav className="mp-shop-nav">
-        {LINKS.map((l) => (
-          <Link key={l.href} href={l.href} data-active={pathname.startsWith(l.href) || undefined}>
-            {l.icon}
-            {l.label}
-          </Link>
-        ))}
+        {LINKS.map((l) => {
+          const active = pathname.startsWith(l.href);
+          return (
+            <Link
+              key={l.href}
+              href={l.href}
+              aria-current={active ? 'page' : undefined}
+              data-active={active || undefined}
+            >
+              {l.icon}
+              {l.label}
+            </Link>
+          );
+        })}
         {/* Deliberately not named Flows or Chat -- auth.spec asserts a buyer
             sees neither, and this entry is admin-only regardless. */}
         {principal?.role === 'admin' && (

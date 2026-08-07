@@ -20,8 +20,16 @@ export default function ShopShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="mp-shop">
+      {/* First thing in the tab order, invisible until focused. Without it a
+          keyboard user walks the whole nav on every page before reaching the
+          content they navigated to. */}
+      <a href="#main" className="mp-skip">
+        Skip to content
+      </a>
       <ShopHeader />
-      <main className="mp-shop-main">{children}</main>
+      <main className="mp-shop-main" id="main" tabIndex={-1}>
+        {children}
+      </main>
     </div>
   );
 }

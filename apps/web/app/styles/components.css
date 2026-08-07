@@ -1,0 +1,796 @@
+/* ==========================================================================
+   Storefront chrome
+   ========================================================================== */
+
+.mp-shop-header {
+  display: flex;
+  align-items: center;
+  gap: var(--mp-space-6);
+  padding: 0 var(--mp-space-6);
+  height: 60px;
+  border-bottom: 1px solid var(--mp-line);
+  background: var(--mp-surface-raised);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.mp-shop-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mp-space-2);
+  font-weight: 700;
+  font-size: var(--mp-text-md);
+  letter-spacing: -0.02em;
+  color: var(--mp-ink) !important;
+  white-space: nowrap;
+}
+
+.mp-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--mp-primary), var(--mp-primary-deep));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.mp-shop-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--mp-space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.mp-shop-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: var(--mp-radius-sm);
+  color: var(--mp-muted) !important;
+  font-weight: 520;
+  white-space: nowrap;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.mp-shop-nav a:hover {
+  background: var(--mp-surface-sunken);
+  color: var(--mp-ink) !important;
+}
+
+.mp-shop-nav a[data-active] {
+  background: var(--mp-primary-wash);
+  color: var(--mp-primary-text) !important;
+  font-weight: 600;
+}
+
+.mp-shop-main {
+  padding: var(--mp-space-8) var(--mp-space-6) var(--mp-space-12);
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   Back office chrome
+   ========================================================================== */
+
+.mp-admin {
+  display: flex;
+  min-height: 100vh;
+}
+
+.mp-admin-main {
+  flex: 1;
+  padding: var(--mp-space-8);
+  min-width: 0;
+  max-width: 1400px;
+}
+
+.mp-admin-menu {
+  position: fixed;
+  top: var(--mp-space-3);
+  left: var(--mp-space-3);
+  z-index: 60;
+  box-shadow: var(--mp-shadow-md);
+}
+
+.mp-sidebar {
+  width: 248px;
+  flex: 0 0 248px;
+  background: var(--mp-sidebar);
+  color: var(--mp-sidebar-text);
+  display: flex;
+  flex-direction: column;
+  padding: var(--mp-space-4) var(--mp-space-3);
+  /* Sticky, full height, scrollable within itself -- the identity block was
+     previously pushed below the fold on a short viewport. */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.mp-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--mp-space-2);
+  color: #fff !important;
+  font-weight: 680;
+  font-size: 15px;
+  letter-spacing: -0.015em;
+  padding: var(--mp-space-2) var(--mp-space-2) var(--mp-space-5);
+}
+
+.mp-sidebar-nav {
+  flex: 1;
+}
+
+.mp-sidebar-label {
+  font-size: 10px;
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #5a6b83;
+  margin: var(--mp-space-5) var(--mp-space-2) var(--mp-space-2);
+}
+
+.mp-sidebar-group:first-child .mp-sidebar-label {
+  margin-top: 0;
+}
+
+.mp-sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--mp-space-3);
+  padding: 8px 10px;
+  margin-bottom: 2px;
+  border-radius: var(--mp-radius-sm);
+  color: var(--mp-sidebar-text) !important;
+  font-size: var(--mp-text-base);
+  font-weight: 500;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.mp-sidebar-nav a .anticon {
+  font-size: 15px;
+  opacity: 0.85;
+}
+
+.mp-sidebar-nav a:hover {
+  background: var(--mp-sidebar-item);
+  color: var(--mp-sidebar-text-strong) !important;
+}
+
+.mp-sidebar-nav a[data-active] {
+  background: var(--mp-sidebar-item);
+  color: #fff !important;
+  font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--mp-primary);
+}
+
+.mp-sidebar-nav a[data-active] .anticon {
+  color: var(--mp-primary);
+  opacity: 1;
+}
+
+/* Identity block. Deliberately heavy: this is the only place the tenant
+   appears in the back office, and switching acme/globex is how tenant
+   isolation reads. */
+.mp-sidebar-foot {
+  border-top: 1px solid #1e293b;
+  padding-top: var(--mp-space-4);
+  margin-top: var(--mp-space-4);
+}
+
+.mp-sidebar-tenant {
+  display: flex;
+  align-items: center;
+  gap: var(--mp-space-2);
+  background: var(--mp-sidebar-item);
+  border: 1px solid #26364d;
+  border-left: 3px solid var(--mp-primary);
+  color: #fff;
+  font-weight: 640;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  padding: 9px 11px;
+  border-radius: var(--mp-radius-sm);
+}
+
+.mp-sidebar-role {
+  color: #5a6b83;
+  font-size: var(--mp-text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 7px 4px var(--mp-space-3);
+}
+
+.mp-sidebar-actions {
+  display: flex;
+  gap: var(--mp-space-2);
+}
+
+/* ==========================================================================
+   Page furniture
+   ========================================================================== */
+
+.mp-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mp-space-4);
+  margin-bottom: var(--mp-space-6);
+  padding-bottom: var(--mp-space-5);
+  border-bottom: 1px solid var(--mp-line);
+  flex-wrap: wrap;
+}
+
+.mp-page-header h1 {
+  font-size: var(--mp-text-xl);
+  line-height: 1.2;
+}
+
+.mp-page-header p {
+  margin: 6px 0 0;
+  color: var(--mp-muted);
+  font-size: var(--mp-text-base);
+  max-width: 70ch;
+}
+
+/* ==========================================================================
+   Storefront hero
+   ========================================================================== */
+
+.mp-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--mp-space-8);
+  background:
+    radial-gradient(120% 140% at 88% 0%, rgb(13 148 136 / 22%) 0%, transparent 55%),
+    linear-gradient(135deg, #101c2e 0%, #0b1524 100%);
+  border: 1px solid rgb(148 163 184 / 14%);
+  border-radius: var(--mp-radius-xl);
+  padding: var(--mp-space-8);
+  margin-bottom: var(--mp-space-8);
+  box-shadow: var(--mp-shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.mp-hero-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mp-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 640;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5eead4;
+  margin-bottom: var(--mp-space-3);
+}
+
+.mp-hero h1 {
+  color: #fff;
+  font-size: var(--mp-text-xxl);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.mp-hero-stats {
+  display: flex;
+  gap: var(--mp-space-8);
+  margin-top: var(--mp-space-6);
+}
+
+.mp-hero-stat .v {
+  display: block;
+  font-size: var(--mp-text-lg);
+  font-weight: 660;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.mp-hero-stat .k {
+  display: block;
+  font-size: var(--mp-text-xs);
+  color: #8ba0ba;
+  margin-top: 2px;
+  letter-spacing: 0.02em;
+}
+
+/* ==========================================================================
+   Catalogue: rail + grid
+   ========================================================================== */
+
+.mp-shop-layout {
+  display: flex;
+  gap: var(--mp-space-8);
+  align-items: flex-start;
+}
+
+.mp-rail {
+  width: 236px;
+  flex: 0 0 236px;
+  background: var(--mp-surface-raised);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-lg);
+  padding: var(--mp-space-5);
+  position: sticky;
+  top: 76px;
+  box-shadow: var(--mp-shadow-sm);
+}
+
+.mp-rail-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--mp-text-xs);
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mp-muted);
+  padding-bottom: var(--mp-space-3);
+  margin-bottom: var(--mp-space-4);
+  border-bottom: 1px solid var(--mp-line);
+}
+
+.mp-rail-form .ant-form-item {
+  margin-bottom: var(--mp-space-4);
+}
+
+.mp-rail-form .ant-form-item-label {
+  padding-bottom: 3px;
+}
+
+/* Generated filter labels are raw registry field names -- `warrantyMonths`,
+   `colour`. They cannot be reworded (registry-loop.spec matches the field name
+   exactly), so they are treated as data: small, muted, slightly tracked, so
+   they read as identifiers rather than as broken prose. */
+.mp-rail-form .ant-form-item-label > label {
+  font-size: var(--mp-text-xs);
+  font-weight: 560;
+  color: var(--mp-muted);
+  letter-spacing: 0.01em;
+}
+
+.mp-rail-actions {
+  display: flex;
+  gap: var(--mp-space-2);
+  padding-top: var(--mp-space-2);
+}
+
+.mp-rail-trigger {
+  margin-bottom: var(--mp-space-4);
+}
+
+.mp-shop-results {
+  flex: 1;
+  min-width: 0;
+}
+
+.mp-results-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mp-space-4);
+  margin-bottom: var(--mp-space-4);
+}
+
+.mp-results-count {
+  color: var(--mp-muted);
+  font-size: var(--mp-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: var(--mp-space-5);
+}
+
+/* ==========================================================================
+   Product card
+   ========================================================================== */
+
+.mp-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-lg);
+  overflow: hidden;
+  background: var(--mp-surface-raised);
+  box-shadow: var(--mp-shadow-sm);
+  transition:
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    border-color 180ms ease;
+}
+
+.mp-card:hover {
+  box-shadow: var(--mp-shadow-lg);
+  border-color: var(--mp-line-strong);
+  transform: translateY(-2px);
+}
+
+.mp-card-media {
+  display: block;
+  position: relative;
+  aspect-ratio: 5 / 4;
+  background: var(--mp-surface-sunken);
+  overflow: hidden;
+}
+
+.mp-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 320ms ease;
+}
+
+.mp-card:hover .mp-card-media img {
+  transform: scale(1.03);
+}
+
+/* Initials sit inside the link, so they inherited the anchor underline. This
+   is a fallback, not an illustration -- keep it quiet. */
+.mp-card-placeholder {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 26px;
+  font-weight: 680;
+  letter-spacing: 0.04em;
+  color: var(--mp-placeholder-ink);
+  text-decoration: none;
+}
+
+.mp-card-badge {
+  position: absolute;
+  top: var(--mp-space-3);
+  left: var(--mp-space-3);
+}
+
+.mp-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--mp-space-4);
+  flex: 1;
+}
+
+.mp-card-cat {
+  font-size: 10px;
+  font-weight: 640;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--mp-muted);
+}
+
+.mp-card-name {
+  display: block;
+  font-weight: 590;
+  font-size: var(--mp-text-base);
+  line-height: 1.35;
+  color: var(--mp-ink) !important;
+  margin-bottom: var(--mp-space-2);
+}
+
+.mp-card:hover .mp-card-name {
+  color: var(--mp-primary-text) !important;
+}
+
+.mp-card-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mp-space-2);
+  margin-top: auto;
+}
+
+.mp-card-price {
+  font-size: var(--mp-text-md);
+  font-weight: 660;
+  color: var(--mp-ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.mp-card-price .cur {
+  font-size: var(--mp-text-xs);
+  font-weight: 560;
+  color: var(--mp-muted);
+  margin-left: 3px;
+}
+
+.mp-card-stock {
+  font-size: var(--mp-text-xs);
+  color: var(--mp-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-card-stock[data-low='true'] {
+  color: var(--mp-warning);
+  font-weight: 560;
+}
+
+/* ==========================================================================
+   Tables and misc
+   ========================================================================== */
+
+.mp-thumb-placeholder {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--mp-radius-sm);
+  font-size: 12px;
+  font-weight: 680;
+  color: var(--mp-placeholder-ink);
+}
+
+.mp-table-thumb {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--mp-radius-sm);
+  object-fit: cover;
+  display: block;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-size: var(--mp-text-xs);
+  font-weight: 620;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ==========================================================================
+   Empty, error and loading states
+   ========================================================================== */
+
+/* An empty collection now replaces the whole table rather than sitting inside
+   its body, so it has to carry its own frame -- previously ANTD's table
+   supplied one. */
+.mp-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  padding: var(--mp-space-12) var(--mp-space-6);
+  background: var(--mp-surface-raised);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-lg);
+}
+
+.mp-empty-icon .anticon {
+  font-size: 28px;
+  color: var(--mp-muted);
+  opacity: 0.5;
+}
+
+.mp-empty-title {
+  margin: var(--mp-space-4) 0 0;
+  font-size: var(--mp-text-md);
+  font-weight: 620;
+  color: var(--mp-ink);
+}
+
+.mp-empty-desc {
+  margin: var(--mp-space-2) 0 0;
+  max-width: 46ch;
+  color: var(--mp-muted);
+}
+
+.mp-empty-action {
+  margin-top: var(--mp-space-5);
+}
+
+/* Deliberately not styled as a toast. This is what stays on the page after the
+   notification has gone, so it reads as part of the layout rather than as an
+   alert that failed to dismiss. */
+.mp-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mp-space-4);
+  padding: var(--mp-space-5) var(--mp-space-6);
+  background: var(--mp-surface-raised);
+  border: 1px solid var(--mp-line);
+  border-left: 3px solid var(--mp-danger);
+  border-radius: var(--mp-radius-lg);
+}
+
+.mp-error-icon .anticon {
+  font-size: 18px;
+  color: var(--mp-danger);
+}
+
+.mp-error-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.mp-error-title {
+  font-weight: 620;
+  color: var(--mp-ink);
+}
+
+.mp-error-detail {
+  margin: var(--mp-space-1) 0 0;
+  color: var(--mp-muted);
+}
+
+/* The trace id is the one string that makes a reported failure findable in the
+   server logs, so it is selectable text at a legible size, not a footnote. */
+.mp-error-trace {
+  display: inline-block;
+  margin-top: var(--mp-space-3);
+  padding: 2px 7px;
+  border-radius: var(--mp-radius-sm);
+  background: var(--mp-surface);
+  border: 1px solid var(--mp-line);
+  font-size: var(--mp-text-xs);
+  color: var(--mp-muted);
+  user-select: all;
+}
+
+/* Skeletons. The pulse is a background-position animation on a gradient rather
+   than an opacity fade, so a column of them shimmers in step instead of
+   flashing as one block. The global prefers-reduced-motion rule at the top of
+   this file flattens it. */
+.mp-sk {
+  display: block;
+  border-radius: var(--mp-radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--mp-line) 25%,
+    var(--mp-surface-raised) 37%,
+    var(--mp-line) 63%
+  );
+  background-size: 400% 100%;
+  animation: mp-sk-pulse 1.4s ease infinite;
+}
+
+@keyframes mp-sk-pulse {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.mp-sk-line {
+  height: 12px;
+  margin-top: var(--mp-space-3);
+}
+
+.mp-sk-line.short {
+  width: 32%;
+}
+
+.mp-sk-line.half {
+  width: 55%;
+}
+
+.mp-sk-line.title {
+  height: 24px;
+  width: 70%;
+}
+
+.mp-sk-card {
+  background: var(--mp-surface-raised);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-lg);
+  padding: 0 var(--mp-space-4) var(--mp-space-5);
+  overflow: hidden;
+}
+
+/* Matches .mp-card-media's ratio, so the grid does not reflow when the real
+   cards arrive. */
+.mp-sk-media {
+  height: 0;
+  padding-bottom: 72%;
+  margin: 0 calc(-1 * var(--mp-space-4));
+  border-radius: 0;
+}
+
+.mp-sk-table {
+  background: var(--mp-surface-raised);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-lg);
+  overflow: hidden;
+}
+
+.mp-sk-row {
+  display: flex;
+  gap: var(--mp-space-6);
+  padding: 0 var(--mp-space-4) var(--mp-space-4);
+  border-bottom: 1px solid var(--mp-line);
+}
+
+.mp-sk-row:last-child {
+  border-bottom: 0;
+}
+
+.mp-sk-row .mp-sk-line {
+  flex: 1 1 0;
+}
+
+.mp-sk-head {
+  background: var(--mp-surface);
+}
+
+.mp-sk-detail-media {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--mp-radius-lg);
+}
+
+.mp-sk-detail-body {
+  min-width: 0;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 991px) {
+  .mp-admin-main {
+    padding: var(--mp-space-12) var(--mp-space-4) var(--mp-space-6);
+  }
+  .mp-shop-main {
+    padding: var(--mp-space-5) var(--mp-space-4) var(--mp-space-10);
+  }
+  .mp-shop-header {
+    padding: 0 var(--mp-space-4);
+  }
+}
+
+@media (max-width: 767px) {
+  .mp-shop-layout {
+    flex-direction: column;
+  }
+  .mp-rail {
+    width: 100%;
+    flex: 1 1 auto;
+    position: static;
+  }
+  .mp-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: var(--mp-space-6);
+    gap: var(--mp-space-5);
+  }
+  .mp-hero h1 {
+    font-size: var(--mp-text-xl);
+  }
+  .mp-hero-stats {
+    gap: var(--mp-space-6);
+  }
+  .mp-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: var(--mp-space-4);
+  }
+  .mp-shop-nav {
+    gap: 0;
+    overflow-x: auto;
+  }
+}
+

@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Button, Skeleton, Table } from 'antd';
+import { Button, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { notifyProblem } from '../lib/problem-notify';
-import { EmptyState } from './empty-state';
+import { ErrorPanel } from './error-panel';
+import { TableSkeleton } from './skeletons';
 
 interface Props<T> {
   columns: ColumnsType<T>;
@@ -12,8 +13,10 @@ interface Props<T> {
   load: (cursor: string | null) => Promise<{ items: T[]; nextCursor: string | null }>;
   /** Change this to discard the accumulated pages and reload from the start. */
   reloadToken?: unknown;
-  /** Shown when the tenant has nothing at all. */
-  empty?: ReactNode;
+  /** Shown, in place of the whole table, when the tenant has nothing at all. */
+  empty: ReactNode;
+  /** Visually hidden; names the table for a screen reader. */
+  caption: string;
 }
 
 /**
@@ -28,11 +31,13 @@ export function CursorTable<T extends object>({
   load,
   reloadToken,
   empty,
+  caption,
 }: Props<T>) {
   const [items, setItems] = useState<T[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchPage = useCallback(
     async (from: string | null, append: boolean) => {
@@ -42,7 +47,12 @@ export function CursorTable<T extends object>({
         setItems((prev) => (append ? [...prev, ...page.items] : page.items));
         setCursor(page.nextCursor);
         setDone(page.nextCursor === null);
+        setError(null);
       } catch (err) {
+        // Keep the accumulated rows on a failed *subsequent* page: losing four
+        // pages of results because the fifth timed out is worse than the error.
+        // The panel replaces the table only when there is nothing to preserve.
+        setError(err);
         notifyProblem(err);
       } finally {
         setLoading(false);
@@ -56,18 +66,31 @@ export function CursorTable<T extends object>({
     // result set stitched on top of the new one.
     setItems([]);
     setDone(false);
+    setError(null);
     void fetchPage(null, false);
   }, [fetchPage, reloadToken]);
 
-  // A spinner over an empty rectangle says nothing about what is coming. Once
-  // there are rows, keep the table and let ANTD's own loading overlay handle
-  // subsequent pages, so the accumulated results do not vanish mid-fetch.
+  const retry = () => void fetchPage(null, false);
+
   if (loading && items.length === 0) {
-    return <Skeleton active paragraph={{ rows: 6 }} />;
+    return <TableSkeleton columns={columns.length} />;
+  }
+
+  // Both of these replace the table outright rather than filling its body.
+  // ANTD's `locale.emptyText` renders *inside* the table, which left `/orders`
+  // drawing `ORDER STATUS ITEMS TOTAL PLACED` above the words "Nothing here
+  // yet" -- column headings for columns that hold nothing.
+  if (error && items.length === 0) {
+    return <ErrorPanel error={error} onRetry={retry} />;
+  }
+
+  if (items.length === 0) {
+    return <>{empty}</>;
   }
 
   return (
     <>
+      {error && <ErrorPanel error={error} onRetry={() => void fetchPage(cursor, true)} />}
       <Table<T>
         rowKey={rowKey}
         columns={columns}
@@ -75,11 +98,11 @@ export function CursorTable<T extends object>({
         pagination={false}
         loading={loading}
         scroll={{ x: 'max-content' }}
-        locale={{ emptyText: empty ?? <EmptyState title="Nothing here yet" /> }}
+        caption={<span className="mp-visually-hidden">{caption}</span>}
       />
       {!done && (
         <Button
-          style={{ marginTop: 16 }}
+          style={{ marginTop: 'var(--mp-space-5)' }}
           loading={loading}
           onClick={() => void fetchPage(cursor, true)}
         >

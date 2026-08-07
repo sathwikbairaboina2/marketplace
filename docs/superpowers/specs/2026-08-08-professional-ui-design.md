@@ -37,18 +37,30 @@ Verified open defects:
 - **The hero carries a decorative placeholder.** `mp-hero-shot` renders the
   newest product's generated monogram at hero scale. On a seeded tenant it reads
   as a broken image, not as art direction.
-- **Card meta collides at 390px.** Price and availability share a flex row;
-  `899.00 USD` and `11 in stock` wrap to two lines, leaving ragged grid rows and
-  uneven cards.
+- **Card meta collides at 390px** — *fixed but unverified*. `.mp-card-foot`
+  gained `flex-direction: column` under the narrow breakpoint in the
+  uncommitted work. The mobile screenshot showing `899.00 USD` wrapping beside
+  `11 in stock` predates it. Needs looking at, not changing.
 - **The admin sidebar lists actions as destinations.** `New product` and
   `New event` sit in the Catalogue nav group alongside `Products` and `Events`,
   and each also has a primary button on the page it belongs to.
 - **No `aria-current`.** Active navigation is expressed only as `data-active`,
   which styles a link and tells assistive technology nothing. Both shells.
 - **No skip link.** Keyboard users traverse the whole nav on every page.
-- **Motion is unguarded.** 247 tokens and one `prefers-reduced-motion` block.
 - **`theme.css` is 1257 lines** holding tokens, reset, ANTD corrections,
   component rules and page layouts in a single cascade.
+
+Two things that looked like defects in the screenshots and are not:
+
+- **The "dead column" under the filter rail.** `.mp-rail` is already
+  `position: sticky; top: 76px`. A full-page Playwright screenshot renders a
+  sticky element at its natural offset, so the 1200px of empty column is an
+  artifact of how the evidence was captured, not something a reader ever sees.
+  Nothing to fix; the audit's full-page captures just cannot show it.
+- **Unguarded motion.** There is a global `prefers-reduced-motion` block at the
+  top of `theme.css` that flattens every animation and transition in the
+  document. It already covers anything added here. Only worth confirming the
+  new components inherit it, which they do by construction.
 
 ## Constraints
 
@@ -61,27 +73,41 @@ Verified open defects:
   numbers, no totals, and nothing here may invent them.
 - **Attribute fields are tenant-defined.** Labels come from the registry at
   runtime, so no layout may assume a field name, count or type.
+- **`SearchProductsSchema` is `.strict()` and has no sort key.** The storefront
+  cannot offer sorting without an engine change.
 - **Both themes, always.** Every change ships in light and dark or not at all.
 
 ## Architecture
 
 ### Stylesheet layering
 
-`theme.css` splits into `app/styles/`, imported in cascade order:
+There is no token layer in the CSS. `lib/theme/tokens.ts` owns one `palette`
+object and emits it twice — as ANTD's `ThemeConfig` and as the `--mp-*` custom
+properties — so a colour cannot drift between the component library and the
+custom surfaces. That is right as it stands and is not being moved.
+
+What `theme.css` should not also be is reset, ANTD corrections, component rules
+and page layouts in one 1257-line cascade. It splits into `app/styles/`,
+imported in cascade order:
 
 | File | Holds |
 |---|---|
-| `tokens.css` | The `--mp-*` custom properties, light and dark |
-| `base.css` | Reset, typography, links, focus ring, tabular numerals |
+| `base.css` | Reset, typography, links, focus ring, skip link, tabular numerals |
+| `components.css` | Both shells' chrome, hero, rail, card, empty, error, skeletons, responsive |
 | `antd.css` | Every rule that exists only to correct an ANTD default |
-| `components.css` | Card, sidebar, header, filter rail, status tag, empty state, skeletons |
 | `pages.css` | Detail, checkout and chat layouts |
 
-`theme.css` becomes five `@import`s. Ordering is the cascade, stated once. A
+`theme.css` becomes four `@import`s, in that order — which is the order the
+rules were already written in. Ordering is the cascade, stated once. A
 rule that fights ANTD lives in the file named for that job, so "why does this
 override exist" is answerable by location. The split is mechanical — rules move
 verbatim, in order — so it changes no rendered pixel, and the audit screenshots
-prove that.
+are what prove that.
+
+While splitting, hardcoded colours move to the palette. `#b45309` appeared
+literally in `theme.css`; it is `palette.warning` copied by hand and free to
+drift from it. `--mp-success`, `--mp-warning` and `--mp-danger` are added to
+`cssVars` so the custom surfaces name a status colour rather than restating it.
 
 ### New components
 
@@ -114,13 +140,15 @@ by the empty state — headers included. When it fails, it is replaced by
 "Browse products", empty bookings offers "Browse events", an empty admin
 catalogue offers "New product".
 
-**Storefront grid.** The filter rail becomes sticky under the header, so the
-column stops dying at 770px against a 2000px grid. The results bar gains a sort
-control — name, price ascending, price descending — expressed through the
-existing search endpoint.
+**Storefront grid.** The results count becomes an `aria-live` region so
+filtering announces its result. The rail is left alone — it is already sticky.
 
-**Product card.** Price takes its own line at full weight; availability becomes
-a caption beneath it. Cards become equal-height so rows stop laddering.
+No sort control. `SearchProductsSchema` is `.strict()` and has no sort field, so
+the server cannot do it and sending one would 400; sorting client-side would
+order only the pages already loaded, and the next "Load more" would append
+unsorted rows underneath. A control that reorders part of a list and silently
+stops applying is worse than no control. Sorting needs an engine change and is
+out of scope here.
 
 **Hero.** `mp-hero-shot` is deleted. The stat tiles stay.
 
@@ -138,12 +166,6 @@ Navigation lists places; the pages already carry the actions.
   Failing tokens get darkened; the palette may shift slightly and that is
   accepted.
 - Visually-hidden captions on tables.
-
-## Motion
-
-Two duration tokens (`--mp-motion-fast: 120ms`, `--mp-motion-base: 200ms`) and
-one easing token, applied to hover, theme switch, drawer and sheet, all inside
-`prefers-reduced-motion` guards that flatten to none.
 
 ## Verification
 

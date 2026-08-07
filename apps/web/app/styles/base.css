@@ -1,0 +1,126 @@
+/* ==========================================================================
+   Foundations
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  /* The whole reason the app looked unfinished: `--font-inter` was defined on
+     <html> and consumed by ANTD's token, but nothing applied it to plain
+     elements -- so every heading, link and nav item fell back to the browser's
+     serif while ANTD's own components rendered sans. */
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: var(--mp-text-base, 14px);
+  line-height: 1.55;
+  background: var(--mp-surface, #f8fafc);
+  color: var(--mp-ink, #0f172a);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Anchors default to underlined browser blue. Every link in this app is either
+   navigation or a title, and neither wants a permanent underline. */
+a {
+  color: var(--mp-primary-text);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+a:hover {
+  color: var(--mp-primary-text-hover);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-weight: 640;
+  letter-spacing: -0.018em;
+  color: var(--mp-ink);
+  margin: 0;
+}
+
+/* Anything compared down a column -- money, counts, identifiers -- needs
+   figures of equal width or the digits fail to line up. */
+.mp-num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* A visible focus ring is an accessibility requirement and ANTD's default is
+   easy to lose against these surfaces. :focus-visible so it appears for
+   keyboard users without ringing every mouse click. */
+:where(a, button, [role='button'], input, select, textarea, .ant-btn):focus-visible {
+  outline: 2px solid var(--mp-primary);
+  outline-offset: 2px;
+  border-radius: var(--mp-radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Present to a screen reader, absent to everyone else. Used for table captions,
+   which name a table without putting a heading above every list in the app. */
+.mp-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Off-screen until focused, rather than hidden: `display: none` would take it
+   out of the tab order entirely, which defeats the point. */
+.mp-skip {
+  position: absolute;
+  left: var(--mp-space-4);
+  top: -60px;
+  z-index: 1200;
+  padding: var(--mp-space-3) var(--mp-space-5);
+  background: var(--mp-surface-raised);
+  color: var(--mp-ink);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-md);
+  box-shadow: var(--mp-shadow-lg);
+  transition: top 160ms ease;
+}
+
+.mp-skip:focus {
+  top: var(--mp-space-4);
+}
+
+/* The skip target itself. Focusing a <main> with tabindex="-1" would otherwise
+   draw the same ring as an interactive control and look like a bug. */
+main:focus {
+  outline: none;
+}
+

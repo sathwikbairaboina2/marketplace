@@ -9,7 +9,6 @@ import {
   CommentOutlined,
   LogoutOutlined,
   NodeIndexOutlined,
-  PlusOutlined,
   ProfileOutlined,
   ShoppingCartOutlined,
   TagsOutlined,
@@ -28,10 +27,12 @@ const GROUPS: { label: string; items: Item[] }[] = [
   {
     label: 'Catalogue',
     items: [
+      // Destinations only. `New product` and `New event` used to sit here
+      // beside them -- they are actions, each already offered as a primary
+      // button on the page it belongs to, and listing them as places made the
+      // group read as four sections when there are two.
       { href: '/admin/products', label: 'Products', icon: <AppstoreOutlined /> },
       { href: '/admin/events', label: 'Events', icon: <CalendarOutlined /> },
-      { href: '/admin/products/new', label: 'New product', icon: <PlusOutlined /> },
-      { href: '/admin/events/new', label: 'New event', icon: <PlusOutlined /> },
     ],
   },
   {
@@ -72,6 +73,9 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
+                // `data-active` styles it; `aria-current` is what actually
+                // tells a screen reader which of these is the page you are on.
+                aria-current={pathname === item.href ? 'page' : undefined}
                 data-active={pathname === item.href || undefined}
               >
                 {item.icon}

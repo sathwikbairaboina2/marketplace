@@ -12,7 +12,11 @@ export const palette = {
   primaryDeep: '#115e59',
   ink: '#0f172a',
   inkSoft: '#334155',
-  muted: '#64748b',
+  // Was #64748b, which is 4.34:1 against the sunken surface it sits on in table
+  // headers and tag backgrounds -- under the 4.5:1 floor. Darkened until it
+  // clears on every surface in the palette (5.03 sunken, 5.26 base, 5.51
+  // raised).
+  muted: '#5c6a7d',
   line: '#e2e8f0',
   lineStrong: '#cbd5e1',
   surface: '#f8fafc',
@@ -94,6 +98,10 @@ export function antdTheme(mode: Mode): ThemeConfig {
     algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
       colorPrimary: palette.primary,
+      // ANTD derives colorLink from colorPrimary, which is a fill colour: as
+      // text on a white container it is 3.74:1. Set explicitly so ANTD's own
+      // links and text buttons clear the same floor the custom ones do.
+      colorLink: dark ? '#2dd4bf' : palette.primaryHover,
       colorSuccess: palette.success,
       colorWarning: palette.warning,
       colorError: palette.danger,
@@ -144,6 +152,12 @@ export function cssVars(mode: Mode): Record<string, string> {
 
   return {
     '--mp-primary': c.primary,
+    // Distinct from --mp-primary, which is a *fill* -- white text on it, so its
+    // own contrast against the page never mattered. As text it did: #0d9488 on
+    // white is 3.74:1, and every link in the app was drawn in it. These clear
+    // 4.5:1 on every surface of their theme (5.47 light, 9.65 dark).
+    '--mp-primary-text': dark ? '#2dd4bf' : palette.primaryHover,
+    '--mp-primary-text-hover': dark ? '#5eead4' : palette.primaryDeep,
     '--mp-primary-hover': palette.primaryHover,
     '--mp-primary-deep': palette.primaryDeep,
     '--mp-primary-wash': dark ? 'rgb(13 148 136 / 16%)' : 'rgb(13 148 136 / 10%)',
@@ -155,6 +169,15 @@ export function cssVars(mode: Mode): Record<string, string> {
     '--mp-surface': c.surface,
     '--mp-surface-raised': c.surfaceRaised,
     '--mp-surface-sunken': c.surfaceSunken,
+    // Status colours the custom surfaces need. They were being hardcoded in
+    // theme.css -- `#b45309` appeared there literally, which is `warning`
+    // copied by hand and free to drift from it.
+    '--mp-success': palette.success,
+    // The light amber is 3.58:1 on a dark surface. Both status colours take a
+    // lighter value in dark mode for the same reason ink does.
+    '--mp-warning': dark ? '#f59e0b' : palette.warning,
+    '--mp-danger': dark ? '#f87171' : palette.danger,
+
     '--mp-sidebar': palette.sidebar,
     '--mp-sidebar-item': palette.sidebarItem,
     '--mp-sidebar-text': palette.sidebarText,

@@ -24,6 +24,7 @@ export default function AdminEventsPage() {
 
       <CursorTable<EventResponse>
         rowKey="id"
+        caption="Scheduled events and their capacity"
         load={(cursor) => listEvents(25, cursor)}
         empty={
           <EmptyState

@@ -2,7 +2,6 @@
 
 import { ShopOutlined } from '@ant-design/icons';
 import type { ProductResponse } from '@marketplace/contracts';
-import { placeholderFor } from '../lib/placeholder';
 
 /**
  * Filled entirely from data the page already has -- no extra request, and no
@@ -12,6 +11,11 @@ import { placeholderFor } from '../lib/placeholder';
  * The figures describe what has been loaded rather than what exists, because
  * cursor pagination gives no total. Presented as labelled stats rather than a
  * sentence: three numbers in a row are read at a glance, a sentence is not.
+ *
+ * There is no image. This carried the newest product's generated monogram at
+ * hero scale, which on a seeded tenant reads as a photograph that failed to
+ * load rather than as art direction -- and it competed with the grid of real
+ * cards directly beneath it.
  */
 export function StorefrontHero({
   tenantId,
@@ -22,8 +26,6 @@ export function StorefrontHero({
 }) {
   const categories = new Set(products.map((p) => p.category)).size;
   const inStock = products.filter((p) => p.stock > 0).length;
-  const newest = [...products].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-  const shot = newest ? placeholderFor(newest.id, newest.name) : null;
 
   return (
     <section className="mp-hero">
@@ -51,16 +53,6 @@ export function StorefrontHero({
           </div>
         </div>
       </div>
-
-      {newest && (
-        <div className="mp-hero-shot">
-          {newest.images[0] ? (
-            <img src={newest.images[0]} alt="" loading="lazy" />
-          ) : (
-            <span style={{ background: shot!.gradient }}>{shot!.initials}</span>
-          )}
-        </div>
-      )}
     </section>
   );
 }

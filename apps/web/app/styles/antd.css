@@ -1,0 +1,68 @@
+/* ==========================================================================
+   Corrections found by reviewing rendered screenshots
+   ========================================================================== */
+
+/* ANTD's own vertical-form label rule is more specific than a bare class, so
+   the rail labels kept their default weight and colour. Match its specificity
+   rather than reaching for !important. */
+.mp-rail-form.ant-form-vertical .ant-form-item-label > label {
+  font-size: var(--mp-text-xs);
+  font-weight: 560;
+  color: var(--mp-muted);
+  letter-spacing: 0.01em;
+  height: auto;
+}
+
+/* A `type="text"` button is transparent with inherited colour, which made the
+   theme toggle invisible against the dark sidebar. */
+.mp-sidebar-actions .ant-btn {
+  color: var(--mp-sidebar-text-strong);
+  background: var(--mp-sidebar-item);
+  border-color: #26364d;
+}
+
+.mp-sidebar-actions .ant-btn:hover {
+  color: #fff !important;
+  background: #26364d !important;
+  border-color: #35486380 !important;
+}
+
+/* Links inside a data table were rendering as coloured links, which makes a
+   dense table look like a page of hyperlinks. The row is the object; the name
+   is its label. Colour arrives on hover to signal it is still clickable. */
+.ant-table-wrapper .ant-table-tbody a {
+  color: var(--mp-ink) !important;
+  font-weight: 540;
+}
+
+.ant-table-wrapper .ant-table-tbody a:hover {
+  color: var(--mp-primary-text) !important;
+}
+
+/* Figures line up down a column. */
+.ant-table-wrapper .ant-table-tbody .mp-num,
+.ant-table-wrapper .ant-table-thead .mp-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The monogram is a fallback, not artwork -- let it recede. */
+.mp-card-placeholder {
+  font-size: 24px;
+  font-weight: 620;
+  opacity: 0.75;
+}
+
+.mp-card[data-soldout='true'] .mp-card-media {
+  opacity: 0.62;
+  filter: saturate(0.5);
+}
+
+/* The hero is dark in both themes, so the placeholder variables -- which are
+   page-scoped -- would paint a light tile onto it in light mode. Re-scope them
+   to their dark values for anything inside the hero. */
+.mp-hero {
+  --mp-placeholder-from: 14% 22%;
+  --mp-placeholder-to: 10% 16%;
+  --mp-placeholder-ink: #8296b0;
+}
+

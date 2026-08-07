@@ -1,19 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Button, Descriptions, InputNumber, Skeleton, message } from 'antd';
+import { Button, Descriptions, InputNumber, message } from 'antd';
 import { ArrowLeftOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import type { ProductResponse } from '@marketplace/contracts';
 import { getProduct } from '../../../../lib/api/products';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { useCart } from '../../../../lib/cart/cart-context';
-import { notifyProblem } from '../../../../lib/problem-notify';
+import { useResource } from '../../../../lib/use-resource';
 import { placeholderFor } from '../../../../lib/placeholder';
 import { formatMoney } from '../../../../lib/format';
 import { StatusTag } from '../../../../components/status-tag';
+import { ErrorPanel } from '../../../../components/error-panel';
+import { DetailSkeleton } from '../../../../components/skeletons';
 
 const LOW_STOCK = 5;
 
@@ -21,14 +23,21 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const schema = useSchema('Product');
   const { add } = useCart();
-  const [product, setProduct] = useState<ProductResponse | null>(null);
   const [qty, setQty] = useState(1);
 
-  useEffect(() => {
-    getProduct(id).then(setProduct).catch(notifyProblem);
-  }, [id]);
+  const {
+    data: product,
+    error,
+    loading,
+    retry,
+  } = useResource<ProductResponse>(() => getProduct(id), [id]);
 
-  if (!product) return <Skeleton active paragraph={{ rows: 8 }} />;
+  // A missing product and a broken engine are different facts and the reader
+  // needs to be told which one happened. This previously rendered a skeleton
+  // for ever on any failure, which said neither.
+  if (loading) return <DetailSkeleton />;
+  if (error) return <ErrorPanel error={error} onRetry={retry} />;
+  if (!product) return null;
 
   const image = product.images[0];
   const { gradient, initials } = placeholderFor(product.id, product.name);

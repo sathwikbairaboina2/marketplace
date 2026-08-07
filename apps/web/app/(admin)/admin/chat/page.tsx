@@ -20,6 +20,8 @@ import { EmptyState } from '../../../../components/empty-state';
 // literally -- there is no parallel message list and no locally-guessed phase.
 const COMPOSING = new Set(['gathering', 'drafting', 'validating']);
 
+const EXAMPLE = 'Add a colour field to Product';
+
 const PHASE_COLOUR: Record<string, string> = {
   gathering: 'default',
   drafting: 'blue',
@@ -75,7 +77,16 @@ export default function ChatPage() {
               <EmptyState
                 icon={<CommentOutlined />}
                 title="No conversation yet"
-                description="Ask for a field to be added to Product, Order, Event or Booking."
+                description="Ask for a field to be added to Product, Order, Event or Booking. Schema changes are add-only: nothing here can remove a field or change its type."
+                action={
+                  // Fills the composer rather than sending. A first message is
+                  // the hard part of an empty chat, but it is still the
+                  // admin's message to send, and an example that dispatches
+                  // itself would queue a proposal nobody read.
+                  <Button onClick={() => setDraft(EXAMPLE)} disabled={!canCompose}>
+                    Try: {EXAMPLE}
+                  </Button>
+                }
               />
             ) : (
               messages.map((m, i) => (

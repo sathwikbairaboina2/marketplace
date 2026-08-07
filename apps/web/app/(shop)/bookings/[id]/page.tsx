@@ -1,26 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, Descriptions, Spin } from 'antd';
+import { Card, Descriptions } from 'antd';
 import type { BookingResponse } from '@marketplace/contracts';
 import { getBooking } from '../../../../lib/api/bookings';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
-import { notifyProblem } from '../../../../lib/problem-notify';
+import { useResource } from '../../../../lib/use-resource';
 import { StatusTag } from '../../../../components/status-tag';
+import { ErrorPanel } from '../../../../components/error-panel';
+import { DetailSkeleton } from '../../../../components/skeletons';
 import { formatDateTime } from '../../../../lib/format';
 
 export default function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const schema = useSchema('Booking');
-  const [booking, setBooking] = useState<BookingResponse | null>(null);
+  const {
+    data: booking,
+    error,
+    loading,
+    retry,
+  } = useResource<BookingResponse>(() => getBooking(id), [id]);
 
-  useEffect(() => {
-    getBooking(id).then(setBooking).catch(notifyProblem);
-  }, [id]);
-
-  if (!booking) return <Spin />;
+  if (loading) return <DetailSkeleton />;
+  if (error) return <ErrorPanel error={error} onRetry={retry} />;
+  if (!booking) return null;
 
   return (
     <Card title={`Booking ${booking.id}`}>

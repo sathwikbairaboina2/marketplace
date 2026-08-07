@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Drawer, Grid } from 'antd';
+import { MenuOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth/auth-context';
 import { onUnauthorized } from '../../lib/api/http';
 import { AdminSidebar } from '../../components/admin-sidebar';
@@ -27,13 +28,19 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="mp-admin">
+      <a href="#main" className="mp-skip">
+        Skip to content
+      </a>
       {wide ? (
         <AdminSidebar />
       ) : (
         <>
-          <Button className="mp-admin-menu" onClick={() => setOpen(true)} aria-label="Open menu">
-            ☰
-          </Button>
+          <Button
+            className="mp-admin-menu"
+            onClick={() => setOpen(true)}
+            aria-label="Open menu"
+            icon={<MenuOutlined />}
+          />
           <Drawer
             open={open}
             onClose={() => setOpen(false)}
@@ -46,7 +53,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </Drawer>
         </>
       )}
-      <main className="mp-admin-main">{children}</main>
+      <main className="mp-admin-main" id="main" tabIndex={-1}>
+        {children}
+      </main>
     </div>
   );
 }

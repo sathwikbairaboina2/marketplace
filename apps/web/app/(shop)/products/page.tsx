@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Skeleton } from 'antd';
+import Link from 'next/link';
+import { Button } from 'antd';
 import type { ProductResponse, SearchProducts } from '@marketplace/contracts';
 import { listProducts, searchProducts } from '../../../lib/api/products';
 import { toAttributes } from '../../../lib/schema-fields';
@@ -12,6 +13,8 @@ import { FilterRail, ProductGrid } from '../../../components/filter-rail';
 import { ProductCard } from '../../../components/product-card';
 import { StorefrontHero } from '../../../components/storefront-hero';
 import { EmptyState } from '../../../components/empty-state';
+import { ErrorPanel } from '../../../components/error-panel';
+import { GridSkeleton } from '../../../components/skeletons';
 
 type Filters = Pick<SearchProducts, 'priceMinorMin' | 'priceMinorMax' | 'attributes'>;
 
@@ -24,7 +27,8 @@ export default function ProductsPage() {
   const [items, setItems] = useState<ProductResponse[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
   const [filters, setFilters] = useState<Filters | null>(null);
 
   // Unfiltered browsing uses GET /products; the moment any filter is set it
@@ -46,7 +50,9 @@ export default function ProductsPage() {
         setItems((prev) => (append ? [...prev, ...page.items] : page.items));
         setCursor(page.nextCursor);
         setDone(page.nextCursor === null);
+        setError(null);
       } catch (err) {
+        setError(err);
         notifyProblem(err);
       } finally {
         setLoading(false);
@@ -58,6 +64,7 @@ export default function ProductsPage() {
   useEffect(() => {
     setItems([]);
     setDone(false);
+    setError(null);
     void fetchPage(null, false, filters);
   }, [fetchPage, filters]);
 
@@ -83,22 +90,38 @@ export default function ProductsPage() {
           onClear={() => setFilters(null)}
         />
 
-        <div className="mp-shop-results">
+        <div className="mp-shop-results" aria-busy={loading || undefined}>
           {loading && items.length === 0 ? (
-            <Skeleton active paragraph={{ rows: 8 }} />
+            <GridSkeleton />
+          ) : error && items.length === 0 ? (
+            <ErrorPanel error={error} onRetry={() => void fetchPage(null, false, filters)} />
           ) : items.length === 0 ? (
             <EmptyState
-              title="No products match"
+              title={filters ? 'No products match' : 'This catalogue is empty'}
               description={
                 filters
-                  ? 'Try clearing the filters.'
-                  : 'This catalogue is empty. An admin can add the first product.'
+                  ? 'Nothing in the catalogue matches every filter you set.'
+                  : 'Nothing has been listed yet. An admin can add the first product.'
+              }
+              action={
+                filters ? (
+                  <Button type="primary" onClick={() => setFilters(null)}>
+                    Clear filters
+                  </Button>
+                ) : (
+                  <Link href="/events">
+                    <Button type="primary">Browse events</Button>
+                  </Link>
+                )
               }
             />
           ) : (
             <>
               <div className="mp-results-bar">
-                <span className="mp-results-count">
+                {/* Polite, not assertive: filtering is something the reader
+                    just did, so the count is a confirmation, not an
+                    interruption. */}
+                <span className="mp-results-count" aria-live="polite">
                   {items.length} product{items.length === 1 ? '' : 's'}
                   {filters ? ' matching your filters' : ''}
                 </span>
@@ -108,7 +131,13 @@ export default function ProductsPage() {
                   <ProductCard key={product.id} product={product} />
                 ))}
               </ProductGrid>
-              {!done && (
+              {/* A failed *later* page keeps the results already on screen --
+                  losing four pages because the fifth timed out is worse than
+                  the failure itself. */}
+              {error && (
+                <ErrorPanel error={error} onRetry={() => void fetchPage(cursor, true, filters)} />
+              )}
+              {!done && !error && (
                 <Button
                   style={{ marginTop: 'var(--mp-space-6)' }}
                   loading={loading}

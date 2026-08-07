@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Button, Descriptions, Form, InputNumber, Progress, Skeleton, message } from 'antd';
+import { Button, Descriptions, Form, InputNumber, Progress, message } from 'antd';
 import { ArrowLeftOutlined, CalendarOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import type { EventResponse } from '@marketplace/contracts';
 import { getEvent } from '../../../../lib/api/events';
@@ -12,7 +12,10 @@ import { toAttributes, toDescriptionRows, toFormItems } from '../../../../lib/sc
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { ProblemError } from '../../../../lib/api/http';
 import { notifyProblem } from '../../../../lib/problem-notify';
+import { useResource } from '../../../../lib/use-resource';
 import { formatDateTime, formatMoney } from '../../../../lib/format';
+import { ErrorPanel } from '../../../../components/error-panel';
+import { DetailSkeleton } from '../../../../components/skeletons';
 
 const BACKOFFS_MS = [500, 1000, 2000, 4000, 8000];
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -22,7 +25,6 @@ export default function EventDetailPage() {
   const router = useRouter();
   const eventSchema = useSchema('Event');
   const bookingSchema = useSchema('Booking');
-  const [event, setEvent] = useState<EventResponse | null>(null);
   const [busy, setBusy] = useState(false);
 
   // Minted when the intent forms -- on mount -- not on click, so every retry
@@ -30,11 +32,11 @@ export default function EventDetailPage() {
   const idempotencyKey = useRef<string>('');
   if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
 
-  useEffect(() => {
-    getEvent(id).then(setEvent).catch(notifyProblem);
-  }, [id]);
+  const { data: event, error, loading, retry } = useResource<EventResponse>(() => getEvent(id), [id]);
 
-  if (!event) return <Skeleton active paragraph={{ rows: 6 }} />;
+  if (loading) return <DetailSkeleton />;
+  if (error) return <ErrorPanel error={error} onRetry={retry} />;
+  if (!event) return null;
 
   const remaining = event.capacity - event.bookedCount;
   const soldOut = remaining < 1;

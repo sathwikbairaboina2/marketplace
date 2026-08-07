@@ -3,10 +3,11 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Alert, Space } from 'antd';
+import { Alert, Button, Space } from 'antd';
 import type { FlowResponse } from '@marketplace/contracts';
 import { listFlows } from '../../../../lib/api/flows';
 import { CursorTable } from '../../../../components/cursor-table';
+import { EmptyState } from '../../../../components/empty-state';
 import { useFlowArrival } from '../../../../lib/flows/use-flow-arrival';
 import { StatusTag } from '../../../../components/status-tag';
 import { PageHeader } from '../../../../components/page-header';
@@ -37,8 +38,20 @@ function FlowsView() {
       )}
       <CursorTable<FlowResponse>
         rowKey="id"
+        caption="Proposed and executed schema changes"
         reloadToken={reloadToken}
         load={(cursor) => listFlows(25, cursor)}
+        empty={
+          <EmptyState
+            title="No proposals yet"
+            description="Describe a schema change to the assistant and confirm it. The proposal is queued, and the flow appears here once the engine records it."
+            action={
+              <Link href="/admin/chat">
+                <Button type="primary">Open the assistant</Button>
+              </Link>
+            }
+          />
+        }
         columns={[
           {
             title: 'Flow',

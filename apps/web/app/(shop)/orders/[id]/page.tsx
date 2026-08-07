@@ -1,26 +1,30 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, Descriptions, Spin, Table } from 'antd';
+import { Card, Descriptions, Table } from 'antd';
 import type { OrderResponse } from '@marketplace/contracts';
 import { getOrder } from '../../../../lib/api/orders';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
-import { notifyProblem } from '../../../../lib/problem-notify';
+import { useResource } from '../../../../lib/use-resource';
 import { StatusTag } from '../../../../components/status-tag';
+import { ErrorPanel } from '../../../../components/error-panel';
+import { DetailSkeleton } from '../../../../components/skeletons';
 import { formatDateTime, formatMoney } from '../../../../lib/format';
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const schema = useSchema('Order');
-  const [order, setOrder] = useState<OrderResponse | null>(null);
+  const {
+    data: order,
+    error,
+    loading,
+    retry,
+  } = useResource<OrderResponse>(() => getOrder(id), [id]);
 
-  useEffect(() => {
-    getOrder(id).then(setOrder).catch(notifyProblem);
-  }, [id]);
-
-  if (!order) return <Spin />;
+  if (loading) return <DetailSkeleton />;
+  if (error) return <ErrorPanel error={error} onRetry={retry} />;
+  if (!order) return null;
 
   return (
     <Card title={`Order ${order.id}`}>

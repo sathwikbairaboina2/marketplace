@@ -3,7 +3,12 @@ import { signIn, signOut } from './helpers/session';
 
 const OUT = process.env.SHOT_DIR!;
 const DESKTOP = { width: 1440, height: 950 };
+const TABLET = { width: 834, height: 1100 };
 const MOBILE = { width: 390, height: 844 };
+
+// The engine is a separate origin, so these match the browser's own requests to
+// it rather than anything Next.js serves.
+const PRODUCTS = '**/api/v1/products**';
 
 async function shot(page: Page, name: string) {
   await page.waitForTimeout(800);
@@ -121,13 +126,77 @@ test('mobile', async ({ page }) => {
   await shot(page, 'M-04-flows');
 });
 
+test('tablet', async ({ page }) => {
+  test.slow();
+  await page.setViewportSize(TABLET);
+  await signIn(page, 'acme-admin');
+
+  await page.goto('/products');
+  await shot(page, 'T-01-storefront');
+
+  const card = await page.locator('.mp-card-name').first().getAttribute('href');
+  await page.goto(card!);
+  await shot(page, 'T-02-product-detail');
+
+  await page.goto('/admin/products');
+  await shot(page, 'T-03-admin-products');
+  await page.goto('/admin/chat');
+  await shot(page, 'T-04-chat');
+});
+
+/**
+ * The states nothing has ever rendered.
+ *
+ * A failed fetch and a slow one are the two commonest things a real user sees
+ * and the two the behavioural suite cannot photograph, because it waits for
+ * them to finish. Both are forced here by intercepting the engine's own
+ * responses.
+ */
+test('failure and loading states', async ({ page }) => {
+  test.slow();
+  await page.setViewportSize(DESKTOP);
+  await signIn(page, 'acme-admin');
+
+  await page.route(PRODUCTS, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/problem+json',
+      body: JSON.stringify({
+        type: 'https://marketplace.local/problems/upstream-unavailable',
+        title: 'Catalogue is unavailable',
+        status: 503,
+        detail: 'The engine could not reach DynamoDB. Nothing was lost; try again.',
+        traceId: '9f2c41ae-7b03-4a55-9d61-0c5f2a18e3bb',
+      }),
+    }),
+  );
+
+  await page.goto('/products');
+  await shot(page, 'E-01-storefront-error');
+
+  await page.goto('/orders');
+  await shot(page, 'E-02-orders-error');
+  await page.unroute(PRODUCTS);
+
+  // Held open long enough to photograph the skeleton rather than the result.
+  await page.route(PRODUCTS, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+    await route.continue();
+  });
+
+  await page.goto('/products', { waitUntil: 'commit' });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${OUT}/E-03-storefront-loading.png`, fullPage: true });
+  await page.unroute(PRODUCTS);
+});
+
 test('login and empty states', async ({ page }) => {
   test.slow();
   await page.setViewportSize(DESKTOP);
   await page.goto('/login');
   await shot(page, 'X-01-login');
 
-  // globex has products but no orders, bookings or events.
+  // globex has products but no orders, bookings, events or flows.
   await signIn(page, 'globex-admin');
   await page.goto('/orders');
   await shot(page, 'X-02-orders-empty');
@@ -135,4 +204,16 @@ test('login and empty states', async ({ page }) => {
   await shot(page, 'X-03-admin-events-empty');
   await page.goto('/products');
   await shot(page, 'X-04-globex-storefront');
+  await page.goto('/bookings');
+  await shot(page, 'X-05-bookings-empty');
+  await page.goto('/admin/flows');
+  await shot(page, 'X-06-flows-empty');
+  await page.goto('/admin/chat');
+  await shot(page, 'X-07-chat-empty');
+
+  // The skip link is invisible until focused, so it is only photographable
+  // mid-tab. One press from a fresh load lands on it.
+  await page.goto('/products');
+  await page.keyboard.press('Tab');
+  await shot(page, 'X-08-skip-link-focused');
 });
