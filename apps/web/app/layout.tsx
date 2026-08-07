@@ -5,6 +5,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry';
 import '@ant-design/v5-patch-for-react-19';
 import { AuthProvider } from '../lib/auth/auth-context';
 import { SchemaProvider } from '../lib/schemas/schema-cache';
+import { CartProvider } from '../lib/cart/cart-context';
 import { ContractBanner } from '../components/contract-banner';
 import { AppShell } from '../components/app-shell';
 
@@ -21,8 +22,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AntdRegistry>
           <AuthProvider>
             <SchemaProvider>
-              <ContractBanner />
-              <AppShell>{children}</AppShell>
+              <CartProvider>
+                <ContractBanner />
+                <AppShell>{children}</AppShell>
+              </CartProvider>
             </SchemaProvider>
           </AuthProvider>
         </AntdRegistry>
