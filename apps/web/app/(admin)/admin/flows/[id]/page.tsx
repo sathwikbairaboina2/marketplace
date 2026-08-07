@@ -8,6 +8,7 @@ import { executeFlow, getFlow } from '../../../../../lib/api/flows';
 import { useSchemas } from '../../../../../lib/schemas/schema-cache';
 import { notifyProblem } from '../../../../../lib/problem-notify';
 import { StatusTag } from '../../../../../components/status-tag';
+import { formatDateTime } from '../../../../../lib/format';
 
 export default function FlowDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -58,7 +59,11 @@ export default function FlowDetailPage() {
           { key: 'status', label: 'Status', children: <StatusTag status={flow.status} /> },
           { key: 'proposedBy', label: 'Proposed by', children: flow.proposedBy },
           { key: 'executedBy', label: 'Executed by', children: flow.executedBy ?? '—' },
-          { key: 'appliedAt', label: 'Applied at', children: flow.appliedAt ?? '—' },
+          {
+            key: 'appliedAt',
+            label: 'Applied at',
+            children: flow.appliedAt ? formatDateTime(flow.appliedAt) : '—',
+          },
           {
             key: 'version',
             label: 'Resulting version',

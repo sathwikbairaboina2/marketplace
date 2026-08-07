@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { OrderResponse } from '@marketplace/contracts';
 import { listOrders } from '../../../lib/api/orders';
+import { formatMoney, formatRelative } from '../../../lib/format';
 import { CursorTable } from '../../../components/cursor-table';
 import { StatusTag } from '../../../components/status-tag';
 
@@ -26,9 +27,14 @@ export default function OrdersPage() {
         {
           title: 'Total',
           dataIndex: 'totalAmountMinor',
-          render: (minor: number, row) => `${(minor / 100).toFixed(2)} ${row.currency}`,
+          className: 'mp-num',
+          render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
         },
-        { title: 'Placed', dataIndex: 'createdAt' },
+        {
+          title: 'Placed',
+          dataIndex: 'createdAt',
+          render: (at: string) => formatRelative(at),
+        },
       ]}
     />
   );

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Button } from 'antd';
 import type { EventResponse } from '@marketplace/contracts';
 import { listEvents } from '../../../../lib/api/events';
+import { formatDateTime, formatMoney } from '../../../../lib/format';
 import { CursorTable } from '../../../../components/cursor-table';
 import { PageHeader } from '../../../../components/page-header';
 import { EmptyState } from '../../../../components/empty-state';
@@ -41,8 +42,16 @@ export default function AdminEventsPage() {
             dataIndex: 'title',
             render: (title: string, row) => <Link href={`/events/${row.id}`}>{title}</Link>,
           },
-          { title: 'Starts', dataIndex: 'startDate' },
-          { title: 'Ends', dataIndex: 'endDate' },
+          {
+            title: 'Starts',
+            dataIndex: 'startDate',
+            render: (at: string) => formatDateTime(at),
+          },
+          {
+            title: 'Ends',
+            dataIndex: 'endDate',
+            render: (at: string) => formatDateTime(at),
+          },
           { title: 'Capacity', dataIndex: 'capacity', className: 'mp-num' },
           // `bookedCount`, not `booked` -- EventRecord and ProductRecord are
           // not symmetrical.
@@ -56,7 +65,7 @@ export default function AdminEventsPage() {
             title: 'Price',
             dataIndex: 'basePriceMinor',
             className: 'mp-num',
-            render: (minor: number, row) => `${(minor / 100).toFixed(2)} ${row.currency}`,
+            render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
           },
         ]}
       />

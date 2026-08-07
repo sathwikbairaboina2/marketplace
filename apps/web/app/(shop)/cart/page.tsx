@@ -1,14 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button, Card, Empty, Form, Input, InputNumber, Select, Table, message } from 'antd';
+import { Button, Form, Input, InputNumber, Select, message } from 'antd';
+import { DeleteOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { createOrder } from '../../../lib/api/orders';
-import { useCart, type CartLine } from '../../../lib/cart/cart-context';
+import { useCart } from '../../../lib/cart/cart-context';
 import { ProblemError } from '../../../lib/api/http';
 import { notifyProblem } from '../../../lib/problem-notify';
 import { toAttributes, toFormItems } from '../../../lib/schema-fields';
 import { useSchema } from '../../../lib/schemas/schema-cache';
+import { formatMoney } from '../../../lib/format';
+import { PageHeader } from '../../../components/page-header';
+import { EmptyState } from '../../../components/empty-state';
 
 const BACKOFFS_MS = [500, 1000, 2000, 4000, 8000];
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -61,63 +66,126 @@ export default function CartPage() {
     }
   };
 
-  if (!lines.length) return <Empty description="Your cart is empty" />;
+  if (!lines.length) {
+    return (
+      <>
+        <PageHeader title="Cart" />
+        <EmptyState
+          icon={<ShoppingOutlined />}
+          title="Your cart is empty"
+          description="Add something from the catalogue and it will appear here."
+          action={
+            <Link href="/products">
+              <Button type="primary">Browse products</Button>
+            </Link>
+          }
+        />
+      </>
+    );
+  }
 
   const total = lines.reduce((sum, l) => sum + l.priceMinor * l.qty, 0);
+  const units = lines.reduce((sum, l) => sum + l.qty, 0);
 
   return (
-    <Card title="Cart" style={{ maxWidth: 720 }}>
-      <Table<CartLine>
-        rowKey="productId"
-        pagination={false}
-        dataSource={lines}
-        columns={[
-          { title: 'Product', dataIndex: 'name' },
-          {
-            title: 'Qty',
-            dataIndex: 'qty',
-            render: (qty: number, row) => (
-              <InputNumber min={1} value={qty} onChange={(v) => setQty(row.productId, v ?? 1)} />
-            ),
-          },
-          {
-            title: 'Line total',
-            render: (_, row) => ((row.priceMinor * row.qty) / 100).toFixed(2),
-          },
-          {
-            title: '',
-            render: (_, row) => <Button onClick={() => remove(row.productId)}>Remove</Button>,
-          },
-        ]}
-      />
-      {/* Indicative only. POST /orders locks unit prices server-side at order
-          time, so a stale cached price is a display concern, never a
-          correctness one. */}
-      <p style={{ marginTop: 12 }}>Estimated total: {(total / 100).toFixed(2)}</p>
+    <>
+      <PageHeader title="Cart" subtitle={`${units} item${units === 1 ? '' : 's'} ready to order`} />
 
-      <Form
-        layout="vertical"
-        onFinish={submit}
-        initialValues={{ currency: 'USD' }}
-        style={{ marginTop: 24 }}
-      >
-        <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
-          <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
-        </Form.Item>
-        <Form.Item name="line1" label="Address" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="city" label="City" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="postcode" label="Postcode" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        {schema ? toFormItems(schema.fields) : null}
-        <Button type="primary" htmlType="submit" loading={busy} disabled={busy}>
-          Place order
-        </Button>
-      </Form>
-    </Card>
+      {/* Items on the left, a sticky summary carrying the total and the only
+          primary action on the right. Previously the total was a sentence in
+          body text and Place order sat at the bottom of a long form. */}
+      <div className="mp-checkout">
+        <div className="mp-checkout-main">
+          <ul className="mp-lines">
+            {lines.map((line) => (
+              <li key={line.productId} className="mp-line">
+                <div className="mp-line-info">
+                  <Link href={`/products/${line.productId}`} className="mp-line-name">
+                    {line.name}
+                  </Link>
+                  <span className="mp-line-unit">{formatMoney(line.priceMinor)} each</span>
+                </div>
+                <InputNumber
+                  min={1}
+                  value={line.qty}
+                  aria-label={`Quantity for ${line.name}`}
+                  onChange={(v) => setQty(line.productId, v ?? 1)}
+                />
+                <span className="mp-line-total">{formatMoney(line.priceMinor * line.qty)}</span>
+                <Button
+                  type="text"
+                  aria-label={`Remove ${line.name}`}
+                  icon={<DeleteOutlined />}
+                  onClick={() => remove(line.productId)}
+                >
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+
+          <Form
+            layout="vertical"
+            onFinish={submit}
+            initialValues={{ currency: 'USD' }}
+            id="checkout-form"
+            className="mp-checkout-form"
+          >
+            <h2>Delivery</h2>
+            <Form.Item name="line1" label="Address" rules={[{ required: true }]}>
+              <Input placeholder="42 Harbour Road" />
+            </Form.Item>
+            <div className="mp-field-row">
+              <Form.Item name="city" label="City" rules={[{ required: true }]}>
+                <Input placeholder="Bristol" />
+              </Form.Item>
+              <Form.Item name="postcode" label="Postcode" rules={[{ required: true }]}>
+                <Input placeholder="BS1 4TR" />
+              </Form.Item>
+              <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
+                <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
+              </Form.Item>
+            </div>
+            {schema && Object.keys(schema.fields).length > 0 && (
+              <>
+                <h2>Order details</h2>
+                {toFormItems(schema.fields)}
+              </>
+            )}
+          </Form>
+        </div>
+
+        <aside className="mp-summary">
+          <h2>Summary</h2>
+          <div className="mp-summary-row">
+            <span>
+              Subtotal · {units} item{units === 1 ? '' : 's'}
+            </span>
+            <span className="mp-num">{formatMoney(total)}</span>
+          </div>
+          <div className="mp-summary-row mp-summary-total">
+            <span>Total</span>
+            <span className="mp-num">{formatMoney(total)}</span>
+          </div>
+          {/* Indicative only: POST /orders locks unit prices server-side at
+              order time, so a stale cached price is a display concern and never
+              a correctness one. */}
+          <p className="mp-summary-note">
+            Prices are confirmed when the order is placed.
+          </p>
+          <Button
+            type="primary"
+            size="large"
+            block
+            htmlType="submit"
+            form="checkout-form"
+            loading={busy}
+            disabled={busy}
+          >
+            Place order
+          </Button>
+        </aside>
+      </div>
+    </>
   );
 }

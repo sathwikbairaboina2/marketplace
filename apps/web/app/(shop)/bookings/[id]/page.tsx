@@ -9,6 +9,7 @@ import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { notifyProblem } from '../../../../lib/problem-notify';
 import { StatusTag } from '../../../../components/status-tag';
+import { formatDateTime } from '../../../../lib/format';
 
 export default function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +30,7 @@ export default function BookingDetailPage() {
           { key: 'event', label: 'Event', children: booking.eventId },
           { key: 'status', label: 'Status', children: <StatusTag status={booking.status} /> },
           { key: 'tickets', label: 'Tickets', children: booking.ticketQuantity },
-          { key: 'booked', label: 'Booked', children: booking.createdAt },
+          { key: 'booked', label: 'Booked', children: formatDateTime(booking.createdAt) },
           ...(schema ? toDescriptionRows(schema.fields, booking.attributes) : []),
         ]}
       />

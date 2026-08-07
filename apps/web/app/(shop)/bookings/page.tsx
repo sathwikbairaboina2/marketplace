@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { BookingResponse } from '@marketplace/contracts';
 import { listBookings } from '../../../lib/api/bookings';
+import { formatRelative } from '../../../lib/format';
 import { CursorTable } from '../../../components/cursor-table';
 import { StatusTag } from '../../../components/status-tag';
 
@@ -27,8 +28,12 @@ export default function BookingsPage() {
           dataIndex: 'status',
           render: (status: string) => <StatusTag status={status} />,
         },
-        { title: 'Tickets', dataIndex: 'ticketQuantity' },
-        { title: 'Booked', dataIndex: 'createdAt' },
+        { title: 'Tickets', dataIndex: 'ticketQuantity', className: 'mp-num' },
+        {
+          title: 'Booked',
+          dataIndex: 'createdAt',
+          render: (at: string) => formatRelative(at),
+        },
       ]}
     />
   );

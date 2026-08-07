@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ProductResponse } from '@marketplace/contracts';
 import { placeholderFor } from '../lib/placeholder';
 import { StatusTag } from './status-tag';
+import { formatMoney } from '../lib/format';
 
 const LOW_STOCK = 5;
 
@@ -43,10 +44,7 @@ export function ProductCard({ product }: { product: ProductResponse }) {
 
         <div className="mp-card-foot">
           <span className="mp-card-price">
-            {(product.priceMinor / 100).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            {formatMoney(product.priceMinor)}
             <span className="cur">{product.currency}</span>
           </span>
           <span className="mp-card-stock" data-low={soldOut || product.stock <= LOW_STOCK}>

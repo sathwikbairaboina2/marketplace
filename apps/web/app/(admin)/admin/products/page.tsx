@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Button } from 'antd';
 import type { ProductResponse } from '@marketplace/contracts';
 import { listProducts } from '../../../../lib/api/products';
+import { formatMoney } from '../../../../lib/format';
 import { CursorTable } from '../../../../components/cursor-table';
 import { PageHeader } from '../../../../components/page-header';
 import { EmptyState } from '../../../../components/empty-state';
@@ -72,7 +73,7 @@ export default function AdminProductsPage() {
             dataIndex: 'priceMinor',
             className: 'mp-num',
             render: (minor: number, row) =>
-              `${(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${row.currency}`,
+              `${formatMoney(minor)} ${row.currency}`,
           },
           { title: 'Stock', dataIndex: 'stock', className: 'mp-num' },
           {

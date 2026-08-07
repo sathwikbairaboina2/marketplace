@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type { EventResponse } from '@marketplace/contracts';
 import { listEvents } from '../../../lib/api/events';
+import { formatDateTime, formatMoney } from '../../../lib/format';
 import { CursorTable } from '../../../components/cursor-table';
 
 export default function EventsPage() {
@@ -16,15 +17,20 @@ export default function EventsPage() {
           dataIndex: 'title',
           render: (title: string, row) => <Link href={`/events/${row.id}`}>{title}</Link>,
         },
-        { title: 'Starts', dataIndex: 'startDate' },
-        { title: 'Capacity', dataIndex: 'capacity' },
+        {
+          title: 'Starts',
+          dataIndex: 'startDate',
+          render: (at: string) => formatDateTime(at),
+        },
+        { title: 'Capacity', dataIndex: 'capacity', className: 'mp-num' },
         // `bookedCount`, not `booked` -- EventRecord and ProductRecord are not
         // symmetrical.
-        { title: 'Booked', dataIndex: 'bookedCount' },
+        { title: 'Booked', dataIndex: 'bookedCount', className: 'mp-num' },
         {
           title: 'Price',
           dataIndex: 'basePriceMinor',
-          render: (minor: number, row) => `${(minor / 100).toFixed(2)} ${row.currency}`,
+          className: 'mp-num',
+          render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
         },
       ]}
     />

@@ -9,6 +9,7 @@ import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { notifyProblem } from '../../../../lib/problem-notify';
 import { StatusTag } from '../../../../components/status-tag';
+import { formatDateTime, formatMoney } from '../../../../lib/format';
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,14 +31,14 @@ export default function OrderDetailPage() {
           {
             key: 'total',
             label: 'Total',
-            children: `${(order.totalAmountMinor / 100).toFixed(2)} ${order.currency}`,
+            children: `${formatMoney(order.totalAmountMinor)} ${order.currency}`,
           },
           {
             key: 'shipping',
             label: 'Shipping to',
             children: Object.values(order.shippingAddress).join(', '),
           },
-          { key: 'placed', label: 'Placed', children: order.createdAt },
+          { key: 'placed', label: 'Placed', children: formatDateTime(order.createdAt) },
           ...(schema ? toDescriptionRows(schema.fields, order.attributes) : []),
         ]}
       />
@@ -54,7 +55,7 @@ export default function OrderDetailPage() {
           {
             title: 'Unit price',
             dataIndex: 'unitPriceMinor',
-            render: (minor: number) => (minor / 100).toFixed(2),
+            render: (minor: number) => formatMoney(minor),
           },
         ]}
       />
