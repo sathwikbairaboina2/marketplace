@@ -39,7 +39,7 @@ export function ShopHeader() {
         ))}
         {/* Deliberately not named Flows or Chat -- auth.spec asserts a buyer
             sees neither, and this entry is admin-only regardless. */}
-        {principal?.role === 'admin' && <Link href="/admin/flows">Admin</Link>}
+        {principal?.role === 'admin' && <Link href="/admin/products">Admin</Link>}
       </nav>
 
       <Space size="small">

@@ -9,6 +9,7 @@ import { listFlows } from '../../../../lib/api/flows';
 import { CursorTable } from '../../../../components/cursor-table';
 import { useFlowArrival } from '../../../../lib/flows/use-flow-arrival';
 import { StatusTag } from '../../../../components/status-tag';
+import { PageHeader } from '../../../../components/page-header';
 
 function FlowsView() {
   // The chat page links here with ?awaiting=<dispatchedMessageId> after a
@@ -19,6 +20,10 @@ function FlowsView() {
 
   return (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <PageHeader
+        title="Flows"
+        subtitle="Proposed schema changes. Executing one permanently alters this tenant's data model."
+      />
       {waiting && (
         <Alert
           type="info"

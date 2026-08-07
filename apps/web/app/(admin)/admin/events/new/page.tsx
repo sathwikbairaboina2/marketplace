@@ -6,6 +6,7 @@ import type { Dayjs } from 'dayjs';
 import { createEvent } from '../../../../../lib/api/events';
 import { toAttributes, toFormItems } from '../../../../../lib/schema-fields';
 import { useSchema } from '../../../../../lib/schemas/schema-cache';
+import { PageHeader } from '../../../../../components/page-header';
 import { notifyProblem, toFormErrors } from '../../../../../lib/problem-notify';
 
 export default function NewEventPage() {
@@ -41,7 +42,9 @@ export default function NewEventPage() {
   };
 
   return (
-    <Card title="New event" style={{ maxWidth: 640 }}>
+    <>
+      <PageHeader title="New event" subtitle="Capacity is enforced transactionally when tickets are booked." />
+      <Card style={{ maxWidth: 640 }}>
       <Form form={form} layout="vertical" onFinish={submit} initialValues={{ currency: 'USD' }}>
         <Form.Item name="title" label="Title" rules={[{ required: true }]}>
           <Input />
@@ -70,6 +73,7 @@ export default function NewEventPage() {
           Create
         </Button>
       </Form>
-    </Card>
+      </Card>
+    </>
   );
 }

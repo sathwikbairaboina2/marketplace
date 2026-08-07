@@ -7,6 +7,7 @@ import { ImageUploader } from '../../../../../components/image-uploader';
 import { createProduct } from '../../../../../lib/api/products';
 import { toAttributes, toFormItems } from '../../../../../lib/schema-fields';
 import { useSchema } from '../../../../../lib/schemas/schema-cache';
+import { PageHeader } from '../../../../../components/page-header';
 import { notifyProblem, toFormErrors } from '../../../../../lib/problem-notify';
 
 export default function NewProductPage() {
@@ -47,7 +48,9 @@ export default function NewProductPage() {
   };
 
   return (
-    <Card title="New product" style={{ maxWidth: 640 }}>
+    <>
+      <PageHeader title="New product" subtitle="Images can only be attached now -- the engine has no update routes." />
+      <Card style={{ maxWidth: 640 }}>
       <Form
         form={form}
         layout="vertical"
@@ -91,6 +94,7 @@ export default function NewProductPage() {
           Create
         </Button>
       </Form>
-    </Card>
+      </Card>
+    </>
   );
 }

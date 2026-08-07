@@ -9,13 +9,9 @@ import { ThemeToggle } from './theme-toggle';
 const GROUPS = [
   {
     label: 'Catalogue',
-    // Products and Events point at the storefront until the admin list pages
-    // exist. Linking to a route that 404s is not merely untidy: Next prefetches
-    // every visible <Link>, and a prefetch that 404s leaves the page never
-    // reaching network idle, which hangs any test that waits for it.
     items: [
-      { href: '/products', label: 'Products' },
-      { href: '/events', label: 'Events' },
+      { href: '/admin/products', label: 'Products' },
+      { href: '/admin/events', label: 'Events' },
       { href: '/admin/products/new', label: 'New product' },
       { href: '/admin/events/new', label: 'New event' },
     ],

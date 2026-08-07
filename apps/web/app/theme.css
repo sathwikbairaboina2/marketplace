@@ -318,3 +318,15 @@ body {
   .mp-hero { flex-direction: column; align-items: flex-start; }
   .mp-grid { grid-template-columns: 1fr; }
 }
+
+.mp-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--mp-radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
