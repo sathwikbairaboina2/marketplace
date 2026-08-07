@@ -4,12 +4,7 @@ import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
-import {
-  S3Client,
-  GetBucketCorsCommand,
-  HeadBucketCommand,
-  PutObjectCommand,
-} from '@aws-sdk/client-s3';
+import { S3Client, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DEMO_USERS, DEMO_PASSWORD } from './cognito';
@@ -86,16 +81,8 @@ describe('seeded infrastructure', () => {
       forcePathStyle: true,
     });
 
-  it('creates the media bucket, CORS-enabled for the console', async () => {
+  it('creates the media bucket and publishes its name', async () => {
     await expect(s3().send(new HeadBucketCommand({ Bucket: BUCKET_NAME }))).resolves.toBeDefined();
-
-    const cors = await s3().send(new GetBucketCorsCommand({ Bucket: BUCKET_NAME }));
-    const rule = cors.CORSRules![0]!;
-    // Without POST the browser's presigned upload is blocked by the preflight
-    // before a single byte is sent.
-    expect(rule.AllowedMethods).toEqual(expect.arrayContaining(['POST', 'GET']));
-    expect(rule.AllowedOrigins).toContain('http://localhost:3002');
-
     expect(env.S3_BUCKET).toBe(BUCKET_NAME);
   });
 

@@ -11,6 +11,10 @@ export type ProblemType =
   | 'mixed-currency-order'
   | 'transaction-conflict'
   | 'request-in-progress'
+  // Upload rejected on inspection: either the declared type is not accepted, or
+  // the file's own bytes disagree with what was declared.
+  | 'unsupported-media-type'
+  | 'payload-too-large'
   | 'unauthorized'
   | 'not-found'
   | 'invalid-request'

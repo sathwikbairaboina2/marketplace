@@ -68,6 +68,21 @@ export class ProblemFilter implements ExceptionFilter {
       };
     }
 
+    // Multer aborts an oversized upload mid-stream and throws its own error
+    // type, which is not an HttpException and would otherwise be reported as a
+    // 500. An upload refused on purpose is not an internal failure, and the
+    // client needs to be told which limit it hit. Matched on `name` rather than
+    // by importing multer, so this file keeps no upload-specific dependency.
+    if (exception instanceof Error && exception.name === 'MulterError') {
+      const tooLarge = (exception as Error & { code?: string }).code === 'LIMIT_FILE_SIZE';
+      return {
+        type: `https://marketplace.local/problems/${tooLarge ? 'payload-too-large' : 'invalid-request'}`,
+        title: tooLarge ? 'Image too large' : 'Malformed upload',
+        status: tooLarge ? 413 : 400,
+        detail: exception.message,
+      };
+    }
+
     return {
       type: 'https://marketplace.local/problems/internal-error',
       title: 'Internal Server Error',

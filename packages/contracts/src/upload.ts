@@ -11,25 +11,14 @@ export const IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'im
 export const ImageContentTypeSchema = z.enum(IMAGE_CONTENT_TYPES);
 export type ImageContentType = z.infer<typeof ImageContentTypeSchema>;
 
-export const PresignUploadSchema = z
-  .object({
-    filename: z.string().min(1).max(255),
-    contentType: ImageContentTypeSchema,
-  })
-  .strict();
-export type PresignUpload = z.infer<typeof PresignUploadSchema>;
-
 /**
- * `url` and `fields` are posted verbatim as multipart/form-data by the browser,
- * with the file appended last -- S3 ignores every field that follows the file.
- * `objectUrl` is where the object becomes readable once that succeeds, and is
- * what ends up stored in `ProductRecord.images`.
+ * What `POST /uploads/product-image` returns once the engine has validated the
+ * bytes and written the object. The URL is publicly readable and is what ends
+ * up stored in `ProductRecord.images`.
+ *
+ * The request has no schema here: it is `multipart/form-data`, not JSON, so
+ * there is nothing for Zod to validate on the way in -- the engine validates
+ * the file itself instead.
  */
-export const PresignedUploadSchema = z
-  .object({
-    url: z.string().url(),
-    fields: z.record(z.string(), z.string()),
-    objectUrl: z.string().url(),
-  })
-  .strict();
-export type PresignedUpload = z.infer<typeof PresignedUploadSchema>;
+export const UploadedImageSchema = z.object({ objectUrl: z.string().url() }).strict();
+export type UploadedImage = z.infer<typeof UploadedImageSchema>;

@@ -1,47 +1,18 @@
-import { PresignUploadSchema, PresignedUploadSchema, IMAGE_CONTENT_TYPES } from './upload';
+import { ImageContentTypeSchema, UploadedImageSchema, IMAGE_CONTENT_TYPES } from './upload';
 
 describe('upload contracts', () => {
-  it('accepts a supported image type', () => {
-    expect(
-      PresignUploadSchema.parse({ filename: 'chair.jpg', contentType: 'image/jpeg' }).contentType,
-    ).toBe('image/jpeg');
+  it('accepts every supported image type', () => {
+    for (const type of IMAGE_CONTENT_TYPES) {
+      expect(ImageContentTypeSchema.parse(type)).toBe(type);
+    }
   });
 
-  it('rejects a content type outside the allow-list', () => {
-    expect(
-      PresignUploadSchema.safeParse({ filename: 'x.svg', contentType: 'image/svg+xml' }).success,
-    ).toBe(false);
-    expect(
-      PresignUploadSchema.safeParse({ filename: 'x.pdf', contentType: 'application/pdf' }).success,
-    ).toBe(false);
-  });
-
-  it('rejects an empty or oversized filename', () => {
-    expect(PresignUploadSchema.safeParse({ filename: '', contentType: 'image/png' }).success).toBe(
-      false,
-    );
-    expect(
-      PresignUploadSchema.safeParse({ filename: 'a'.repeat(300), contentType: 'image/png' }).success,
-    ).toBe(false);
-  });
-
-  it('rejects unknown keys', () => {
-    expect(
-      PresignUploadSchema.safeParse({
-        filename: 'a.png',
-        contentType: 'image/png',
-        bucket: 'somewhere-else',
-      }).success,
-    ).toBe(false);
-  });
-
-  it('describes the presigned post the browser has to submit', () => {
-    const parsed = PresignedUploadSchema.parse({
-      url: 'http://localhost:4566/marketplace-media',
-      fields: { key: 'acme/products/01J/x.png', 'Content-Type': 'image/png', Policy: 'abc' },
-      objectUrl: 'http://localhost:4566/marketplace-media/acme/products/01J/x.png',
-    });
-    expect(parsed.fields.key).toContain('acme/products');
+  it('rejects a type outside the allow-list', () => {
+    // SVG in particular: it is a scriptable document, and these objects are
+    // served publicly.
+    expect(ImageContentTypeSchema.safeParse('image/svg+xml').success).toBe(false);
+    expect(ImageContentTypeSchema.safeParse('application/pdf').success).toBe(false);
+    expect(ImageContentTypeSchema.safeParse('text/html').success).toBe(false);
   });
 
   it('lists exactly the four supported types', () => {
@@ -51,5 +22,19 @@ describe('upload contracts', () => {
       'image/webp',
       'image/gif',
     ]);
+  });
+
+  it('describes the uploaded image response', () => {
+    const parsed = UploadedImageSchema.parse({
+      objectUrl: 'http://localhost:4566/marketplace-media/acme/products/01J/x.png',
+    });
+    expect(parsed.objectUrl).toContain('acme/products');
+  });
+
+  it('rejects a response that is not a URL, or that carries extra keys', () => {
+    expect(UploadedImageSchema.safeParse({ objectUrl: 'not-a-url' }).success).toBe(false);
+    expect(
+      UploadedImageSchema.safeParse({ objectUrl: 'http://x/y', key: 'leaked' }).success,
+    ).toBe(false);
   });
 });

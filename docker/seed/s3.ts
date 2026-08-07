@@ -2,16 +2,14 @@ import {
   S3Client,
   CreateBucketCommand,
   HeadBucketCommand,
-  PutBucketCorsCommand,
   PutBucketPolicyCommand,
 } from '@aws-sdk/client-s3';
 
 export const BUCKET_NAME = 'marketplace-media';
 
-// The console's origin. The browser posts the file directly to S3, so it is S3
-// -- not the engine -- that has to allow this origin. The engine's own
-// CORS_ORIGINS has nothing to do with it.
-const CONSOLE_ORIGIN = 'http://localhost:3002';
+// No CORS rule here on purpose. The browser never talks to this bucket: it
+// posts files to the engine, which writes them with its own credentials, and it
+// reads images back through <img> tags -- which are not CORS requests.
 
 export async function ensureBucket(): Promise<string> {
   const s3 = new S3Client({
@@ -47,23 +45,6 @@ export async function ensureBucket(): Promise<string> {
           },
         ],
       }),
-    }),
-  );
-
-  await s3.send(
-    new PutBucketCorsCommand({
-      Bucket: BUCKET_NAME,
-      CORSConfiguration: {
-        CORSRules: [
-          {
-            AllowedMethods: ['POST', 'GET', 'HEAD'],
-            AllowedOrigins: [CONSOLE_ORIGIN],
-            AllowedHeaders: ['*'],
-            ExposeHeaders: ['ETag', 'Location'],
-            MaxAgeSeconds: 3000,
-          },
-        ],
-      },
     }),
   );
 
