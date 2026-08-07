@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateEvent, EventRecord, Page } from '@marketplace/contracts';
+import { CreateEvent, EventRecord, EventResponse, Page } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { entitySk, skPrefix } from '../persistence/keys';
@@ -11,7 +11,11 @@ import { ProblemException } from '../common/problem';
 // are a persistence-layer implementation detail -- the tenant-scoped partition key and the
 // entity-prefixed sort key -- and are deliberately not part of the public API surface: clients
 // should never see, depend on, or be able to parse the internal key scheme.
-export type EventResponse = Omit<EventRecord, 'PK' | 'SK'>;
+//
+// Defined as `z.infer<typeof EventResponseSchema>` in @marketplace/contracts rather than as an
+// `Omit<EventRecord, ...>` here, so the browser client has a runtime schema to validate against
+// and cannot drift from the type this service returns.
+export type { EventResponse };
 
 function toResponse(record: EventRecord): EventResponse {
   const { PK: _pk, SK: _sk, ...rest } = record;

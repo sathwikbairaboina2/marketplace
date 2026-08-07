@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { BookingRecord, CreateBooking, EventRecord, Page } from '@marketplace/contracts';
+import {
+  BookingRecord,
+  BookingResponse,
+  CreateBooking,
+  EventRecord,
+  Page,
+} from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { entitySk, gsi1UserPk, gsi1UserSk, skPrefix } from '../persistence/keys';
@@ -13,7 +19,11 @@ import { conflictedTransactionIndexes, failedTransactionIndexes } from '../commo
 // `GSI1PK`/`GSI1SK` attributes used to index bookings by owning user. Those are a
 // persistence-layer implementation detail and are deliberately not part of the public API
 // surface: clients should never see, depend on, or be able to parse the internal key scheme.
-export type BookingResponse = Omit<BookingRecord, 'PK' | 'SK' | 'GSI1PK' | 'GSI1SK'>;
+//
+// Defined as `z.infer<typeof BookingResponseSchema>` in @marketplace/contracts rather than as
+// an `Omit<BookingRecord, ...>` here, so the browser client has a runtime schema to validate
+// against and cannot drift from the type this service returns.
+export type { BookingResponse };
 
 function toResponse(record: BookingRecord): BookingResponse {
   const { PK: _pk, SK: _sk, GSI1PK: _gsi1pk, GSI1SK: _gsi1sk, ...rest } = record;

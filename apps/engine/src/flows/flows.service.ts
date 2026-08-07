@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { CreateFlow, DynamicEntityType, FlowRecord, Page } from '@marketplace/contracts';
+import {
+  CreateFlow,
+  DynamicEntityType,
+  FlowRecord,
+  FlowResponse,
+  Page,
+} from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { entitySk, skPrefix } from '../persistence/keys';
@@ -11,7 +17,11 @@ import { currentPrincipal } from '../common/tenant-context';
 // what is stored in DynamoDB, including the single-table `PK`/`SK` attributes. Those are a
 // persistence-layer implementation detail and are deliberately not part of the public API
 // surface: clients should never see, depend on, or be able to parse the internal key scheme.
-export type FlowResponse = Omit<FlowRecord, 'PK' | 'SK'>;
+//
+// Defined as `z.infer<typeof FlowResponseSchema>` in @marketplace/contracts rather than as an
+// `Omit<FlowRecord, ...>` here, so the browser client has a runtime schema to validate against
+// and cannot drift from the type this service returns.
+export type { FlowResponse };
 
 function toResponse(record: FlowRecord): FlowResponse {
   const { PK: _pk, SK: _sk, ...rest } = record;

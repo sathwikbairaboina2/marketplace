@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { DynamicEntityTypeSchema, FieldNameSchema, FieldTypeSchema } from './registry';
+import {
+  DynamicEntityTypeSchema,
+  FieldNameSchema,
+  FieldTypeSchema,
+  type DynamicEntityType,
+} from './registry';
 
 export const FlowStatusSchema = z.enum(['proposed', 'applied', 'rejected']);
 export type FlowStatus = z.infer<typeof FlowStatusSchema>;
@@ -33,7 +38,10 @@ export interface FlowRecord {
   SK: string;
   entityType: 'Flow';
   id: string;
-  targetEntity: string;
+  // Narrower than `string`: `CreateFlowSchema` already rejects anything that
+  // is not a dynamic entity type, and widening it here would force every
+  // consumer of a stored flow to re-narrow a value that cannot vary.
+  targetEntity: DynamicEntityType;
   actionType: 'ADD_FIELDS';
   status: FlowStatus;
   blueprintDiff: BlueprintDiff;
