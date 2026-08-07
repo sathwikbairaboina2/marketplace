@@ -101,6 +101,19 @@ and no signing round-trip; tenant isolation therefore does not extend to an
 image URL. Images can only be set when a product is created, because the engine
 has no update routes.
 
+The console has two faces. `/admin/*` is a back-office: a dark sidebar grouped
+into Catalogue, Sales and Schema, with the tenant shown prominently in its foot
+because switching between `acme` and `globex` is how tenant isolation reads.
+Everything else is a storefront: a light header, a hero describing the catalogue
+from live data, a persistent filter rail and a product grid. Both share one
+palette, and a theme toggle switches light and dark; the choice is stored in
+`localStorage` under `marketplace.theme` and applied before first paint, so
+nothing flashes on load.
+
+Below `lg` the sidebar becomes a drawer, and below `md` the filter rail becomes
+a sheet. Tables scroll horizontally rather than reflowing -- cursor pagination
+gives no total to summarise, so there is no honest narrow layout for them.
+
 Forms, search filters and detail rows for tenant-defined `attributes` are
 generated from `GET /schemas`. Executing a flow raises the registry version and
 the console re-reads it, so a field an agent proposed appears everywhere it
