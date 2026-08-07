@@ -423,8 +423,9 @@
 
 /* The header is a fixed-height nowrap row, so on a narrow screen the nav was
    squeezed to zero width and every storefront destination became unreachable.
-   Below `md` the header grows to two rows and the nav becomes a scrollable
-   strip under the brand. */
+   Below `md` the header grows to two rows and the nav becomes a strip under
+   the brand. It wraps rather than scrolls: a horizontal scroller put Admin
+   past the right edge with nothing on screen to say it was there. */
 @media (max-width: 767px) {
   .mp-shop-header {
     height: auto;
@@ -441,15 +442,12 @@
   .mp-shop-nav {
     order: 3;
     flex: 1 0 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    row-gap: var(--mp-space-1);
     padding: var(--mp-space-2) 0;
     margin-top: var(--mp-space-2);
     border-top: 1px solid var(--mp-line);
-  }
-
-  .mp-shop-nav::-webkit-scrollbar {
-    display: none;
   }
 
   /* Price and stock stop fighting for one line on a narrow card. */

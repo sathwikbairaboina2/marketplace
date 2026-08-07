@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Card, Descriptions, Table } from 'antd';
 import type { OrderResponse } from '@marketplace/contracts';
@@ -54,12 +55,32 @@ export default function OrderDetailPage() {
         pagination={false}
         dataSource={order.items}
         columns={[
-          { title: 'Product', dataIndex: 'productId' },
-          { title: 'Qty', dataIndex: 'quantity' },
+          {
+            title: 'Product',
+            dataIndex: 'productId',
+            // A line item carries no name, only the id the price was locked
+            // against, so the link is what makes the row identifiable at all.
+            render: (productId: string) => (
+              <Link className="mp-id" href={`/products/${productId}`}>
+                {productId}
+              </Link>
+            ),
+          },
+          { title: 'Qty', dataIndex: 'quantity', align: 'right', width: 80 },
           {
             title: 'Unit price',
             dataIndex: 'unitPriceMinor',
-            render: (minor: number) => formatMoney(minor),
+            align: 'right',
+            width: 160,
+            render: (minor: number) => `${formatMoney(minor)} ${order.currency}`,
+          },
+          {
+            title: 'Line total',
+            key: 'lineTotal',
+            align: 'right',
+            width: 160,
+            render: (_: unknown, item: OrderResponse['items'][number]) =>
+              `${formatMoney(item.unitPriceMinor * item.quantity)} ${order.currency}`,
           },
         ]}
       />

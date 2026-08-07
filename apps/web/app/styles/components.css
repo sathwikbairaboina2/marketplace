@@ -711,6 +711,15 @@
   user-select: all;
 }
 
+/* A ULID is read character by character or not at all, so it gets tabular
+   figures and select-all rather than the prose face. */
+.mp-id {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: var(--mp-text-xs);
+  letter-spacing: 0;
+  user-select: all;
+}
+
 /* Skeletons. The pulse is a background-position animation on a gradient rather
    than an opacity fade, so a column of them shimmers in step instead of
    flashing as one block. The global prefers-reduced-motion rule at the top of
@@ -850,7 +859,6 @@
   }
   .mp-shop-nav {
     gap: 0;
-    overflow-x: auto;
   }
 }
 

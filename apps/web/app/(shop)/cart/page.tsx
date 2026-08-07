@@ -22,7 +22,14 @@ export default function CartPage() {
   const { lines, setQty, remove, clear, idempotencyKey, resetKey } = useCart();
   const schema = useSchema('Order');
   const router = useRouter();
+  const [form] = Form.useForm();
   const [busy, setBusy] = useState(false);
+
+  // Every amount on this page is denominated in whatever the order will be
+  // placed in, so the summary follows the field rather than naming a currency
+  // of its own. useWatch is undefined on first render, before initialValues
+  // have been applied.
+  const currency = (Form.useWatch('currency', form) as string | undefined) ?? 'USD';
 
   const submit = async (values: Record<string, unknown>) => {
     setBusy(true);
@@ -103,7 +110,9 @@ export default function CartPage() {
                   <Link href={`/products/${line.productId}`} className="mp-line-name">
                     {line.name}
                   </Link>
-                  <span className="mp-line-unit">{formatMoney(line.priceMinor)} each</span>
+                  <span className="mp-line-unit">
+                    {formatMoney(line.priceMinor)} {currency} each
+                  </span>
                 </div>
                 <InputNumber
                   min={1}
@@ -111,7 +120,9 @@ export default function CartPage() {
                   aria-label={`Quantity for ${line.name}`}
                   onChange={(v) => setQty(line.productId, v ?? 1)}
                 />
-                <span className="mp-line-total">{formatMoney(line.priceMinor * line.qty)}</span>
+                <span className="mp-line-total">
+                  {formatMoney(line.priceMinor * line.qty)} {currency}
+                </span>
                 <Button
                   type="text"
                   aria-label={`Remove ${line.name}`}
@@ -125,6 +136,7 @@ export default function CartPage() {
           </ul>
 
           <Form
+            form={form}
             layout="vertical"
             onFinish={submit}
             initialValues={{ currency: 'USD' }}
@@ -161,11 +173,15 @@ export default function CartPage() {
             <span>
               Subtotal · {units} item{units === 1 ? '' : 's'}
             </span>
-            <span className="mp-num">{formatMoney(total)}</span>
+            <span className="mp-num">
+              {formatMoney(total)} {currency}
+            </span>
           </div>
           <div className="mp-summary-row mp-summary-total">
             <span>Total</span>
-            <span className="mp-num">{formatMoney(total)}</span>
+            <span className="mp-num">
+              {formatMoney(total)} {currency}
+            </span>
           </div>
           {/* Indicative only: POST /orders locks unit prices server-side at
               order time, so a stale cached price is a display concern and never

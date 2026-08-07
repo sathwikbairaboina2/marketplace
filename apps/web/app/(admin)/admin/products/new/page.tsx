@@ -49,7 +49,7 @@ export default function NewProductPage() {
 
   return (
     <>
-      <PageHeader title="New product" subtitle="Images can only be attached now -- the engine has no update routes." />
+      <PageHeader title="New product" subtitle="Images can only be attached now — the engine has no update routes." />
       <Card style={{ maxWidth: 640 }}>
       <Form
         form={form}
