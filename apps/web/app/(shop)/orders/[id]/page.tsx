@@ -8,6 +8,7 @@ import { getOrder } from '../../../../lib/api/orders';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { notifyProblem } from '../../../../lib/problem-notify';
+import { StatusTag } from '../../../../components/status-tag';
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -25,7 +26,7 @@ export default function OrderDetailPage() {
       <Descriptions
         column={1}
         items={[
-          { key: 'status', label: 'Status', children: order.status },
+          { key: 'status', label: 'Status', children: <StatusTag status={order.status} /> },
           {
             key: 'total',
             label: 'Total',

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { BookingResponse } from '@marketplace/contracts';
 import { listBookings } from '../../../lib/api/bookings';
 import { CursorTable } from '../../../components/cursor-table';
+import { StatusTag } from '../../../components/status-tag';
 
 export default function BookingsPage() {
   return (
@@ -21,7 +22,11 @@ export default function BookingsPage() {
           dataIndex: 'eventId',
           render: (eventId: string) => <Link href={`/events/${eventId}`}>{eventId}</Link>,
         },
-        { title: 'Status', dataIndex: 'status' },
+        {
+          title: 'Status',
+          dataIndex: 'status',
+          render: (status: string) => <StatusTag status={status} />,
+        },
         { title: 'Tickets', dataIndex: 'ticketQuantity' },
         { title: 'Booked', dataIndex: 'createdAt' },
       ]}

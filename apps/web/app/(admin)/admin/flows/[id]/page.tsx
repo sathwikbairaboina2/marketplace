@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Button, Card, Descriptions, Spin, Table, Tag, message } from 'antd';
+import { Button, Card, Descriptions, Spin, Table, message } from 'antd';
 import type { FlowResponse } from '@marketplace/contracts';
 import { executeFlow, getFlow } from '../../../../../lib/api/flows';
 import { useSchemas } from '../../../../../lib/schemas/schema-cache';
 import { notifyProblem } from '../../../../../lib/problem-notify';
+import { StatusTag } from '../../../../../components/status-tag';
 
 export default function FlowDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -46,7 +47,7 @@ export default function FlowDetailPage() {
             Execute
           </Button>
         ) : (
-          <Tag color={flow.status === 'applied' ? 'green' : 'red'}>{flow.status}</Tag>
+          <StatusTag status={flow.status} />
         )
       }
     >
@@ -54,7 +55,7 @@ export default function FlowDetailPage() {
         column={1}
         items={[
           { key: 'entity', label: 'Target entity', children: flow.targetEntity },
-          { key: 'status', label: 'Status', children: flow.status },
+          { key: 'status', label: 'Status', children: <StatusTag status={flow.status} /> },
           { key: 'proposedBy', label: 'Proposed by', children: flow.proposedBy },
           { key: 'executedBy', label: 'Executed by', children: flow.executedBy ?? '—' },
           { key: 'appliedAt', label: 'Applied at', children: flow.appliedAt ?? '—' },

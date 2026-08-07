@@ -9,6 +9,7 @@ import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { useCart } from '../../../../lib/cart/cart-context';
 import { notifyProblem } from '../../../../lib/problem-notify';
+import { StatusTag } from '../../../../components/status-tag';
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -50,7 +51,7 @@ export default function ProductDetailPage() {
             children: `${(product.priceMinor / 100).toFixed(2)} ${product.currency}`,
           },
           { key: 'stock', label: 'Stock', children: product.stock },
-          { key: 'status', label: 'Status', children: product.status },
+          { key: 'status', label: 'Status', children: <StatusTag status={product.status} /> },
           // Every tenant-defined attribute, rendered without naming any of them.
           ...(schema ? toDescriptionRows(schema.fields, product.attributes) : []),
         ]}

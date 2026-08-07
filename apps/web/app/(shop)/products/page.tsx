@@ -7,6 +7,7 @@ import type { ColumnsType } from 'antd/es/table';
 import type { ProductResponse, SearchProducts } from '@marketplace/contracts';
 import { listProducts, searchProducts } from '../../../lib/api/products';
 import { CursorTable } from '../../../components/cursor-table';
+import { StatusTag } from '../../../components/status-tag';
 import { toAttributes, toFilterItems } from '../../../lib/schema-fields';
 import { useSchema } from '../../../lib/schemas/schema-cache';
 
@@ -57,7 +58,11 @@ export default function ProductsPage() {
         render: (minor: number, row) => `${(minor / 100).toFixed(2)} ${row.currency}`,
       },
       { title: 'Stock', dataIndex: 'stock' },
-      { title: 'Status', dataIndex: 'status' },
+      {
+        title: 'Status',
+        dataIndex: 'status',
+        render: (status: string) => <StatusTag status={status} />,
+      },
     ],
     [],
   );

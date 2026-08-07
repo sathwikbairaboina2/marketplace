@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { OrderResponse } from '@marketplace/contracts';
 import { listOrders } from '../../../lib/api/orders';
 import { CursorTable } from '../../../components/cursor-table';
+import { StatusTag } from '../../../components/status-tag';
 
 export default function OrdersPage() {
   return (
@@ -16,7 +17,11 @@ export default function OrdersPage() {
           dataIndex: 'id',
           render: (id: string) => <Link href={`/orders/${id}`}>{id}</Link>,
         },
-        { title: 'Status', dataIndex: 'status' },
+        {
+          title: 'Status',
+          dataIndex: 'status',
+          render: (status: string) => <StatusTag status={status} />,
+        },
         { title: 'Items', render: (_, row) => row.items.length },
         {
           title: 'Total',

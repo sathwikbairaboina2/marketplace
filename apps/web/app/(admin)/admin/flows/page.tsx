@@ -3,11 +3,12 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Alert, Space, Tag } from 'antd';
+import { Alert, Space } from 'antd';
 import type { FlowResponse } from '@marketplace/contracts';
 import { listFlows } from '../../../../lib/api/flows';
 import { CursorTable } from '../../../../components/cursor-table';
 import { useFlowArrival } from '../../../../lib/flows/use-flow-arrival';
+import { StatusTag } from '../../../../components/status-tag';
 
 function FlowsView() {
   // The chat page links here with ?awaiting=<dispatchedMessageId> after a
@@ -43,11 +44,7 @@ function FlowsView() {
           {
             title: 'Status',
             dataIndex: 'status',
-            render: (status: string) => (
-              <Tag color={status === 'applied' ? 'green' : status === 'rejected' ? 'red' : 'blue'}>
-                {status}
-              </Tag>
-            ),
+            render: (status: string) => <StatusTag status={status} />,
           },
           {
             title: 'Adds',

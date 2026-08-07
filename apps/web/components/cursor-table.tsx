@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Button, Table } from 'antd';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Button, Skeleton, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { notifyProblem } from '../lib/problem-notify';
+import { EmptyState } from './empty-state';
 
 interface Props<T> {
   columns: ColumnsType<T>;
@@ -11,6 +12,8 @@ interface Props<T> {
   load: (cursor: string | null) => Promise<{ items: T[]; nextCursor: string | null }>;
   /** Change this to discard the accumulated pages and reload from the start. */
   reloadToken?: unknown;
+  /** Shown when the tenant has nothing at all. */
+  empty?: ReactNode;
 }
 
 /**
@@ -19,7 +22,13 @@ interface Props<T> {
  * Pages accumulate behind a "Load more" button instead, and stay in memory so
  * back-navigation does not lose them.
  */
-export function CursorTable<T extends object>({ columns, rowKey, load, reloadToken }: Props<T>) {
+export function CursorTable<T extends object>({
+  columns,
+  rowKey,
+  load,
+  reloadToken,
+  empty,
+}: Props<T>) {
   const [items, setItems] = useState<T[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -50,6 +59,13 @@ export function CursorTable<T extends object>({ columns, rowKey, load, reloadTok
     void fetchPage(null, false);
   }, [fetchPage, reloadToken]);
 
+  // A spinner over an empty rectangle says nothing about what is coming. Once
+  // there are rows, keep the table and let ANTD's own loading overlay handle
+  // subsequent pages, so the accumulated results do not vanish mid-fetch.
+  if (loading && items.length === 0) {
+    return <Skeleton active paragraph={{ rows: 6 }} />;
+  }
+
   return (
     <>
       <Table<T>
@@ -58,6 +74,8 @@ export function CursorTable<T extends object>({ columns, rowKey, load, reloadTok
         dataSource={items}
         pagination={false}
         loading={loading}
+        scroll={{ x: 'max-content' }}
+        locale={{ emptyText: empty ?? <EmptyState title="Nothing here yet" /> }}
       />
       {!done && (
         <Button
