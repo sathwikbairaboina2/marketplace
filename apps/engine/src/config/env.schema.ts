@@ -24,6 +24,18 @@ export const EnvSchema = z.object({
   // stays off entirely, so a deployed build behaves exactly as it did before
   // this existed -- the same posture as DOCS_ENABLED.
   CORS_ORIGINS: z.string().default(''),
+  // Object storage for product images. The uploads module registers only when
+  // S3_BUCKET is set, so an engine without object storage configured behaves
+  // exactly as it did before this existed.
+  S3_BUCKET: z.string().min(1).optional(),
+  S3_ENDPOINT: z.string().url().optional(),
+  // Host-facing, and the one presigning uses. A presigned URL's signature is
+  // bound to the host it was signed for: signing against the internal
+  // `localstack:4566` yields a URL the browser rejects with an opaque 403
+  // rather than a connection error. Same split, same reason, as
+  // COGNITO_ENDPOINT / COGNITO_ENDPOINT_HOST in docker/seed/seed.ts.
+  S3_PUBLIC_ENDPOINT: z.string().url().optional(),
+  MAX_IMAGE_BYTES: z.coerce.number().int().positive().default(5_242_880),
   DEV_TENANT_ID: z.string().min(1).default('tenant-dev'),
   DEV_USERNAME: z.string().min(1).default('dev@marketplace.local'),
   COGNITO_ENDPOINT: z.string().url().optional(),

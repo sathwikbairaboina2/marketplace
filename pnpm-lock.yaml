@@ -135,12 +135,18 @@ importers:
       '@aws-sdk/client-dynamodb':
         specifier: ^3.665.0
         version: 3.1101.0
+      '@aws-sdk/client-s3':
+        specifier: ^3.665.0
+        version: 3.1105.0
       '@aws-sdk/client-sqs':
         specifier: ^3.665.0
         version: 3.1101.0
       '@aws-sdk/lib-dynamodb':
         specifier: ^3.665.0
         version: 3.1101.0(@aws-sdk/client-dynamodb@3.1101.0)
+      '@aws-sdk/s3-presigned-post':
+        specifier: ^3.665.0
+        version: 3.1105.0
       '@marketplace/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -629,6 +635,10 @@ packages:
 
   '@aws-sdk/nested-clients@3.997.41':
     resolution: {integrity: sha512-RDHqPGQWlF6tatA/Tp3rg6oIwtgN9IVderxE+9av2Y93Dfyu+mO1hZ5Bu2jpfZg2rwdNbsssnwM+sLafIczMlQ==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/s3-presigned-post@3.1105.0':
+    resolution: {integrity: sha512-W2hGeWPibCOdmXGUAITC+56nhxdUojDW+VvsG3ndCi7Gjnw/DQVQvZpSLZPlsWyNP/EqwM26yDEC3QonUbakRg==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/signature-v4-multi-region@3.996.43':
@@ -5366,6 +5376,16 @@ snapshots:
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
       '@smithy/node-http-handler': 4.9.13
+      '@smithy/types': 4.16.1
+      tslib: 2.8.1
+
+  '@aws-sdk/s3-presigned-post@3.1105.0':
+    dependencies:
+      '@aws-sdk/client-s3': 3.1105.0
+      '@aws-sdk/core': 3.977.6
+      '@aws-sdk/types': 3.974.2
+      '@smithy/core': 3.31.1
+      '@smithy/signature-v4': 5.6.12
       '@smithy/types': 4.16.1
       tslib: 2.8.1
 
