@@ -20,6 +20,10 @@ export const EnvSchema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  // Comma-separated allowed origins for the browser client. Empty means CORS
+  // stays off entirely, so a deployed build behaves exactly as it did before
+  // this existed -- the same posture as DOCS_ENABLED.
+  CORS_ORIGINS: z.string().default(''),
   DEV_TENANT_ID: z.string().min(1).default('tenant-dev'),
   DEV_USERNAME: z.string().min(1).default('dev@marketplace.local'),
   COGNITO_ENDPOINT: z.string().url().optional(),

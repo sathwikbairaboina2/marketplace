@@ -31,5 +31,19 @@ export async function createApp(): Promise<INestApplication> {
     setupOpenApi(app, { title: 'MarketplaceEngine', version: '1.0.0' });
   }
 
+  if (env.CORS_ORIGINS) {
+    app.enableCors({
+      origin: env.CORS_ORIGINS.split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+      // Listed explicitly rather than reflected back from the request:
+      // `Idempotency-Key` is required on POST /orders and POST /bookings, and a
+      // preflight that silently drops it turns every order the browser places
+      // into an opaque CORS failure with no server-side trace.
+      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+      methods: ['GET', 'POST', 'OPTIONS'],
+    });
+  }
+
   return app;
 }

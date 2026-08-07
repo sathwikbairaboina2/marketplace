@@ -94,6 +94,10 @@ services:
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: info
       DOCS_ENABLED: 'true'
+      # The browser console runs on a different origin, so the engine's REST
+      # surface needs an explicit allow-list. Empty everywhere else, including
+      # every deployed build.
+      CORS_ORIGINS: http://localhost:3002
       COGNITO_ENDPOINT: http://cognito-local:9229
     depends_on:
       seed: { condition: service_completed_successfully }
