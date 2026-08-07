@@ -40,53 +40,68 @@ and one of actual products.
 
 ## Approach
 
-Upload goes **directly from the browser to S3** using a presigned POST that the
-engine signs. The bytes never pass through the API.
+The browser posts the file to the **engine**, which validates the bytes and
+writes the object to S3 with its own credentials.
 
-### Why presigned POST rather than PUT or a proxy
+### Why a proxy rather than a presigned upload
 
-A presigned **PUT** is simpler to generate and to call, but its signature covers
-no conditions on the body: there is no way to bound the size. The engine would
-have to accept a client-declared length, which is not a limit — it is a request
-that the client behave. A presigned **POST** signs a policy, and the policy can
-pin both `content-length-range` and an exact `Content-Type`, so **S3 rejects an
-oversized or wrong-typed upload itself**. The enforcement lives in the storage
-layer, where it cannot be talked out of.
+This reverses an earlier decision, on evidence.
 
-Proxying the upload through the engine (multipart to
-`POST /products/:id/images`) would give the strongest validation of all, since
-the engine would see the real bytes, and would avoid both bucket CORS and the
-signing-host problem below. It was rejected because it puts user-controlled file
-bytes through the API process — a request-size limit to tune, upload duration
-competing with API latency, and multer to configure — to buy validation that a
-signed policy already provides.
+The original design had the browser upload directly to S3 under a presigned
+POST, on the grounds that the signed policy can pin `content-length-range` and
+an exact `Content-Type`, so **S3 itself** would reject an oversized or
+wrong-typed file — enforcement in the storage layer, where a client cannot talk
+it out of anything. That is true of real AWS S3.
+
+It is not true of LocalStack, which is the only environment this platform is
+verified in. Measured directly against the running stack:
+
+| Upload | Result |
+|---|---|
+| Valid signature, 4 KB body against a 1 KB policy limit | 204 |
+| **Tampered** signature (`X-Amz-Signature: deadbeef`) | 204 |
+| **No policy or signature fields at all** | 204 |
+
+The policy was generated correctly — decoded, it carried both conditions,
+signed. LocalStack simply does not validate presigned POSTs. So the size and
+type limits were unenforced locally, and worse, the bucket was writable by
+anything that could reach the port, with no credential at all.
+
+A security control that cannot be exercised in the environment the project
+tests in is not a control. Proxying through the engine gives enforcement that
+does not depend on the storage backend: the engine holds the actual bytes, so it
+can check the real length and read the file's magic number rather than trusting
+the declared type. It also removes the need for bucket CORS and for any
+public-write path.
+
+The costs are real and accepted: multipart handling in NestJS, and up to
+`MAX_IMAGE_BYTES` per request passing through the API process. At a 5 MB cap
+for product photographs that is a reasonable amount of work for the API to do.
+
+A presigned **PUT** was never viable — its signature covers no conditions on the
+body, so the size limit would have been a request that the client behave.
 
 ### Upload first, then create
 
 Because the engine has no update routes, the order is forced:
 
 1. The admin picks files in the product form.
-2. The browser requests one presigned POST per file.
-3. The browser posts each file straight to S3.
-4. The form holds the resulting object URLs.
+2. The browser posts each file to the engine as multipart form data.
+3. The engine validates it and writes the object to S3.
+4. The form holds the object URLs the engine returns.
 5. Submitting the form creates the product with those URLs in `images`.
 
 **Images can therefore only be set when a product is created.** Changing the
 images on an existing product is not possible and is out of scope; it becomes
 possible when update routes exist, and needs no change here when they do.
 
-### The signing host, which is the thing most likely to go wrong
+### Two endpoints, still
 
-A presigned URL's signature is bound to the host it was signed for. The engine
-reaches LocalStack at `http://localstack:4566`; the browser must use
-`http://localhost:4566`. Signing with the internal hostname produces a URL that
-fails its signature check from the browser rather than failing to resolve, so it
-presents as an opaque 403 rather than a connection error.
-
-The engine therefore signs with a **host-facing** endpoint, configured
-separately from the one it uses for its own S3 calls. This mirrors
-`COGNITO_ENDPOINT_HOST` exactly, and for the same underlying reason: an
-identifier minted for one audience is being consumed by another.
+The engine *writes* to S3 over the internal endpoint (`http://localstack:4566`),
+but the URL it stores must be one a **browser** can fetch
+(`http://localhost:4566`). So both are configured, for the same underlying
+reason as `COGNITO_ENDPOINT` and `COGNITO_ENDPOINT_HOST`: a value produced for
+one audience is consumed by another.
 
 `forcePathStyle: true` on the S3 client — LocalStack serves
 `http://localhost:4566/<bucket>/<key>`, not virtual-host addressing.
@@ -112,14 +127,22 @@ remains a policy change rather than a data migration.
 
 **`apps/engine/src/uploads/`** — a new module, one endpoint:
 
-`POST /api/v1/uploads/product-image`, authenticated like every other route.
+`POST /api/v1/uploads/product-image`, authenticated like every other route,
+accepting `multipart/form-data` with a single `file` part.
 
-- Request: `{ filename: string, contentType: string }`
-- Response: `{ url: string, fields: Record<string, string>, objectUrl: string }`
+- Response: `{ objectUrl: string }`
 
-`contentType` outside `image/jpeg`, `image/png`, `image/webp`, `image/gif` is
-rejected with a 422 problem **before** anything is signed. The signed policy
-pins `content-length-range` to `0..MAX_IMAGE_BYTES` and the exact content type.
+Three checks, all on bytes the engine actually holds:
+
+- **Size** — multer's `limits.fileSize` is set to `MAX_IMAGE_BYTES`, so the
+  request is cut off rather than buffered whole and then rejected.
+- **Declared type** — the part's MIME type must be one of `image/jpeg`,
+  `image/png`, `image/webp`, `image/gif`.
+- **Actual type** — the file's leading bytes are read and must identify the same
+  format. A declared content type is a claim by the uploader; the magic number
+  is the file. This is what stops an HTML or SVG payload arriving labelled as a
+  PNG and then being served from the media bucket.
+
 `filename` is sanitised to a safe basename; a caller cannot use it to escape the
 key prefix.
 
@@ -134,12 +157,12 @@ LocalStack healthcheck extended to require s3 as well. Without that, the engine
 can start against a LocalStack that is answering for SQS but not yet for S3.
 
 **`docker/seed/s3.ts`** — `ensureBucket()`, called from `seed.ts` beside
-`ensureQueues()`. Creates the bucket, applies a public-read bucket policy, and
-sets a CORS rule permitting `POST` and `GET` from `http://localhost:3002`.
-Writes `S3_BUCKET` to `.env.generated`.
+`ensureQueues()`. Creates the bucket and applies a public-read bucket policy.
+Writes `S3_BUCKET` to `.env.generated`. **No CORS rule** — the browser never
+talks to S3 now, and an `<img>` load is not a CORS request.
 
-**`apps/web`** — `lib/api/uploads.ts` for the presign call and the S3 post, and
-an `ImageUploader` component in the admin product form: file picker, per-file
+**`apps/web`** — `lib/api/uploads.ts` posts the file to the engine, and an
+`ImageUploader` component in the admin product form: file picker, per-file
 progress, thumbnail preview, remove-before-submit, inline per-file errors.
 
 Product images render with a plain `<img>` and explicit dimensions, not
@@ -149,9 +172,10 @@ we already control.
 
 ### Failure handling
 
-- **Wrong type** — 422 from the engine before signing, shown against the file.
-- **Oversize** — rejected by S3 under the policy. S3 answers with an XML error
-  body, which is mapped to a readable message rather than surfaced raw.
+- **Wrong declared type, or bytes that do not match it** — 422 problem from the
+  engine, shown against the file.
+- **Oversize** — multer aborts the request at `MAX_IMAGE_BYTES`; the engine
+  turns that into a 413 problem naming the limit.
 - **Upload failure** — that file is marked failed and can be removed or retried;
   the rest of the form stays usable.
 - **Orphaned objects** — a file uploaded before a product create that then fails
@@ -162,14 +186,17 @@ we already control.
 ## Testing
 
 **Unit** — key construction and filename sanitisation, including attempts to
-traverse out of the prefix; content-type acceptance and rejection; the web
-client's mapping of an S3 XML error to a readable message.
+traverse out of the prefix; magic-number sniffing for each accepted format and
+for a file whose declared type is a lie; the web client's error mapping.
 
-**Integration, against LocalStack** — presign, then actually upload the bytes
-and read the object back. Assert that an oversized body and a mismatched content
-type are both rejected **by S3**, not by the test's own arithmetic: that is the
-claim the whole approach rests on, and asserting it anywhere else proves
-nothing.
+**Integration, against LocalStack** — store a real file through the service,
+then fetch the returned `objectUrl` with no credentials and get the bytes back.
+The public-read path is the one thing that genuinely depends on S3's own
+behaviour, so it is asserted against S3 rather than assumed.
+
+Note what is deliberately *not* asserted against LocalStack: size and type
+limits. Those are enforced by the engine now precisely because LocalStack cannot
+be relied on to enforce anything, so they are tested where they live.
 
 **End to end** — an admin creates a product with an uploaded image and the image
 renders on the product detail page.

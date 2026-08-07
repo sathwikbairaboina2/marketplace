@@ -52,6 +52,12 @@ export class ProblemFilter implements ExceptionFilter {
         slug = 'unauthorized';
       } else if (status === HttpStatus.NOT_FOUND) {
         slug = 'not-found';
+      } else if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
+        // Multer aborts an oversized upload mid-stream, and Nest's multipart
+        // integration surfaces that as PayloadTooLargeException. Without this
+        // it would be typed `invalid-request`, which tells a client nothing
+        // about which limit it hit.
+        slug = 'payload-too-large';
       } else {
         slug = 'invalid-request';
       }

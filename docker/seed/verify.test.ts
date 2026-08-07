@@ -4,9 +4,11 @@ import {
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
+import { S3Client, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DEMO_USERS, DEMO_PASSWORD } from './cognito';
+import { BUCKET_NAME } from './s3';
 
 const env = Object.fromEntries(
   readFileSync(resolve(__dirname, '../.env.generated'), 'utf8')
@@ -69,5 +71,36 @@ describe('seeded infrastructure', () => {
       expect(claims['custom:tenant_id']).toBe(user.tenantId);
       expect(claims['custom:role']).toBe(user.role);
     }
+  });
+
+  const s3 = () =>
+    new S3Client({
+      region: 'us-east-1',
+      endpoint: 'http://localhost:4566',
+      credentials: creds,
+      forcePathStyle: true,
+    });
+
+  it('creates the media bucket and publishes its name', async () => {
+    await expect(s3().send(new HeadBucketCommand({ Bucket: BUCKET_NAME }))).resolves.toBeDefined();
+    expect(env.S3_BUCKET).toBe(BUCKET_NAME);
+  });
+
+  it('serves an uploaded object to an unauthenticated reader', async () => {
+    const key = 'verify/public-read-probe.txt';
+    await s3().send(
+      new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: 'hello',
+        ContentType: 'text/plain',
+      }),
+    );
+
+    // A plain fetch carrying no credentials at all -- exactly how an <img> tag
+    // will load a product photograph.
+    const res = await fetch(`http://localhost:4566/${BUCKET_NAME}/${key}`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('hello');
   });
 });

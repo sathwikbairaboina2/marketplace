@@ -2,6 +2,7 @@ import { writeFileSync, rmSync } from 'node:fs';
 import { ensureTable } from './dynamo';
 import { ensureQueues } from './sqs';
 import { ensureUserPool, ensureDemoUsers } from './cognito';
+import { ensureBucket } from './s3';
 
 async function main(): Promise<void> {
   // A stale .env.generated from a previous successful run must not survive a
@@ -15,6 +16,7 @@ async function main(): Promise<void> {
   const { queueUrl, dlqUrl } = await ensureQueues();
   const { userPoolId, clientId } = await ensureUserPool();
   await ensureDemoUsers(userPoolId);
+  const bucket = await ensureBucket();
 
   // The issuer and the JWKS URI deliberately use different hosts locally.
   //
@@ -38,6 +40,7 @@ async function main(): Promise<void> {
     `JWKS_URI=${internalOrigin}/${userPoolId}/.well-known/jwks.json`,
     `QUEUE_URL=${queueUrl}`,
     `DLQ_URL=${dlqUrl}`,
+    `S3_BUCKET=${bucket}`,
     '',
   ];
   writeFileSync(process.env.ENV_OUT!, lines.join('\n'), 'utf8');

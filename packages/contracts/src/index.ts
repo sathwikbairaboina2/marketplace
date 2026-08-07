@@ -9,3 +9,4 @@ export * from './flow';
 export * from './sqs';
 export * from './agent';
 export * from './responses';
+export * from './upload';

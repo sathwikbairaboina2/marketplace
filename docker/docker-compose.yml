@@ -13,11 +13,20 @@ services:
   localstack:
     image: localstack/localstack:3.8
     environment:
-      SERVICES: sqs
+      SERVICES: sqs,s3
       AWS_DEFAULT_REGION: us-east-1
     ports: ['4566:4566']
     healthcheck:
-      test: ['CMD-SHELL', 'curl -s http://localhost:4566/_localstack/health | grep -qE "\"sqs\": \"(available|running)\""']
+      # Both services, not just sqs. LocalStack reports one as available before
+      # the other, and an engine that starts against a half-ready LocalStack
+      # fails its first presign with a confusing connection error rather than
+      # anything that points at the cause.
+      test:
+        - CMD-SHELL
+        - >-
+          curl -s http://localhost:4566/_localstack/health > /tmp/h
+          && grep -qE '"sqs": "(available|running)"' /tmp/h
+          && grep -qE '"s3": "(available|running)"' /tmp/h
       interval: 3s
       retries: 30
 
@@ -52,6 +61,7 @@ services:
     environment:
       DYNAMODB_ENDPOINT: http://dynamodb-local:8000
       SQS_ENDPOINT: http://localstack:4566
+      S3_ENDPOINT: http://localstack:4566
       COGNITO_ENDPOINT: http://cognito-local:9229
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: local
@@ -98,6 +108,11 @@ services:
       # surface needs an explicit allow-list. Empty everywhere else, including
       # every deployed build.
       CORS_ORIGINS: http://localhost:3002
+      S3_ENDPOINT: http://localstack:4566
+      # Host-facing on purpose -- this is the endpoint presigned URLs are signed
+      # against, and the browser is what redeems them. S3_BUCKET arrives from
+      # .env.generated, written by the seed.
+      S3_PUBLIC_ENDPOINT: http://localhost:4566
       COGNITO_ENDPOINT: http://cognito-local:9229
     depends_on:
       seed: { condition: service_completed_successfully }

@@ -13,6 +13,7 @@ import { EventsModule } from './events/events.module';
 import { OrdersModule } from './orders/orders.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { FlowsModule } from './flows/flows.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { MessagingModule } from './messaging/messaging.module';
 
@@ -40,6 +41,14 @@ import { MessagingModule } from './messaging/messaging.module';
     OrdersModule,
     BookingsModule,
     FlowsModule,
+    // Read from process.env rather than ENV: `registerIfEnabled` decides
+    // whether a controller exists while @Module's metadata is evaluated, long
+    // before ConfigModule instantiates ENV. Same reasoning as DevTokenModule
+    // above.
+    UploadsModule.registerIfEnabled({
+      S3_BUCKET: process.env.S3_BUCKET,
+      S3_PUBLIC_ENDPOINT: process.env.S3_PUBLIC_ENDPOINT,
+    }),
     IdempotencyModule,
     MessagingModule,
   ],

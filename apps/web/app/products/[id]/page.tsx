@@ -25,6 +25,20 @@ export default function ProductDetailPage() {
 
   return (
     <Card title={product.name}>
+      {product.images.length > 0 && (
+        <Space wrap style={{ marginBottom: 16 }}>
+          {product.images.map((url) => (
+            <img
+              key={url}
+              src={url}
+              alt={product.name}
+              width={160}
+              height={160}
+              style={{ objectFit: 'cover', borderRadius: 8 }}
+            />
+          ))}
+        </Space>
+      )}
       <Descriptions
         column={1}
         items={[
