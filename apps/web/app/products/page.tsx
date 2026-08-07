@@ -31,6 +31,21 @@ export default function ProductsPage() {
   const columns = useMemo<ColumnsType<ProductResponse>>(
     () => [
       {
+        title: '',
+        dataIndex: 'images',
+        width: 56,
+        render: (images: string[]) =>
+          images[0] ? (
+            <img
+              src={images[0]}
+              alt=""
+              width={40}
+              height={40}
+              style={{ objectFit: 'cover', borderRadius: 4 }}
+            />
+          ) : null,
+      },
+      {
         title: 'Name',
         dataIndex: 'name',
         render: (name: string, row) => <Link href={`/products/${row.id}`}>{name}</Link>,

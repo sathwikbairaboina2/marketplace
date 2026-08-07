@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Form, Input, InputNumber, Select, message } from 'antd';
+import { ImageUploader } from '../../../../components/image-uploader';
 import { createProduct } from '../../../../lib/api/products';
 import { toAttributes, toFormItems } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
@@ -11,6 +13,11 @@ export default function NewProductPage() {
   const schema = useSchema('Product');
   const router = useRouter();
   const [form] = Form.useForm();
+  // Held outside the Form: each file is uploaded as it is chosen, so by submit
+  // time these are already stored objects rather than pending form state. The
+  // engine has no update routes, so this is the only moment a product's images
+  // can be set.
+  const [images, setImages] = useState<string[]>([]);
 
   const submit = async (values: Record<string, unknown>) => {
     try {
@@ -21,7 +28,7 @@ export default function NewProductPage() {
         currency: values.currency as string,
         category: values.category as string,
         stock: values.stock as number,
-        images: [],
+        images,
         status: values.status as 'active' | 'draft' | 'archived' | 'out_of_stock',
         attributes: toAttributes(
           schema?.fields ?? {},
@@ -74,6 +81,9 @@ export default function NewProductPage() {
               { value: 'out_of_stock' },
             ]}
           />
+        </Form.Item>
+        <Form.Item label="Images">
+          <ImageUploader value={images} onChange={setImages} />
         </Form.Item>
         {/* The tenant's dynamic fields, generated from the registry. */}
         {schema ? toFormItems(schema.fields) : null}

@@ -52,6 +52,12 @@ export class ProblemFilter implements ExceptionFilter {
         slug = 'unauthorized';
       } else if (status === HttpStatus.NOT_FOUND) {
         slug = 'not-found';
+      } else if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
+        // Multer aborts an oversized upload mid-stream, and Nest's multipart
+        // integration surfaces that as PayloadTooLargeException. Without this
+        // it would be typed `invalid-request`, which tells a client nothing
+        // about which limit it hit.
+        slug = 'payload-too-large';
       } else {
         slug = 'invalid-request';
       }
@@ -65,21 +71,6 @@ export class ProblemFilter implements ExceptionFilter {
         title: exception.name,
         status,
         detail: Array.isArray(detail) ? detail.join('; ') : detail,
-      };
-    }
-
-    // Multer aborts an oversized upload mid-stream and throws its own error
-    // type, which is not an HttpException and would otherwise be reported as a
-    // 500. An upload refused on purpose is not an internal failure, and the
-    // client needs to be told which limit it hit. Matched on `name` rather than
-    // by importing multer, so this file keeps no upload-specific dependency.
-    if (exception instanceof Error && exception.name === 'MulterError') {
-      const tooLarge = (exception as Error & { code?: string }).code === 'LIMIT_FILE_SIZE';
-      return {
-        type: `https://marketplace.local/problems/${tooLarge ? 'payload-too-large' : 'invalid-request'}`,
-        title: tooLarge ? 'Image too large' : 'Malformed upload',
-        status: tooLarge ? 413 : 400,
-        detail: exception.message,
       };
     }
 
