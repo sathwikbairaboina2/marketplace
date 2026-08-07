@@ -8,49 +8,126 @@ export type Mode = 'light' | 'dark';
  */
 export const palette = {
   primary: '#0d9488',
+  primaryHover: '#0f766e',
   primaryDeep: '#115e59',
   ink: '#0f172a',
-  muted: '#475569',
+  inkSoft: '#334155',
+  muted: '#64748b',
   line: '#e2e8f0',
+  lineStrong: '#cbd5e1',
   surface: '#f8fafc',
   surfaceRaised: '#ffffff',
-  // The back-office sidebar is dark by design, not by theme: it stays this
+  surfaceSunken: '#f1f5f9',
+  // The back-office sidebar is dark by design, not by theme: it keeps this
   // colour in light mode too. Flipping it white would undo the decision the
   // whole admin chrome is built on.
   sidebar: '#0f172a',
   sidebarItem: '#1e293b',
-  sidebarText: '#cbd5e1',
+  sidebarText: '#94a3b8',
+  sidebarTextStrong: '#e2e8f0',
   success: '#0d9488',
   warning: '#b45309',
   danger: '#b91c1c',
 } as const;
 
 const darkOverrides = {
-  ink: '#e2e8f0',
-  muted: '#94a3b8',
-  line: '#1e293b',
-  surface: '#0b1220',
-  surfaceRaised: '#111827',
+  ink: '#e6edf5',
+  inkSoft: '#c3ced9',
+  muted: '#8b9bb0',
+  line: '#1e2b3d',
+  lineStrong: '#2b3a50',
+  surface: '#080d16',
+  surfaceRaised: '#0f1725',
+  surfaceSunken: '#0b111c',
 } as const;
 
-export const radius = { sm: 6, md: 10, lg: 14 } as const;
+/** 4px rhythm. Every gap, pad and margin comes from here. */
+export const space = {
+  1: 4,
+  2: 8,
+  3: 12,
+  4: 16,
+  5: 20,
+  6: 24,
+  8: 32,
+  10: 40,
+  12: 48,
+  16: 64,
+} as const;
+
+export const radius = { sm: 6, md: 10, lg: 14, xl: 20, pill: 999 } as const;
+
+export const fontSize = {
+  xs: 12,
+  sm: 13,
+  base: 14,
+  md: 16,
+  lg: 20,
+  xl: 25,
+  xxl: 32,
+} as const;
+
+/**
+ * Shadows are tinted with the ink colour rather than pure black. Black shadows
+ * over a blue-grey surface read as dirty; a tinted one reads as depth.
+ */
+const shadowLight = {
+  sm: '0 1px 2px rgb(15 23 42 / 6%)',
+  md: '0 1px 3px rgb(15 23 42 / 8%), 0 4px 12px rgb(15 23 42 / 5%)',
+  lg: '0 2px 6px rgb(15 23 42 / 8%), 0 12px 28px rgb(15 23 42 / 10%)',
+};
+
+// Shadow barely reads on a dark surface, so depth there comes mostly from a
+// lighter raised background plus a hairline. Keep a faint shadow for the lift
+// on hover to still feel like motion rather than a colour change.
+const shadowDark = {
+  sm: '0 1px 2px rgb(0 0 0 / 40%)',
+  md: '0 2px 6px rgb(0 0 0 / 45%)',
+  lg: '0 8px 28px rgb(0 0 0 / 55%)',
+};
 
 export function antdTheme(mode: Mode): ThemeConfig {
+  const dark = mode === 'dark';
+  const c = dark ? { ...palette, ...darkOverrides } : palette;
+
   return {
-    algorithm: mode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
+    algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
       colorPrimary: palette.primary,
       colorSuccess: palette.success,
       colorWarning: palette.warning,
       colorError: palette.danger,
+      colorBgBase: c.surface,
+      colorBgContainer: c.surfaceRaised,
+      colorBorder: c.line,
+      colorBorderSecondary: c.line,
+      colorText: c.ink,
+      colorTextSecondary: c.inkSoft,
+      colorTextTertiary: c.muted,
       borderRadius: radius.md,
+      borderRadiusLG: radius.lg,
+      borderRadiusSM: radius.sm,
       fontFamily: 'var(--font-inter), ui-sans-serif, system-ui, sans-serif',
-      fontSize: 14,
+      fontSize: fontSize.base,
+      controlHeight: 36,
+      lineHeight: 1.55,
+      wireframe: false,
     },
     components: {
-      Layout: { bodyBg: mode === 'dark' ? darkOverrides.surface : palette.surface },
-      Card: { borderRadiusLG: radius.md },
-      Table: { headerBg: mode === 'dark' ? darkOverrides.surfaceRaised : palette.surface },
+      Layout: { bodyBg: c.surface },
+      Card: { borderRadiusLG: radius.lg, paddingLG: space[6] },
+      Table: {
+        headerBg: dark ? c.surfaceSunken : c.surface,
+        headerColor: c.muted,
+        headerSplitColor: 'transparent',
+        rowHoverBg: dark ? c.surfaceSunken : palette.surfaceSunken,
+        cellPaddingBlock: space[3],
+        borderColor: c.line,
+      },
+      Button: { fontWeight: 550, primaryShadow: 'none', defaultShadow: 'none' },
+      Input: { paddingBlock: 6 },
+      Tag: { defaultBg: dark ? c.surfaceSunken : palette.surfaceSunken },
+      Drawer: { paddingLG: space[4] },
     },
   };
 }
@@ -61,20 +138,63 @@ export function antdTheme(mode: Mode): ThemeConfig {
  * lives in two places drifts the first time one of them is adjusted.
  */
 export function cssVars(mode: Mode): Record<string, string> {
-  const m = mode === 'dark' ? { ...palette, ...darkOverrides } : palette;
+  const dark = mode === 'dark';
+  const c = dark ? { ...palette, ...darkOverrides } : palette;
+  const shadow = dark ? shadowDark : shadowLight;
+
   return {
-    '--mp-primary': m.primary,
-    '--mp-primary-deep': m.primaryDeep,
-    '--mp-ink': m.ink,
-    '--mp-muted': m.muted,
-    '--mp-line': m.line,
-    '--mp-surface': m.surface,
-    '--mp-surface-raised': m.surfaceRaised,
+    '--mp-primary': c.primary,
+    '--mp-primary-hover': palette.primaryHover,
+    '--mp-primary-deep': palette.primaryDeep,
+    '--mp-primary-wash': dark ? 'rgb(13 148 136 / 16%)' : 'rgb(13 148 136 / 10%)',
+    '--mp-ink': c.ink,
+    '--mp-ink-soft': c.inkSoft,
+    '--mp-muted': c.muted,
+    '--mp-line': c.line,
+    '--mp-line-strong': c.lineStrong,
+    '--mp-surface': c.surface,
+    '--mp-surface-raised': c.surfaceRaised,
+    '--mp-surface-sunken': c.surfaceSunken,
     '--mp-sidebar': palette.sidebar,
     '--mp-sidebar-item': palette.sidebarItem,
     '--mp-sidebar-text': palette.sidebarText,
+    '--mp-sidebar-text-strong': palette.sidebarTextStrong,
+
+    '--mp-shadow-sm': shadow.sm,
+    '--mp-shadow-md': shadow.md,
+    '--mp-shadow-lg': shadow.lg,
+
     '--mp-radius-sm': `${radius.sm}px`,
     '--mp-radius-md': `${radius.md}px`,
     '--mp-radius-lg': `${radius.lg}px`,
+    '--mp-radius-xl': `${radius.xl}px`,
+
+    '--mp-space-1': `${space[1]}px`,
+    '--mp-space-2': `${space[2]}px`,
+    '--mp-space-3': `${space[3]}px`,
+    '--mp-space-4': `${space[4]}px`,
+    '--mp-space-5': `${space[5]}px`,
+    '--mp-space-6': `${space[6]}px`,
+    '--mp-space-8': `${space[8]}px`,
+    '--mp-space-10': `${space[10]}px`,
+    '--mp-space-12': `${space[12]}px`,
+
+    '--mp-text-xs': `${fontSize.xs}px`,
+    '--mp-text-sm': `${fontSize.sm}px`,
+    '--mp-text-base': `${fontSize.base}px`,
+    '--mp-text-md': `${fontSize.md}px`,
+    '--mp-text-lg': `${fontSize.lg}px`,
+    '--mp-text-xl': `${fontSize.xl}px`,
+    '--mp-text-xxl': `${fontSize.xxl}px`,
+
+    // Lightness and saturation for generated placeholder art, so it sits in the
+    // page rather than glowing out of it. Fixed values looked like pastel
+    // slabs against a dark background.
+    // Low saturation on purpose. At 30% these read as colour blocks and the
+    // grid looks like a toy; near 16% they read as tinted neutrals that let the
+    // real photography be the only saturated thing on the page.
+    '--mp-placeholder-from': dark ? '16% 20%' : '20% 93%',
+    '--mp-placeholder-to': dark ? '12% 14%' : '16% 97%',
+    '--mp-placeholder-ink': dark ? '#7d8ea6' : '#94a3b8',
   };
 }

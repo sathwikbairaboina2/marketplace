@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Tooltip } from 'antd';
+import { MoonOutlined, SunOutlined } from '@ant-design/icons';
 import { useTheme } from '../lib/theme/theme-context';
 
 export function ThemeToggle() {
@@ -10,11 +11,15 @@ export function ThemeToggle() {
 
   return (
     <Tooltip title={label}>
-      {/* aria-label rather than visible text: the control is an icon, and
-          theme.spec.ts selects it by this accessible name. */}
-      <Button size="small" aria-label={label} onClick={toggle}>
-        {mode === 'dark' ? '☾' : '☀'}
-      </Button>
+      {/* An SVG icon, not a `☀`/`☾` glyph: emoji render differently on every
+          platform, do not inherit colour, and are not an icon system.
+          aria-label carries the accessible name -- theme.spec selects on it. */}
+      <Button
+        type="text"
+        aria-label={label}
+        onClick={toggle}
+        icon={mode === 'dark' ? <MoonOutlined /> : <SunOutlined />}
+      />
     </Tooltip>
   );
 }

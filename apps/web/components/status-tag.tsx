@@ -32,5 +32,7 @@ export function StatusTag({ status }: { status: string }) {
   // The text is always rendered, so colour is never the only carrier of
   // meaning -- required for a colour-blind reader, and it keeps the existing
   // e2e specs able to match on status text.
-  return <Tag color={COLOURS[status] ?? 'default'}>{status.replace('_', ' ')}</Tag>;
+  // replaceAll, not replace: a string pattern replaces only the first match,
+  // so `out_of_stock` rendered as "out of_stock".
+  return <Tag color={COLOURS[status] ?? 'default'}>{status.replaceAll('_', ' ')}</Tag>;
 }

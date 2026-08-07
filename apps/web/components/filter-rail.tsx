@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Button, Drawer, Form, Grid, InputNumber, Space } from 'antd';
+import { Button, Drawer, Form, Grid, InputNumber } from 'antd';
+import { FilterOutlined } from '@ant-design/icons';
 import type { FieldDefinition } from '@marketplace/contracts';
 import { toFilterItems } from '../lib/schema-fields';
 
@@ -19,28 +20,37 @@ interface Props {
  * front of the user. Behind a drawer, the one thing this platform exists to
  * demonstrate becomes something you have to go looking for.
  *
- * registry-loop.spec.ts depends on this: it asserts `getByLabel(fieldName)` is
+ * registry-loop.spec.ts depends on it: it asserts `getByLabel(fieldName)` is
  * visible on /products straight after a flow executes.
  */
 function RailForm({ fields, onApply, onClear }: Props) {
+  const [form] = Form.useForm();
+
   return (
-    <Form layout="vertical" onFinish={onApply} className="mp-rail-form">
+    <Form form={form} layout="vertical" onFinish={onApply} className="mp-rail-form">
       {/* Labels are a contract -- catalogue.spec fills 'Min price (minor)'. */}
       <Form.Item name="priceMinorMin" label="Min price (minor)">
-        <InputNumber min={0} style={{ width: '100%' }} />
+        <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
       </Form.Item>
       <Form.Item name="priceMinorMax" label="Max price (minor)">
-        <InputNumber min={0} style={{ width: '100%' }} />
+        <InputNumber min={0} style={{ width: '100%' }} placeholder="Any" />
       </Form.Item>
 
       {fields ? toFilterItems(fields) : null}
 
-      <Space>
-        <Button type="primary" htmlType="submit">
+      <div className="mp-rail-actions">
+        <Button type="primary" htmlType="submit" block>
           Search
         </Button>
-        <Button onClick={onClear}>Clear</Button>
-      </Space>
+        <Button
+          onClick={() => {
+            form.resetFields();
+            onClear();
+          }}
+        >
+          Clear
+        </Button>
+      </div>
     </Form>
   );
 }
@@ -56,6 +66,9 @@ export function FilterRail(props: Props) {
   if (wide) {
     return (
       <aside className="mp-rail">
+        <div className="mp-rail-title">
+          <FilterOutlined /> Filters
+        </div>
         <RailForm {...props} />
       </aside>
     );
@@ -63,10 +76,16 @@ export function FilterRail(props: Props) {
 
   return (
     <>
-      <Button className="mp-rail-trigger" onClick={() => setOpen(true)}>
+      <Button className="mp-rail-trigger" icon={<FilterOutlined />} onClick={() => setOpen(true)}>
         Filters
       </Button>
-      <Drawer open={open} onClose={() => setOpen(false)} placement="bottom" height="70%">
+      <Drawer
+        open={open}
+        onClose={() => setOpen(false)}
+        placement="bottom"
+        height="72%"
+        title="Filters"
+      >
         <RailForm
           {...props}
           onApply={(values) => {

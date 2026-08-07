@@ -48,9 +48,7 @@ export default function AdminProductsPage() {
                 <img
                   src={images[0]}
                   alt=""
-                  width={40}
-                  height={40}
-                  style={{ objectFit: 'cover', borderRadius: 4 }}
+                  className="mp-table-thumb"
                 />
               ) : (
                 <span className="mp-thumb-placeholder" style={{ background: gradient }}>
@@ -72,9 +70,11 @@ export default function AdminProductsPage() {
           {
             title: 'Price',
             dataIndex: 'priceMinor',
-            render: (minor: number, row) => `${(minor / 100).toFixed(2)} ${row.currency}`,
+            className: 'mp-num',
+            render: (minor: number, row) =>
+              `${(minor / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${row.currency}`,
           },
-          { title: 'Stock', dataIndex: 'stock' },
+          { title: 'Stock', dataIndex: 'stock', className: 'mp-num' },
           {
             title: 'Status',
             dataIndex: 'status',
