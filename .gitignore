@@ -13,3 +13,4 @@ coverage/
 docker/.env.generated
 .cognito/
 .superpowers/
+*.tsbuildinfo
