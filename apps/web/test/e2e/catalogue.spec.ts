@@ -10,15 +10,16 @@ test('an order can be placed for two products found through the catalogue', asyn
   await createProduct(page, cheap, 500);
   await page.getByRole('button', { name: 'Add to cart' }).click();
 
-  // 95_000 minor units = 950.00. The filter below is in the same units, so
-  // keep the two in step -- an off-by-ten here reads as "search is broken".
+  // 95_000 minor units = 950.00. The filter below is in *major* units and
+  // converts on submit, so the two are one hundred apart by design -- keep them
+  // in step, an off-by-ten here reads as "search is broken".
   await createProduct(page, dear, 95_000);
   await page.getByRole('button', { name: 'Add to cart' }).click();
 
   // The price filter narrows to the dear one, which proves POST
   // /products/search is wired up rather than the unfiltered list.
   await page.goto('/products');
-  await page.getByLabel('Min price (minor)').fill('90000');
+  await page.getByLabel('Min price').fill('900');
   await page.getByRole('button', { name: 'Search' }).click();
   await expect(page.getByText(dear)).toBeVisible();
   await expect(page.getByText(cheap)).toHaveCount(0);

@@ -23,16 +23,42 @@ interface Props {
  * registry-loop.spec.ts depends on it: it asserts `getByLabel(fieldName)` is
  * visible on /products straight after a flow executes.
  */
+/**
+ * Minor units are a storage detail. A shopper types 899 meaning 899 pounds, so
+ * the control takes major units and converts here -- the API contract
+ * (`priceMinorMin` / `priceMinorMax`) is unchanged, and the products page needs
+ * no edit.
+ *
+ * The x100 convention matches `formatMoney`, which divides by the same. Both
+ * are wrong for zero-decimal currencies such as JPY; that is a pre-existing
+ * defect and out of scope here.
+ */
+const MINOR_PER_MAJOR = 100;
+
+const toMinor = (value: unknown): number | undefined =>
+  typeof value === 'number' ? Math.round(value * MINOR_PER_MAJOR) : undefined;
+
 function RailForm({ fields, onApply, onClear }: Props) {
   const [form] = Form.useForm();
 
   return (
-    <Form form={form} layout="vertical" onFinish={onApply} className="mp-rail-form">
-      {/* Labels are a contract -- catalogue.spec fills 'Min price (minor)'. */}
-      <Form.Item name="priceMinorMin" label="Min price (minor)">
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={({ priceMin, priceMax, ...rest }) =>
+        onApply({
+          ...rest,
+          priceMinorMin: toMinor(priceMin),
+          priceMinorMax: toMinor(priceMax),
+        })
+      }
+      className="mp-rail-form"
+    >
+      {/* Labels are a contract -- catalogue.spec fills 'Min price'. */}
+      <Form.Item name="priceMin" label="Min price">
         <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />
       </Form.Item>
-      <Form.Item name="priceMinorMax" label="Max price (minor)">
+      <Form.Item name="priceMax" label="Max price">
         <InputNumber min={0} style={{ width: '100%' }} placeholder="Any" />
       </Form.Item>
 
