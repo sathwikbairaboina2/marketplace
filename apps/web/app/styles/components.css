@@ -287,6 +287,9 @@
 .mp-hero {
   display: flex;
   align-items: center;
+  /* Name left, stats right. With the stats nested inside the text block this
+     was a single flex child and the right ~60% of the band stayed empty. */
+  justify-content: space-between;
   gap: var(--mp-space-8);
   background:
     radial-gradient(120% 140% at 88% 0%, rgb(13 148 136 / 22%) 0%, transparent 55%),
@@ -301,7 +304,7 @@
 }
 
 .mp-hero-text {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
 }
 
@@ -328,7 +331,6 @@
 .mp-hero-stats {
   display: flex;
   gap: var(--mp-space-8);
-  margin-top: var(--mp-space-6);
 }
 
 .mp-hero-stat .v {

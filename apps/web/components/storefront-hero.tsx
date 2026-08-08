@@ -45,23 +45,26 @@ export function StorefrontHero({
           <ShopOutlined /> Storefront
         </span>
         <h1>{tenantId}</h1>
+      </div>
 
-        {/* No product name here: the grid below already renders every name,
-            and repeating one makes "is this product on the page?" ambiguous --
-            it would also keep showing a product the active filter excluded. */}
-        <div className="mp-hero-stats">
-          <div className="mp-hero-stat">
-            <span className="v">{show(products.length)}</span>
-            <span className="k">Showing</span>
-          </div>
-          <div className="mp-hero-stat">
-            <span className="v">{show(categories)}</span>
-            <span className="k">{known && categories === 1 ? 'Category' : 'Categories'}</span>
-          </div>
-          <div className="mp-hero-stat">
-            <span className="v">{show(inStock)}</span>
-            <span className="k">In stock</span>
-          </div>
+      {/* A sibling, not a child. As the only child of a flex row this stack
+          left roughly 60% of the band empty once the hero image was deleted.
+
+          No product name here: the grid below already renders every name, and
+          repeating one makes "is this product on the page?" ambiguous -- it
+          would also keep showing a product the active filter excluded. */}
+      <div className="mp-hero-stats">
+        <div className="mp-hero-stat">
+          <span className="v">{show(products.length)}</span>
+          <span className="k">Showing</span>
+        </div>
+        <div className="mp-hero-stat">
+          <span className="v">{show(categories)}</span>
+          <span className="k">{known && categories === 1 ? 'Category' : 'Categories'}</span>
+        </div>
+        <div className="mp-hero-stat">
+          <span className="v">{show(inStock)}</span>
+          <span className="k">In stock</span>
         </div>
       </div>
     </section>
