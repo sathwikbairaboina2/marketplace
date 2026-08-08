@@ -100,6 +100,13 @@
   margin-bottom: var(--mp-space-3);
 }
 
+/* The event's text column. It takes the media slot in the two-column grid
+   but sizes to its content. */
+.mp-event-panel {
+  order: 1;
+  min-width: 0;
+}
+
 .mp-event-head h1 {
   font-size: var(--mp-text-xxl);
   line-height: 1.12;
@@ -296,7 +303,8 @@
   .mp-detail-buy {
     order: 2 !important;
   }
-  .mp-detail-media {
+  .mp-detail-media,
+  .mp-event-panel {
     order: 1 !important;
   }
   .mp-line {

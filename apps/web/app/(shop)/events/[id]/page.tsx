@@ -130,7 +130,10 @@ export default function EventDetailPage() {
           </Form>
         </div>
 
-        <div className="mp-detail-media" style={{ order: 1, background: 'transparent' }}>
+        {/* Not `mp-detail-media`: that carries a 5:4 aspect ratio for a
+            product photograph, which around four lines of text was a tall
+            empty box with a border round it. */}
+        <div className="mp-event-panel">
           <div className="mp-event-head">
             <h1>{event.title}</h1>
             <div className="mp-event-facts">

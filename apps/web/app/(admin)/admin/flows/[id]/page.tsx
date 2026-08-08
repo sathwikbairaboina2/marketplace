@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button, Card, Descriptions, Table, message } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { FlowResponse } from '@marketplace/contracts';
 import { executeFlow, getFlow } from '../../../../../lib/api/flows';
 import { useSchemas } from '../../../../../lib/schemas/schema-cache';
 import { useResource } from '../../../../../lib/use-resource';
 import { notifyProblem } from '../../../../../lib/problem-notify';
 import { StatusTag } from '../../../../../components/status-tag';
+import { PageHeader } from '../../../../../components/page-header';
 import { ErrorPanel } from '../../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../../components/skeletons';
 import { formatDateTime } from '../../../../../lib/format';
@@ -47,61 +50,71 @@ export default function FlowDetailPage() {
   };
 
   return (
-    <Card
-      title={`Flow ${flow.id}`}
-      extra={
-        flow.status === 'proposed' ? (
-          <Button type="primary" loading={busy} onClick={() => void execute()}>
-            Execute
-          </Button>
-        ) : (
-          <StatusTag status={flow.status} />
-        )
-      }
-    >
-      <Descriptions
-        column={1}
-        items={[
-          { key: 'entity', label: 'Target entity', children: flow.targetEntity },
-          { key: 'status', label: 'Status', children: <StatusTag status={flow.status} /> },
-          { key: 'proposedBy', label: 'Proposed by', children: flow.proposedBy },
-          { key: 'executedBy', label: 'Executed by', children: flow.executedBy ?? '—' },
-          {
-            key: 'appliedAt',
-            label: 'Applied at',
-            children: flow.appliedAt ? formatDateTime(flow.appliedAt) : '—',
-          },
-          {
-            key: 'version',
-            label: 'Resulting version',
-            children: flow.resultingVersion ?? '—',
-          },
-        ]}
+    <>
+      <Link href="/admin/flows" className="mp-back">
+        <ArrowLeftOutlined /> All flows
+      </Link>
+
+      {/* The id was the title and the status appeared twice, once in the card
+          header and once in the list below it. */}
+      <PageHeader
+        title={`Flow on ${flow.targetEntity}`}
+        subtitle={
+          flow.appliedAt
+            ? `Applied ${formatDateTime(flow.appliedAt)} — registry version ${flow.resultingVersion ?? '—'}`
+            : 'Not applied yet'
+        }
+        extra={
+          flow.status === 'proposed' ? (
+            <Button type="primary" loading={busy} onClick={() => void execute()}>
+              Execute
+            </Button>
+          ) : (
+            <StatusTag status={flow.status} />
+          )
+        }
       />
-      {/* Flows are add-only: `actionType` is the literal 'ADD_FIELDS' and
-          BlueprintDiffSchema is .strict() around `addedFields`, so there is no
-          removal or type change that could ever need rendering here. */}
-      <Table
-        style={{ marginTop: 16 }}
-        rowKey="name"
-        pagination={false}
-        title={() => 'Added fields'}
-        dataSource={flow.blueprintDiff.addedFields}
-        columns={[
-          { title: 'Name', dataIndex: 'name' },
-          { title: 'Type', dataIndex: 'type' },
-          {
-            title: 'Required',
-            dataIndex: 'required',
-            render: (required: boolean) => (required ? 'yes' : 'no'),
-          },
-          {
-            title: 'Default',
-            dataIndex: 'default',
-            render: (value: unknown) => (value === null ? '—' : String(value)),
-          },
-        ]}
-      />
-    </Card>
+
+      <Card>
+        <Descriptions
+          column={1}
+          items={[
+            { key: 'proposedBy', label: 'Proposed by', children: <code className="mp-id">{flow.proposedBy}</code> },
+            {
+              key: 'executedBy',
+              label: 'Executed by',
+              children: flow.executedBy ? <code className="mp-id">{flow.executedBy}</code> : '—',
+            },
+            { key: 'reference', label: 'Reference', children: <code className="mp-id">{flow.id}</code> },
+          ]}
+        />
+        {/* Flows are add-only: `actionType` is the literal 'ADD_FIELDS' and
+            BlueprintDiffSchema is .strict() around `addedFields`, so there is
+            no removal or type change that could ever need rendering here. */}
+        <Table
+          style={{ marginTop: 16 }}
+          rowKey="name"
+          pagination={false}
+          title={() => 'Added fields'}
+          dataSource={flow.blueprintDiff.addedFields}
+          columns={[
+            // These are field identifiers, not labels: they are what a form
+            // submits and what the wire carries, so they stay verbatim.
+            { title: 'Name', dataIndex: 'name', render: (name: string) => <code className="mp-id">{name}</code> },
+            { title: 'Type', dataIndex: 'type' },
+            {
+              title: 'Required',
+              dataIndex: 'required',
+              render: (required: boolean) => (required ? 'yes' : 'no'),
+            },
+            {
+              title: 'Default',
+              dataIndex: 'default',
+              render: (value: unknown) => (value === null ? '—' : String(value)),
+            },
+          ]}
+        />
+      </Card>
+    </>
   );
 }
