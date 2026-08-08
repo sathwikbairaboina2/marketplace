@@ -486,16 +486,21 @@
 
 /* Initials sit inside the link, so they inherited the anchor underline. This
    is a fallback, not an illustration -- keep it quiet. */
+/* A tile without a photo, not a tile that failed. The monogram sits beside
+   cards carrying full-bleed artwork, so it has to hold comparable weight -- the
+   blanket `opacity: 0.75` this rule used to carry (from its duplicate in
+   antd.css) was dimming the one element holding the card's only information. */
 .mp-card-placeholder {
   display: grid;
   place-items: center;
   width: 100%;
   height: 100%;
   font-size: 26px;
-  font-weight: 680;
+  font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--mp-placeholder-ink);
   text-decoration: none;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%);
 }
 
 .mp-card-badge {

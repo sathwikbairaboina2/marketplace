@@ -45,12 +45,10 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The monogram is a fallback, not artwork -- let it recede. */
-.mp-card-placeholder {
-  font-size: 24px;
-  font-weight: 620;
-  opacity: 0.75;
-}
+/* `.mp-card-placeholder` used to be declared here as well as in components.css,
+   at equal specificity -- and since this file imports last, this copy silently
+   won. It is our own component, not an ANTD default, so it now lives only in
+   components.css. */
 
 /* The artwork, not the container. Dimming .mp-card-media dimmed the "out of
    stock" badge sitting inside it too, blending its text down to 2.44:1 against
