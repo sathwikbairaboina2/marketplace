@@ -43,6 +43,21 @@ describe('DynamoRepository', () => {
     await expect(repo.put(entitySk('Product', 'ID3'), {})).rejects.toThrow(/no tenant context/);
   });
 
+  // Ids are ULIDs in production, so descending sort key order is newest first.
+  // A catalogue that grew past one page would otherwise bury every new listing
+  // on the last page, which is the opposite of where a reader looks for it.
+  it('returns the newest item first', async () => {
+    const t = `t_${uniq()}`;
+    await asTenant(t, async () => {
+      for (const id of ['ID0', 'ID1', 'ID2']) {
+        await repo.put(entitySk('Product', id), { entityType: 'Product', id });
+      }
+    });
+
+    const page = await asTenant(t, () => repo.queryPrefix<{ id: string }>(skPrefix('Product')));
+    expect(page.items.map((i) => i.id)).toEqual(['ID2', 'ID1', 'ID0']);
+  });
+
   it('paginates a prefix query and returns a resumable cursor', async () => {
     const t = `t_${uniq()}`;
     await asTenant(t, async () => {
@@ -54,13 +69,13 @@ describe('DynamoRepository', () => {
     const first = await asTenant(t, () =>
       repo.queryPrefix<{ id: string }>(skPrefix('Product'), { limit: 2 }),
     );
-    expect(first.items.map((i) => i.id)).toEqual(['ID0', 'ID1']);
+    expect(first.items.map((i) => i.id)).toEqual(['ID4', 'ID3']);
     expect(first.nextCursor).not.toBeNull();
 
     const second = await asTenant(t, () =>
       repo.queryPrefix<{ id: string }>(skPrefix('Product'), { limit: 2, cursor: first.nextCursor }),
     );
-    expect(second.items.map((i) => i.id)).toEqual(['ID2', 'ID3']);
+    expect(second.items.map((i) => i.id)).toEqual(['ID2', 'ID1']);
   });
 
   it('applies a filter expression', async () => {
@@ -96,8 +111,10 @@ describe('DynamoRepository', () => {
   it('applies Limit before FilterExpression, so a filtered page can return zero items with a non-null cursor', async () => {
     const t = `t_${uniq()}`;
     await asTenant(t, async () => {
-      await repo.put(entitySk('Product', 'AAA'), { entityType: 'Product', category: 'other' });
-      await repo.put(entitySk('Product', 'ZZZ'), { entityType: 'Product', category: 'target' });
+      // `ZZZ` is the one the query reaches first, because the scan runs
+      // descending -- so it is the one that must *not* match the filter.
+      await repo.put(entitySk('Product', 'ZZZ'), { entityType: 'Product', category: 'other' });
+      await repo.put(entitySk('Product', 'AAA'), { entityType: 'Product', category: 'target' });
     });
 
     const page = await asTenant(t, () =>

@@ -105,6 +105,10 @@ export class DynamoRepository {
         },
         Limit: opts.limit,
         ExclusiveStartKey: opts.cursor ? { ...decodeCursor(opts.cursor), PK: pk } : undefined,
+        // Newest first, matching `queryUserIndex` below. Sort keys end in a ULID,
+        // so descending order is creation order reversed: the listing somebody
+        // just added is on the first page, not the last.
+        ScanIndexForward: false,
       }),
     );
     return {
