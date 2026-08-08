@@ -39,7 +39,10 @@ test('executing a flow makes its new field appear in the product form', async ({
   await expect(page.getByText(fieldName)).toBeVisible();
 
   await page.getByRole('button', { name: 'Execute' }).click();
-  await expect(page.getByText(/Applied/)).toBeVisible();
+  // The toast, specifically. A bare /Applied/ also matches the page's own
+  // subtitle once the flow is applied ("Applied <date> — registry version N"),
+  // which makes the locator ambiguous rather than wrong.
+  await expect(page.getByText(/Applied — registry is now version/)).toBeVisible();
 
   // No page reload and no UI code naming this field: the create form, and the
   // search filters, are generated from the tenant's registry.

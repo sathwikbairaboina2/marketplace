@@ -35,8 +35,17 @@ interface Props {
  */
 const MINOR_PER_MAJOR = 100;
 
-const toMinor = (value: unknown): number | undefined =>
-  typeof value === 'number' ? Math.round(value * MINOR_PER_MAJOR) : undefined;
+/**
+ * Accepts a string as well as a number. ANTD's `InputNumber` hands back a
+ * number when the spinner is used, but a value typed (or filled by a test)
+ * arrives as the raw string -- and a `typeof value === 'number'` guard silently
+ * dropped it, sending no price filter at all while the form looked filled in.
+ */
+const toMinor = (value: unknown): number | undefined => {
+  if (value === null || value === undefined || value === '') return undefined;
+  const major = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(major) ? Math.round(major * MINOR_PER_MAJOR) : undefined;
+};
 
 function RailForm({ fields, onApply, onClear }: Props) {
   const [form] = Form.useForm();

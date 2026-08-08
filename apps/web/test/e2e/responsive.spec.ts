@@ -18,9 +18,9 @@ test('the storefront filter rail moves behind a control on a narrow viewport', a
   await signIn(page, 'acme-admin');
 
   // The generated filters are reachable, just not permanently on screen.
-  await expect(page.getByLabel('Min price (minor)')).toHaveCount(0);
+  await expect(page.getByLabel('Min price')).toHaveCount(0);
   await page.getByRole('button', { name: 'Filters' }).click();
-  await expect(page.getByLabel('Min price (minor)')).toBeVisible();
+  await expect(page.getByLabel('Min price')).toBeVisible();
 });
 
 test('the admin sidebar is present without a menu button at desktop width', async ({ page }) => {
