@@ -22,6 +22,7 @@ function renderTable(
       load={load}
       empty={EMPTY}
       caption="Rows"
+      noun={{ one: 'row', many: 'rows' }}
       reloadToken={reloadToken}
     />,
   );
@@ -80,6 +81,7 @@ describe('CursorTable', () => {
         load={load}
         empty={EMPTY}
         caption="Rows"
+        noun={{ one: 'row', many: 'rows' }}
         reloadToken={1}
       />,
     );
@@ -131,5 +133,38 @@ describe('CursorTable', () => {
 
     expect(screen.getByText('A')).toBeInTheDocument();
     expect(screen.queryByText('Upstream failed')).toBeNull();
+  });
+
+  it('closes the list once the cursor runs out', async () => {
+    const load = vi
+      .fn<(cursor: string | null) => Promise<{ items: Row[]; nextCursor: string | null }>>()
+      .mockResolvedValue({
+        items: [
+          { id: 'a', name: 'A' },
+          { id: 'b', name: 'B' },
+        ],
+        nextCursor: null,
+      });
+
+    renderTable(load);
+    await act(async () => {});
+
+    // Counting what is loaded is honest only because `done` is true: once the
+    // cursor runs out, what is on the page is all there is.
+    expect(screen.getByText('2 rows · end of list')).toBeInTheDocument();
+    expect(screen.queryByText('Load more')).toBeNull();
+  });
+
+  it('offers Load more instead of the end line while pages remain', async () => {
+    const load = vi
+      .fn<(cursor: string | null) => Promise<{ items: Row[]; nextCursor: string | null }>>()
+      .mockResolvedValue({ items: [{ id: 'a', name: 'A' }], nextCursor: 'c1' });
+
+    renderTable(load);
+    await act(async () => {});
+
+    expect(screen.getByText('Load more')).toBeInTheDocument();
+    // "1 row · end of list" beside a Load more button would be a contradiction.
+    expect(screen.queryByText(/end of list/)).toBeNull();
   });
 });

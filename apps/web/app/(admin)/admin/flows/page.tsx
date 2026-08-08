@@ -39,6 +39,7 @@ function FlowsView() {
       <CursorTable<FlowResponse>
         rowKey="id"
         caption="Proposed and executed schema changes"
+        noun={{ one: 'flow', many: 'flows' }}
         reloadToken={reloadToken}
         load={(cursor) => listFlows(25, cursor)}
         empty={

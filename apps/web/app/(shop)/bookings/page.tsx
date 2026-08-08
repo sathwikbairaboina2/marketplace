@@ -14,6 +14,7 @@ export default function BookingsPage() {
     <CursorTable<BookingResponse>
       rowKey="id"
       caption="Your bookings"
+      noun={{ one: 'booking', many: 'bookings' }}
       load={(cursor) => listBookings(25, cursor)}
       empty={
         <EmptyState

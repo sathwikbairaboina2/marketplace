@@ -14,6 +14,7 @@ export default function OrdersPage() {
     <CursorTable<OrderResponse>
       rowKey="id"
       caption="Your orders"
+      noun={{ one: 'order', many: 'orders' }}
       load={(cursor) => listOrders(25, cursor)}
       empty={
         <EmptyState

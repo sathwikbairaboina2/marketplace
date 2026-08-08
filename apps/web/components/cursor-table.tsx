@@ -17,6 +17,11 @@ interface Props<T> {
   empty: ReactNode;
   /** Visually hidden; names the table for a screen reader. */
   caption: string;
+  /**
+   * Names the rows in the end-of-list line. Required rather than defaulted to
+   * "item": a default is how a page about bookings ends up saying "5 items".
+   */
+  noun: { one: string; many: string };
 }
 
 /**
@@ -32,6 +37,7 @@ export function CursorTable<T extends object>({
   reloadToken,
   empty,
   caption,
+  noun,
 }: Props<T>) {
   const [items, setItems] = useState<T[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -100,7 +106,7 @@ export function CursorTable<T extends object>({
         scroll={{ x: 'max-content' }}
         caption={<span className="mp-visually-hidden">{caption}</span>}
       />
-      {!done && (
+      {!done ? (
         <Button
           style={{ marginTop: 'var(--mp-space-5)' }}
           loading={loading}
@@ -108,6 +114,13 @@ export function CursorTable<T extends object>({
         >
           Load more
         </Button>
+      ) : (
+        // A list that has ended should say so. Rendering nothing here left the
+        // last page indistinguishable from one still loading, and both trailed
+        // off into blank page.
+        <p className="mp-list-end">
+          {items.length} {items.length === 1 ? noun.one : noun.many} · end of list
+        </p>
       )}
     </>
   );

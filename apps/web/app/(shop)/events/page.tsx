@@ -13,6 +13,7 @@ export default function EventsPage() {
     <CursorTable<EventResponse>
       rowKey="id"
       caption="Scheduled events"
+      noun={{ one: 'event', many: 'events' }}
       load={(cursor) => listEvents(25, cursor)}
       empty={
         <EmptyState
