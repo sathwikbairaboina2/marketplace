@@ -1,13 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Card, Descriptions } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { BookingResponse } from '@marketplace/contracts';
 import { getBooking } from '../../../../lib/api/bookings';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { useResource } from '../../../../lib/use-resource';
 import { StatusTag } from '../../../../components/status-tag';
+import { PageHeader } from '../../../../components/page-header';
 import { ErrorPanel } from '../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../components/skeletons';
 import { formatDateTime } from '../../../../lib/format';
@@ -27,17 +30,44 @@ export default function BookingDetailPage() {
   if (!booking) return null;
 
   return (
-    <Card title={`Booking ${booking.id}`}>
-      <Descriptions
-        column={1}
-        items={[
-          { key: 'event', label: 'Event', children: booking.eventId },
-          { key: 'status', label: 'Status', children: <StatusTag status={booking.status} /> },
-          { key: 'tickets', label: 'Tickets', children: booking.ticketQuantity },
-          { key: 'booked', label: 'Booked', children: formatDateTime(booking.createdAt) },
-          ...(schema ? toDescriptionRows(schema.fields, booking.attributes) : []),
-        ]}
+    <>
+      <Link href="/bookings" className="mp-back">
+        <ArrowLeftOutlined /> All bookings
+      </Link>
+
+      {/* The id was the page title. It is a reference, not a name, so it moves
+          into the record and the status leads instead. */}
+      <PageHeader
+        title="Booking"
+        subtitle={`Booked ${formatDateTime(booking.createdAt)}`}
+        extra={<StatusTag status={booking.status} />}
       />
-    </Card>
+
+      <Card className="mp-record">
+        <Descriptions
+          column={1}
+          items={[
+            {
+              key: 'event',
+              label: 'Event',
+              // The booking carries an id and no title, so the link is the
+              // only way to find out what was booked.
+              children: (
+                <Link className="mp-id" href={`/events/${booking.eventId}`}>
+                  {booking.eventId}
+                </Link>
+              ),
+            },
+            { key: 'tickets', label: 'Tickets', children: booking.ticketQuantity },
+            {
+              key: 'reference',
+              label: 'Reference',
+              children: <code className="mp-id">{booking.id}</code>,
+            },
+            ...(schema ? toDescriptionRows(schema.fields, booking.attributes) : []),
+          ]}
+        />
+      </Card>
+    </>
   );
 }

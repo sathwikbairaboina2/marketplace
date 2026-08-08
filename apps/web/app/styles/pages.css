@@ -239,6 +239,45 @@
   letter-spacing: -0.02em;
 }
 
+/* A form reads badly at full window width, so it keeps a measure of its own
+   rather than stretching with the shell. */
+.mp-form-card {
+  max-width: 720px;
+}
+
+/* A record with only a handful of facts. Left to itself the card ran the full
+   width of a desktop window for four rows of text. */
+.mp-record {
+  max-width: 720px;
+}
+
+/* Secondary facts under the total on a record's summary: a heading small
+   enough not to compete with it, and a value that can wrap. */
+.mp-summary-block {
+  margin-top: var(--mp-space-5);
+}
+
+.mp-summary-block h3 {
+  font-size: var(--mp-text-xs);
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mp-muted);
+  margin: 0 0 var(--mp-space-2);
+}
+
+.mp-summary-block p {
+  margin: 0;
+  color: var(--mp-ink);
+  font-size: var(--mp-text-sm);
+}
+
+.mp-summary-block .mp-id {
+  display: inline-block;
+  overflow-wrap: anywhere;
+  color: var(--mp-ink);
+}
+
 .mp-summary-note {
   color: var(--mp-muted);
   font-size: var(--mp-text-xs);

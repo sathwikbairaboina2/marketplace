@@ -44,35 +44,41 @@ export default function NewEventPage() {
   return (
     <>
       <PageHeader title="New event" subtitle="Capacity is enforced transactionally when tickets are booked." />
-      <Card style={{ maxWidth: 640 }}>
-      <Form form={form} layout="vertical" onFinish={submit} initialValues={{ currency: 'USD' }}>
-        <Form.Item name="title" label="Title" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="capacity" label="Capacity" rules={[{ required: true }]}>
-          <InputNumber min={1} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="startDate" label="Starts" rules={[{ required: true }]}>
-          <DatePicker showTime style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="endDate" label="Ends" rules={[{ required: true }]}>
-          <DatePicker showTime style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item
-          name="basePriceMinor"
-          label="Base price (minor units)"
-          rules={[{ required: true }]}
-        >
-          <InputNumber min={0} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
-          <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
-        </Form.Item>
-        {schema ? toFormItems(schema.fields) : null}
-        <Button type="primary" htmlType="submit">
-          Create
-        </Button>
-      </Form>
+      <Card className="mp-form-card">
+        <Form form={form} layout="vertical" onFinish={submit} initialValues={{ currency: 'USD' }}>
+          <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          {/* Start and end belong to one decision, and so do price and
+              currency. Pairing them keeps the form to one screen. */}
+          <div className="mp-field-row">
+            <Form.Item name="startDate" label="Starts" rules={[{ required: true }]}>
+              <DatePicker showTime style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="endDate" label="Ends" rules={[{ required: true }]}>
+              <DatePicker showTime style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
+          <div className="mp-field-row">
+            <Form.Item
+              name="basePriceMinor"
+              label="Base price (minor units)"
+              rules={[{ required: true }]}
+            >
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
+              <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
+            </Form.Item>
+            <Form.Item name="capacity" label="Capacity" rules={[{ required: true }]}>
+              <InputNumber min={1} style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
+          {schema ? toFormItems(schema.fields) : null}
+          <Button type="primary" htmlType="submit">
+            Create
+          </Button>
+        </Form>
       </Card>
     </>
   );

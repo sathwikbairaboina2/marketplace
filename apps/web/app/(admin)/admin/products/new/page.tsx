@@ -50,50 +50,56 @@ export default function NewProductPage() {
   return (
     <>
       <PageHeader title="New product" subtitle="Images can only be attached now — the engine has no update routes." />
-      <Card style={{ maxWidth: 640 }}>
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={submit}
-        initialValues={{ currency: 'USD', stock: 0, status: 'active' }}
-      >
-        <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="description" label="Description" rules={[{ required: true }]}>
-          <Input.TextArea />
-        </Form.Item>
-        <Form.Item name="category" label="Category" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="priceMinor" label="Price (minor units)" rules={[{ required: true }]}>
-          <InputNumber min={0} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
-          <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
-        </Form.Item>
-        <Form.Item name="stock" label="Stock" rules={[{ required: true }]}>
-          <InputNumber min={0} style={{ width: '100%' }} />
-        </Form.Item>
-        <Form.Item name="status" label="Status" rules={[{ required: true }]}>
-          <Select
-            options={[
-              { value: 'active' },
-              { value: 'draft' },
-              { value: 'archived' },
-              { value: 'out_of_stock' },
-            ]}
-          />
-        </Form.Item>
-        <Form.Item label="Images">
-          <ImageUploader value={images} onChange={setImages} />
-        </Form.Item>
-        {/* The tenant's dynamic fields, generated from the registry. */}
-        {schema ? toFormItems(schema.fields) : null}
-        <Button type="primary" htmlType="submit">
-          Create
-        </Button>
-      </Form>
+      <Card className="mp-form-card">
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={submit}
+          initialValues={{ currency: 'USD', stock: 0, status: 'active' }}
+        >
+          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="description" label="Description" rules={[{ required: true }]}>
+            <Input.TextArea />
+          </Form.Item>
+          <Form.Item name="category" label="Category" rules={[{ required: true }]}>
+            <Input />
+          </Form.Item>
+          {/* Price, currency, stock and status are each a few characters wide.
+              One per row turned a seven-field form into a page of scrolling. */}
+          <div className="mp-field-row">
+            <Form.Item name="priceMinor" label="Price (minor units)" rules={[{ required: true }]}>
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
+              <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
+            </Form.Item>
+          </div>
+          <div className="mp-field-row">
+            <Form.Item name="stock" label="Stock" rules={[{ required: true }]}>
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="status" label="Status" rules={[{ required: true }]}>
+              <Select
+                options={[
+                  { value: 'active' },
+                  { value: 'draft' },
+                  { value: 'archived' },
+                  { value: 'out_of_stock' },
+                ]}
+              />
+            </Form.Item>
+          </div>
+          <Form.Item label="Images">
+            <ImageUploader value={images} onChange={setImages} />
+          </Form.Item>
+          {/* The tenant's dynamic fields, generated from the registry. */}
+          {schema ? toFormItems(schema.fields) : null}
+          <Button type="primary" htmlType="submit">
+            Create
+          </Button>
+        </Form>
       </Card>
     </>
   );
