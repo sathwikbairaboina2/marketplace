@@ -83,7 +83,11 @@ async function buyerTour(page: Page, p: string) {
 }
 
 test('desktop light', async ({ page }) => {
-  test.slow();
+  // Not `test.slow()`: that triples the 120s config budget, which was sized for
+  // a fixture of a few rows. This tour takes sixteen full-page captures, and a
+  // full page of a 55-row table is several thousand pixels tall -- the capture
+  // cost scales with the data, so the budget has to as well.
+  test.setTimeout(900_000);
   await page.setViewportSize(DESKTOP);
   await signIn(page, 'acme-admin');
   await setTheme(page, 'light');
@@ -96,7 +100,7 @@ test('desktop light', async ({ page }) => {
 });
 
 test('desktop dark', async ({ page }) => {
-  test.slow();
+  test.setTimeout(900_000);
   await page.setViewportSize(DESKTOP);
   await signIn(page, 'acme-admin');
   await setTheme(page, 'dark');

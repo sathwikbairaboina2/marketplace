@@ -11,7 +11,13 @@ import { ENGINE_URL, PASSWORD, WEB_URL, signIn } from './helpers/session';
  * conversational half is covered separately and loosely in chat.spec.ts.
  */
 test('executing a flow makes its new field appear in the product form', async ({ page }) => {
-  const fieldName = `warranty${Date.now()}`;
+  const stamp = Date.now();
+  const fieldName = `warranty${stamp}`;
+  // Controls are labelled by `toLabel(fieldName)`, not by the raw registry name
+  // -- it splits the letter/digit boundary and sentence-cases the result. Spelt
+  // out here rather than imported, so a broken `toLabel` fails this test
+  // instead of quietly agreeing with it.
+  const fieldLabel = `Warranty ${stamp}`;
 
   const api = await playwrightRequest.newContext();
   const login = await api.post(`${WEB_URL}/api/login`, {
@@ -47,8 +53,8 @@ test('executing a flow makes its new field appear in the product form', async ({
   // No page reload and no UI code naming this field: the create form, and the
   // search filters, are generated from the tenant's registry.
   await page.goto('/admin/products/new');
-  await expect(page.getByLabel(fieldName)).toBeVisible();
+  await expect(page.getByLabel(fieldLabel)).toBeVisible();
 
   await page.goto('/products');
-  await expect(page.getByLabel(fieldName)).toBeVisible();
+  await expect(page.getByLabel(fieldLabel)).toBeVisible();
 });
