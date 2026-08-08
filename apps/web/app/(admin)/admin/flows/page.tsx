@@ -11,6 +11,7 @@ import { EmptyState } from '../../../../components/empty-state';
 import { useFlowArrival } from '../../../../lib/flows/use-flow-arrival';
 import { StatusTag } from '../../../../components/status-tag';
 import { PageHeader } from '../../../../components/page-header';
+import { Ref } from '../../../../components/ref';
 
 function FlowsView() {
   // The chat page links here with ?awaiting=<dispatchedMessageId> after a
@@ -55,21 +56,32 @@ function FlowsView() {
         }
         columns={[
           {
-            title: 'Flow',
-            dataIndex: 'id',
-            render: (id: string) => <Link href={`/admin/flows/${id}`}>{id}</Link>,
+            // What the flow changes, which is what flow *detail* already leads
+            // with since e66b7a6.
+            title: 'Entity',
+            dataIndex: 'targetEntity',
+            render: (entity: string, row) => <Link href={`/admin/flows/${row.id}`}>{entity}</Link>,
           },
-          { title: 'Entity', dataIndex: 'targetEntity' },
+          {
+            title: 'Adds',
+            render: (_, row) => row.blueprintDiff.addedFields.map((f) => f.name).join(', '),
+          },
           {
             title: 'Status',
             dataIndex: 'status',
             render: (status: string) => <StatusTag status={status} />,
           },
           {
-            title: 'Adds',
-            render: (_, row) => row.blueprintDiff.addedFields.map((f) => f.name).join(', '),
+            title: 'Proposed by',
+            dataIndex: 'proposedBy',
+            // `system:agents` is already a name; only opaque ids get shortened.
+            render: (by: string) => (by.includes(':') ? by : <Ref value={by} />),
           },
-          { title: 'Proposed by', dataIndex: 'proposedBy' },
+          {
+            title: 'Ref',
+            dataIndex: 'id',
+            render: (id: string) => <Ref value={id} />,
+          },
         ]}
       />
     </Space>

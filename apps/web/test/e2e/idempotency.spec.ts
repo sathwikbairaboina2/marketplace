@@ -37,5 +37,9 @@ test('a double-submitted checkout creates exactly one order', async ({ page }) =
   // Exactly one row overall, and exactly one row for the order that was
   // actually created -- two clicks, one order.
   await expect(rows).toHaveCount(before + 1);
-  await expect(page.getByRole('link', { name: orderId })).toHaveCount(1);
+  // The row no longer leads with the ULID -- it leads with when the order was
+  // placed, and the id is a trailing `Ref` showing its last six characters with
+  // the whole value in `title`. That title is what still pins the assertion to
+  // this specific order.
+  await expect(page.getByTitle(orderId)).toHaveCount(1);
 });

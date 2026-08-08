@@ -9,6 +9,7 @@ import { CursorTable } from '../../../components/cursor-table';
 import { EmptyState } from '../../../components/empty-state';
 import { StatusTag } from '../../../components/status-tag';
 import { PageHeader } from '../../../components/page-header';
+import { Ref } from '../../../components/ref';
 
 export default function BookingsPage() {
   return (
@@ -32,14 +33,11 @@ export default function BookingsPage() {
         }
         columns={[
           {
-            title: 'Booking',
-            dataIndex: 'id',
-            render: (id: string) => <Link href={`/bookings/${id}`}>{id}</Link>,
-          },
-          {
-            title: 'Event',
-            dataIndex: 'eventId',
-            render: (eventId: string) => <Link href={`/events/${eventId}`}>{eventId}</Link>,
+            title: 'Booked',
+            dataIndex: 'createdAt',
+            render: (at: string, row) => (
+              <Link href={`/bookings/${row.id}`}>{formatRelative(at)}</Link>
+            ),
           },
           {
             title: 'Status',
@@ -47,10 +45,13 @@ export default function BookingsPage() {
             render: (status: string) => <StatusTag status={status} />,
           },
           { title: 'Tickets', dataIndex: 'ticketQuantity', className: 'mp-num' },
+          // No Event column. It held a second full ULID that named nothing, and
+          // a row identifies one thing, not two -- the detail page resolves the
+          // event's title and is one click away.
           {
-            title: 'Booked',
-            dataIndex: 'createdAt',
-            render: (at: string) => formatRelative(at),
+            title: 'Ref',
+            dataIndex: 'id',
+            render: (id: string) => <Ref value={id} />,
           },
         ]}
       />
