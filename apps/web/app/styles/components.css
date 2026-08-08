@@ -720,6 +720,19 @@
   user-select: all;
 }
 
+/* An identifier is a reference, not a name. `.mp-id` already supplies the
+   monospace stack, the size and select-all; this only mutes it, so it never
+   leads the row it sits in. */
+.mp-ref {
+  color: var(--mp-muted);
+  white-space: nowrap;
+}
+
+.mp-ref-link .mp-ref {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* Skeletons. The pulse is a background-position animation on a gradient rather
    than an opacity fade, so a column of them shimmers in step instead of
    flashing as one block. The global prefers-reduced-motion rule at the top of
