@@ -30,10 +30,14 @@ async function setTheme(page: Page, want: 'light' | 'dark') {
 async function openFirstRow(page: Page, listUrl: string, name: string) {
   await page.goto(listUrl);
   await page.waitForTimeout(700);
+  // The timeout is the whole point. `getAttribute` auto-waits, and on a list
+  // that is legitimately empty there is no `tbody a` to wait for -- so without
+  // a bound this blocks until the test budget expires and takes the rest of the
+  // tour with it. `.catch` cannot help: it only runs once the throw arrives.
   const href = await page
     .locator('tbody a')
     .first()
-    .getAttribute('href')
+    .getAttribute('href', { timeout: 3_000 })
     .catch(() => null);
   if (!href) return false;
   await page.goto(href);
@@ -83,11 +87,7 @@ async function buyerTour(page: Page, p: string) {
 }
 
 test('desktop light', async ({ page }) => {
-  // Not `test.slow()`: that triples the 120s config budget, which was sized for
-  // a fixture of a few rows. This tour takes sixteen full-page captures, and a
-  // full page of a 55-row table is several thousand pixels tall -- the capture
-  // cost scales with the data, so the budget has to as well.
-  test.setTimeout(900_000);
+  test.slow();
   await page.setViewportSize(DESKTOP);
   await signIn(page, 'acme-admin');
   await setTheme(page, 'light');
@@ -100,7 +100,7 @@ test('desktop light', async ({ page }) => {
 });
 
 test('desktop dark', async ({ page }) => {
-  test.setTimeout(900_000);
+  test.slow();
   await page.setViewportSize(DESKTOP);
   await signIn(page, 'acme-admin');
   await setTheme(page, 'dark');
