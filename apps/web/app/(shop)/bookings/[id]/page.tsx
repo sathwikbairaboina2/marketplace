@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Card, Descriptions } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import type { BookingResponse } from '@marketplace/contracts';
+import type { BookingResponse, EventResponse } from '@marketplace/contracts';
 import { getBooking } from '../../../../lib/api/bookings';
+import { getEvent } from '../../../../lib/api/events';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { useResource } from '../../../../lib/use-resource';
@@ -13,6 +14,7 @@ import { StatusTag } from '../../../../components/status-tag';
 import { PageHeader } from '../../../../components/page-header';
 import { ErrorPanel } from '../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../components/skeletons';
+import { Ref } from '../../../../components/ref';
 import { formatDateTime } from '../../../../lib/format';
 
 export default function BookingDetailPage() {
@@ -24,6 +26,16 @@ export default function BookingDetailPage() {
     loading,
     retry,
   } = useResource<BookingResponse>(() => getBooking(id), [id]);
+
+  // Declared above the early returns: a hook cannot live after a conditional
+  // `return`. Resolving one referenced record on a single-record page is a
+  // different cost from resolving names across a whole list, which is why
+  // /bookings does not do this.
+  const eventId = booking?.eventId ?? null;
+  const { data: event } = useResource<EventResponse | null>(
+    () => (eventId ? getEvent(eventId) : Promise.resolve(null)),
+    [eventId],
+  );
 
   if (loading) return <DetailSkeleton />;
   if (error) return <ErrorPanel error={error} onRetry={retry} />;
@@ -50,12 +62,13 @@ export default function BookingDetailPage() {
             {
               key: 'event',
               label: 'Event',
-              // The booking carries an id and no title, so the link is the
-              // only way to find out what was booked.
-              children: (
-                <Link className="mp-id" href={`/events/${booking.eventId}`}>
-                  {booking.eventId}
-                </Link>
+              // The booking payload carries an id and no title, so the title is
+              // fetched. If that fails the reference still links through --
+              // degraded, not broken.
+              children: event ? (
+                <Link href={`/events/${booking.eventId}`}>{event.title}</Link>
+              ) : (
+                <Ref value={booking.eventId} href={`/events/${booking.eventId}`} />
               ),
             },
             { key: 'tickets', label: 'Tickets', children: booking.ticketQuantity },
