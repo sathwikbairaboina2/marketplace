@@ -1008,9 +1008,35 @@ git commit -m "fix(web): <what looking at the screenshots found>"
 
 If Step 3 found nothing, skip this step.
 
+**Result.** Typecheck clean, 118 unit tests green, 29 e2e green including `zz-a11y` and
+`zz-audit`. Every capture in the table above was reviewed. Nothing in Tasks 1-8 reads wrong:
+the hero fills its band, monogram and photographed cards sit at comparable weight in both
+themes, all three lists carry their header, `/orders` leads with Placed and trails a quiet
+`Ref`, `/bookings` shows one identifier and no `EVENT` column, booking detail names its
+event, `/flows` leads with Entity and Adds, and the empty-orders state does not collide with
+its header. `55 orders · end of list` was confirmed at the true bottom of a three-page list.
+
+Two corrections to this plan rather than to the code:
+
+- **Step 2's `M-01`/`T-01` question is wrong about 834.** The narrow breakpoint is
+  `max-width: 767px` (`components.css:863`), so the stats stack at 390 and deliberately do
+  not at 834, where the band has room for them beside the name. The code matches its intent.
+- **The capture set needs data.** `docker:up` reseeds from scratch, so `/orders` and
+  `/bookings` are empty and `openFirstRow` silently skips `D-07`, `D-09`, `L-07` and `L-09`.
+  Fill the tenant before capturing, or those four questions cannot be asked at all.
+
+One defect was found by looking, and fixed outside this plan's scope with the user's
+agreement: tenant-scoped lists queried ascending while user-scoped lists queried descending,
+so a newly added product landed on the last page of the catalogue. See
+`fix(engine): put the newest listing on the first page`.
+
 ---
 
 ## Follow-ups (not in this plan)
+
+- **`/events` lists in creation order, not by start date.** A reader scanning sessions they
+  could book expects the soonest first; the list currently reads Dec, Jul, Dec, Nov. Needs an
+  index on `startDate`, so it is engine work rather than a craft fix.
 
 - **The chat page's empty proposal rail and card-in-card empty state** (`D-16`). Deferred by decision in the spec; wants its own pass.
 - **`Base price (minor units)`** on the admin new-event form (`apps/web/test/e2e/catalogue.spec.ts:55`). The same vocabulary leak as Task 8, on the admin side. Not in the spec's scope; worth raising.
