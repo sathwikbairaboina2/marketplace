@@ -81,7 +81,7 @@ export default function CartPage() {
         <EmptyState
           icon={<ShoppingOutlined />}
           title="Your cart is empty"
-          description="Add something from the catalogue and it will appear here."
+          description="Add something from the shop and it will appear here."
           action={
             <Link href="/products">
               <Button type="primary">Browse products</Button>

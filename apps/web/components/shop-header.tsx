@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Badge, Button, Space, Tag } from 'antd';
+import { Badge, Button, Grid, Space } from 'antd';
 import {
   AppstoreOutlined,
   CalendarOutlined,
@@ -31,6 +31,11 @@ export function ShopHeader() {
   const { principal, signOut } = useAuth();
   const { lines } = useCart();
   const pathname = usePathname();
+  const screens = Grid.useBreakpoint();
+  // On a phone the labelled buttons cost the header a whole extra row; the
+  // icons alone say the same thing. `sm === false`, not `!sm`: ANTD reports
+  // undefined before it has measured, and undefined must not read as narrow.
+  const narrow = screens.sm === false;
 
   return (
     <header className="mp-shop-header">
@@ -72,13 +77,18 @@ export function ShopHeader() {
       <Space size="small">
         <Link href="/cart" aria-label="Cart">
           <Badge count={lines.length} size="small" offset={[-2, 2]}>
-            <Button icon={<ShoppingCartOutlined />}>Cart</Button>
+            <Button icon={<ShoppingCartOutlined />}>{narrow ? null : 'Cart'}</Button>
           </Badge>
         </Link>
-        <Tag bordered={false}>{principal?.role ?? 'no role'}</Tag>
+        <span className="mp-role">{principal?.role ?? 'no role'}</span>
         <ThemeToggle />
-        <Button size="small" icon={<LogoutOutlined />} onClick={signOut}>
-          Sign out
+        <Button
+          size="small"
+          icon={<LogoutOutlined />}
+          onClick={signOut}
+          aria-label="Sign out"
+        >
+          {narrow ? null : 'Sign out'}
         </Button>
       </Space>
     </header>

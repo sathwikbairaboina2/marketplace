@@ -16,7 +16,7 @@ export default function AdminProductsPage() {
     <>
       <PageHeader
         title="Products"
-        subtitle="Everything in this tenant's catalogue"
+        subtitle="Everything in your shop"
         extra={
           <Link href="/admin/products/new">
             <Button type="primary">New product</Button>
@@ -26,7 +26,7 @@ export default function AdminProductsPage() {
 
       <CursorTable<ProductResponse>
         rowKey="id"
-        caption="Products in this tenant's catalogue"
+        caption="Products in your shop"
         noun={{ one: 'product', many: 'products' }}
         load={(cursor) => listProducts(25, cursor)}
         empty={

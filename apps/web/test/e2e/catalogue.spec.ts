@@ -53,7 +53,7 @@ test('a booking can be made against a new event', async ({ page }) => {
   await page.keyboard.type('2026-12-01 18:00:00');
   await page.keyboard.press('Enter');
 
-  await page.getByLabel('Base price (minor units)').fill('2500');
+  await page.getByLabel('Base price').fill('25');
   await page.getByRole('button', { name: 'Create' }).click();
 
   await expect(page).toHaveURL(/\/events\/[0-9A-Z]{26}/);

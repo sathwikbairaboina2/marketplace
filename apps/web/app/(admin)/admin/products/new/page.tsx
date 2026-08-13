@@ -25,7 +25,9 @@ export default function NewProductPage() {
       const created = await createProduct({
         name: values.name as string,
         description: values.description as string,
-        priceMinor: values.priceMinor as number,
+        // The engine speaks minor units; people don't. Convert at the boundary,
+        // exactly as the storefront filter rail already does.
+        priceMinor: Math.round((values.price as number) * 100),
         currency: values.currency as string,
         category: values.category as string,
         stock: values.stock as number,
@@ -49,7 +51,7 @@ export default function NewProductPage() {
 
   return (
     <>
-      <PageHeader title="New product" subtitle="Images can only be attached now — the engine has no update routes." />
+      <PageHeader title="New product" subtitle="Add photos now — they can't be changed after the product is created." />
       <Card className="mp-form-card">
         <Form
           form={form}
@@ -69,8 +71,8 @@ export default function NewProductPage() {
           {/* Price, currency, stock and status are each a few characters wide.
               One per row turned a seven-field form into a page of scrolling. */}
           <div className="mp-field-row">
-            <Form.Item name="priceMinor" label="Price (minor units)" rules={[{ required: true }]}>
-              <InputNumber min={0} style={{ width: '100%' }} />
+            <Form.Item name="price" label="Price" rules={[{ required: true }]}>
+              <InputNumber min={0} step={0.01} precision={2} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
               <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />

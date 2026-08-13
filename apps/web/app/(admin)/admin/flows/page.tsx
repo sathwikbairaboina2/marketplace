@@ -24,7 +24,7 @@ function FlowsView() {
     <Space direction="vertical" style={{ width: '100%' }} size="large">
       <PageHeader
         title="Flows"
-        subtitle="Proposed schema changes. Executing one permanently alters this tenant's data model."
+        subtitle="Proposed schema changes. Executing one permanently alters your shop's data model."
       />
       {waiting && (
         <Alert

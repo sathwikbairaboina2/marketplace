@@ -101,11 +101,11 @@ export default function ProductsPage() {
             <ErrorPanel error={error} onRetry={() => void fetchPage(null, false, filters)} />
           ) : items.length === 0 ? (
             <EmptyState
-              title={filters ? 'No products match' : 'This catalogue is empty'}
+              title={filters ? 'No products match' : 'This shop is just getting started'}
               description={
                 filters
-                  ? 'Nothing in the catalogue matches every filter you set.'
-                  : 'Nothing has been listed yet. An admin can add the first product.'
+                  ? 'Nothing in the shop matches every filter you set.'
+                  : 'Nothing has been listed yet — check back soon.'
               }
               action={
                 filters ? (

@@ -16,7 +16,7 @@ test('an admin uploads an image and it renders on the product', async ({ page })
   await page.getByLabel('Name').fill(name);
   await page.getByLabel('Description').fill('has a photograph');
   await page.getByLabel('Category').fill('tools');
-  await page.getByLabel('Price (minor units)').fill('1500');
+  await page.getByLabel('Price', { exact: true }).fill('15');
   await page.getByLabel('Stock').fill('3');
 
   await page.getByTestId('image-input').setInputFiles({

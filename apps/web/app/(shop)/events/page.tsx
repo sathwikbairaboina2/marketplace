@@ -21,7 +21,7 @@ export default function EventsPage() {
         empty={
           <EmptyState
             title="Nothing scheduled"
-            description="This tenant has no events on sale. The catalogue is still open."
+            description="No events on sale yet. The shop's products are still open."
             action={
               <Link href="/products">
                 <Button type="primary">Browse products</Button>

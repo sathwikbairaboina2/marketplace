@@ -657,6 +657,26 @@
   color: var(--mp-danger);
 }
 
+/* Who you are, not a status. Reads as a quiet label beside the controls. */
+.mp-role {
+  font-size: var(--mp-text-xs);
+  font-weight: 620;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mp-muted);
+  padding: 2px 8px;
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-pill);
+  background: var(--mp-surface-sunken);
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .mp-role {
+    display: none;
+  }
+}
+
 .mp-empty-icon .anticon {
   font-size: 28px;
   color: var(--mp-muted);

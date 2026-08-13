@@ -22,7 +22,8 @@ export default function NewEventPage() {
         // IsoDateTimeSchema is z.string().datetime(); DatePicker yields Dayjs.
         startDate: (values.startDate as Dayjs).toISOString(),
         endDate: (values.endDate as Dayjs).toISOString(),
-        basePriceMinor: values.basePriceMinor as number,
+        // The engine speaks minor units; people don't. Convert at the boundary.
+        basePriceMinor: Math.round((values.basePrice as number) * 100),
         currency: values.currency as string,
         attributes: toAttributes(
           schema?.fields ?? {},
@@ -60,12 +61,8 @@ export default function NewEventPage() {
             </Form.Item>
           </div>
           <div className="mp-field-row">
-            <Form.Item
-              name="basePriceMinor"
-              label="Base price (minor units)"
-              rules={[{ required: true }]}
-            >
-              <InputNumber min={0} style={{ width: '100%' }} />
+            <Form.Item name="basePrice" label="Base price" rules={[{ required: true }]}>
+              <InputNumber min={0} step={0.01} precision={2} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
               <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />

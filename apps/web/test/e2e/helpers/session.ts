@@ -20,7 +20,11 @@ export async function signOut(page: Page): Promise<void> {
 /** Unique per run, so repeated runs against a warm stack never collide. */
 export const unique = (prefix: string) => `${prefix}-${process.pid}-${Date.now()}`;
 
-/** Fills and submits the admin create-product form, returning the new id. */
+/**
+ * Fills and submits the admin create-product form, returning the new id.
+ * The caller still speaks minor units -- every existing assertion is written
+ * against them -- and this converts to the major units the form now asks for.
+ */
 export async function createProduct(
   page: Page,
   name: string,
@@ -31,7 +35,7 @@ export async function createProduct(
   await page.getByLabel('Name').fill(name);
   await page.getByLabel('Description').fill('e2e fixture');
   await page.getByLabel('Category').fill('tools');
-  await page.getByLabel('Price (minor units)').fill(String(priceMinor));
+  await page.getByLabel('Price', { exact: true }).fill(String(priceMinor / 100));
   await page.getByLabel('Stock').fill(String(stock));
   await page.getByRole('button', { name: 'Create' }).click();
   await expect(page).toHaveURL(/\/products\/[0-9A-Z]{26}/);
