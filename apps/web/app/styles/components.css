@@ -126,6 +126,12 @@
   max-width: 1400px;
 }
 
+/* Cockpit headings take the deep-blue ink: the seller's space has its own
+   voice, and it starts with what the page is called. */
+.mp-admin h1 {
+  color: var(--mp-cockpit-ink);
+}
+
 .mp-admin-menu {
   position: fixed;
   top: var(--mp-space-3);
@@ -154,7 +160,7 @@
   display: flex;
   align-items: center;
   gap: var(--mp-space-2);
-  color: #fff !important;
+  color: var(--mp-sidebar-text-strong) !important;
   font-weight: 680;
   font-size: 15px;
   letter-spacing: -0.015em;
@@ -170,7 +176,7 @@
   font-weight: 640;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: #8b9cb3;
+  color: var(--mp-sidebar-text);
   margin: var(--mp-space-5) var(--mp-space-2) var(--mp-space-2);
 }
 
@@ -205,13 +211,15 @@
 
 .mp-sidebar-nav a[data-active] {
   background: var(--mp-sidebar-item);
-  color: #fff !important;
+  color: var(--mp-sidebar-text-strong) !important;
   font-weight: 600;
   box-shadow: inset 2px 0 0 var(--mp-sidebar-accent);
 }
 
 .mp-sidebar-nav a[data-active] .anticon {
-  color: var(--mp-sidebar-accent);
+  /* --mp-accent, not the bar colour: an icon is read, and the bar green is
+     decoration-grade against the light sidebar. */
+  color: var(--mp-accent);
   opacity: 1;
 }
 
@@ -219,7 +227,7 @@
    appears in the back office, and switching acme/globex is how tenant
    isolation reads. */
 .mp-sidebar-foot {
-  border-top: 1px solid #1e293b;
+  border-top: 1px solid var(--mp-sidebar-item);
   padding-top: var(--mp-space-4);
   margin-top: var(--mp-space-4);
 }
@@ -229,9 +237,9 @@
   align-items: center;
   gap: var(--mp-space-2);
   background: var(--mp-sidebar-item);
-  border: 1px solid #26364d;
+  border: 1px solid var(--mp-sidebar-item);
   border-left: 3px solid var(--mp-sidebar-accent);
-  color: #fff;
+  color: var(--mp-sidebar-text-strong);
   font-weight: 640;
   font-size: 15px;
   letter-spacing: -0.01em;
@@ -240,7 +248,7 @@
 }
 
 .mp-sidebar-role {
-  color: #8b9cb3;
+  color: var(--mp-sidebar-text);
   font-size: var(--mp-text-xs);
   font-weight: 500;
   text-transform: uppercase;

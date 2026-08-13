@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Drawer, Grid } from 'antd';
+import { Button, ConfigProvider, Drawer, Grid } from 'antd';
 import { MenuOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth/auth-context';
 import { onUnauthorized } from '../../lib/api/http';
 import { AdminSidebar } from '../../components/admin-sidebar';
+import { cockpitAntdTheme } from '../../lib/theme/tokens';
+import { useTheme } from '../../lib/theme/theme-context';
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const { principal, ready } = useAuth();
+  const { mode } = useTheme();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const screens = Grid.useBreakpoint();
@@ -27,6 +30,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   if (!ready || !principal) return null;
 
   return (
+    // The cockpit runs its own ANTD slice -- green primary, same bones -- so
+    // the seller's space can be bold while the storefront stays calm.
+    <ConfigProvider theme={cockpitAntdTheme(mode)}>
     <div className="mp-admin">
       <a href="#main" className="mp-skip">
         Skip to content
@@ -57,5 +63,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         {children}
       </main>
     </div>
+    </ConfigProvider>
   );
 }

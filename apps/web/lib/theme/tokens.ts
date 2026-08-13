@@ -13,10 +13,6 @@ export const palette = {
   primary: '#0f766e',
   primaryHover: '#115e59',
   primaryDeep: '#134e4a',
-  // The back-office sidebar is dark in both themes, so an accent that works on
-  // white does not work on it: #0f766e on #0f172a is 3.26:1. This is the same
-  // hue two steps lighter (7.17:1) and is used only against sidebar surfaces.
-  sidebarAccent: '#14b8a6',
   ink: '#0f172a',
   inkSoft: '#334155',
   // Was #64748b, which is 4.34:1 against the sunken surface it sits on in table
@@ -29,16 +25,39 @@ export const palette = {
   surface: '#f8fafc',
   surfaceRaised: '#ffffff',
   surfaceSunken: '#f1f5f9',
-  // The back-office sidebar is dark by design, not by theme: it keeps this
-  // colour in light mode too. Flipping it white would undo the decision the
-  // whole admin chrome is built on.
-  sidebar: '#0f172a',
-  sidebarItem: '#1e293b',
-  sidebarText: '#94a3b8',
-  sidebarTextStrong: '#e2e8f0',
   success: '#0f766e',
   warning: '#b45309',
   danger: '#b91c1c',
+} as const;
+
+/**
+ * The seller's cockpit. Light and warm where the storefront is calm: the
+ * founder's own space can celebrate; the shop their customers see cannot.
+ * Text-level greens are #047857-class -- the #10b981..#0ea5e9 gradient is
+ * decoration and never carries text. The old always-dark sidebar becomes a
+ * per-mode decision: light cockpit, light sidebar.
+ */
+const cockpit = {
+  light: {
+    sidebar: '#eef4fb',
+    sidebarItem: '#dbe9f8',
+    sidebarText: '#3b556e',
+    sidebarTextStrong: '#0c223a',
+    accent: '#047857',
+    accentSoft: '#d1fae5',
+    accentBar: '#10b981',
+    ink: '#0c4a6e',
+  },
+  dark: {
+    sidebar: '#0f172a',
+    sidebarItem: '#1e293b',
+    sidebarText: '#94a3b8',
+    sidebarTextStrong: '#e2e8f0',
+    accent: '#34d399',
+    accentSoft: 'rgb(16 185 129 / 18%)',
+    accentBar: '#34d399',
+    ink: '#e6edf5',
+  },
 } as const;
 
 const darkOverrides = {
@@ -155,6 +174,24 @@ export function antdTheme(mode: Mode): ThemeConfig {
 }
 
 /**
+ * The cockpit's ANTD slice: the storefront theme with the primary swapped to
+ * the cockpit green. White on #047857 is 6.36:1, so primary buttons keep AA.
+ * Applied by a nested ConfigProvider in the (admin) layout -- one theming
+ * mechanism, two volumes.
+ */
+export function cockpitAntdTheme(mode: Mode): ThemeConfig {
+  const base = antdTheme(mode);
+  return {
+    ...base,
+    token: {
+      ...base.token,
+      colorPrimary: '#047857',
+      colorLink: mode === 'dark' ? '#34d399' : '#047857',
+    },
+  };
+}
+
+/**
  * The surfaces ANTD does not own -- sidebar, hero, filter rail, product card.
  * Derived from the same palette object as `antdTheme` on purpose: a colour that
  * lives in two places drifts the first time one of them is adjusted.
@@ -163,6 +200,7 @@ export function cssVars(mode: Mode): Record<string, string> {
   const dark = mode === 'dark';
   const c = dark ? { ...palette, ...darkOverrides } : palette;
   const shadow = dark ? shadowDark : shadowLight;
+  const k = dark ? cockpit.dark : cockpit.light;
 
   return {
     '--mp-primary': c.primary,
@@ -173,7 +211,7 @@ export function cssVars(mode: Mode): Record<string, string> {
     '--mp-primary-text': dark ? '#2dd4bf' : palette.primary,
     '--mp-primary-text-hover': dark ? '#5eead4' : palette.primaryHover,
     '--mp-primary-hover': palette.primaryHover,
-    '--mp-sidebar-accent': palette.sidebarAccent,
+    '--mp-sidebar-accent': k.accentBar,
     '--mp-primary-deep': palette.primaryDeep,
     '--mp-primary-wash': dark ? 'rgb(13 148 136 / 16%)' : 'rgb(13 148 136 / 10%)',
     '--mp-ink': c.ink,
@@ -203,10 +241,18 @@ export function cssVars(mode: Mode): Record<string, string> {
     '--mp-hero-muted': dark ? '#8ba0ba' : '#5c6a7d',
     '--mp-hero-eyebrow': dark ? '#5eead4' : '#0f766e',
 
-    '--mp-sidebar': palette.sidebar,
-    '--mp-sidebar-item': palette.sidebarItem,
-    '--mp-sidebar-text': palette.sidebarText,
-    '--mp-sidebar-text-strong': palette.sidebarTextStrong,
+    '--mp-sidebar': k.sidebar,
+    '--mp-sidebar-item': k.sidebarItem,
+    '--mp-sidebar-text': k.sidebarText,
+    '--mp-sidebar-text-strong': k.sidebarTextStrong,
+
+    // Cockpit accents. The gradient decorates (pips, bars); text sits on the
+    // solid accent, which clears 4.5:1 on the cockpit surfaces of its mode.
+    '--mp-accent': k.accent,
+    '--mp-accent-soft': k.accentSoft,
+    '--mp-accent-bar': k.accentBar,
+    '--mp-grad': 'linear-gradient(90deg, #059669, #0284c7)',
+    '--mp-cockpit-ink': k.ink,
 
     '--mp-shadow-sm': shadow.sm,
     '--mp-shadow-md': shadow.md,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { palette, antdTheme, cssVars } from './tokens';
+import { palette, antdTheme, cockpitAntdTheme, cssVars } from './tokens';
 
 describe('tokens', () => {
   it('exposes the slate and teal palette', () => {
@@ -88,21 +88,18 @@ describe('tokens', () => {
     }
   });
 
-  it('keeps the sidebar legible, which is dark in both themes', () => {
+  it('keeps the sidebar text legible in both themes', () => {
+    // The sidebar follows the theme now -- light cockpit, light sidebar --
+    // so its text tokens have to clear AA against whichever ground is active.
+    // --mp-sidebar-accent is excluded on purpose: it draws 2px bars, not text.
     for (const mode of ['light', 'dark'] as const) {
       const vars = cssVars(mode);
-      for (const ink of ['--mp-sidebar-text', '--mp-sidebar-text-strong', '--mp-sidebar-accent']) {
+      for (const ink of ['--mp-sidebar-text', '--mp-sidebar-text-strong', '--mp-accent']) {
         expect(contrast(vars[ink], vars['--mp-sidebar']), `${ink} in ${mode}`).toBeGreaterThanOrEqual(
           AA,
         );
       }
     }
-  });
-
-  it('keeps the sidebar dark in both modes', () => {
-    // The back-office sidebar is dark by design, not by theme -- flipping it
-    // white in light mode would undo the decision the chrome is built on.
-    expect(cssVars('light')['--mp-sidebar']).toBe(cssVars('dark')['--mp-sidebar']);
   });
 });
 
@@ -119,5 +116,21 @@ describe('hero and dropdown tokens', () => {
   it('themes the Select dropdown from the palette, not ANTD blue', () => {
     const cfg = antdTheme('light');
     expect(cfg.components?.Select?.optionSelectedBg).toBe('rgb(13 148 136 / 10%)');
+  });
+});
+
+describe('cockpit tokens', () => {
+  it('gives the cockpit its own light sidebar and green primary', () => {
+    expect(cssVars('light')['--mp-sidebar']).toBe('#eef4fb');
+    expect(cssVars('dark')['--mp-sidebar']).toBe('#0f172a');
+    expect(cockpitAntdTheme('light').token?.colorPrimary).toBe('#047857');
+  });
+
+  it('emits the cockpit accent set in both modes', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      const vars = cssVars(mode);
+      for (const key of ['--mp-accent', '--mp-accent-soft', '--mp-accent-bar', '--mp-grad', '--mp-cockpit-ink'])
+        expect(vars[key]).toBeDefined();
+    }
   });
 });
