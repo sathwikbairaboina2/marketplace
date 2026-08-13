@@ -657,6 +657,74 @@
   color: var(--mp-danger);
 }
 
+/* The founder's first screen. The gradient celebrates; the text stays on
+   AA-checked solids. */
+.mp-onboard {
+  max-width: 560px;
+  padding: var(--mp-space-8);
+  background: var(--mp-surface-raised);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-lg);
+  box-shadow: var(--mp-shadow-sm);
+}
+
+.mp-onboard-title {
+  font-size: var(--mp-text-xl);
+  color: var(--mp-cockpit-ink);
+}
+
+.mp-onboard-sub {
+  margin: var(--mp-space-2) 0 var(--mp-space-5);
+  color: var(--mp-muted);
+}
+
+.mp-onboard-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mp-onboard-steps li {
+  display: flex;
+  gap: var(--mp-space-3);
+  padding: var(--mp-space-3) 0;
+  border-bottom: 1px solid var(--mp-line);
+}
+
+.mp-onboard-steps li:last-child {
+  border-bottom: 0;
+}
+
+.mp-onboard-pip {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 1px solid var(--mp-line-strong);
+  color: var(--mp-muted);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.mp-onboard-steps li[data-done='true'] .mp-onboard-pip {
+  background: var(--mp-grad);
+  border: 0;
+  color: #fff;
+}
+
+.mp-onboard-desc {
+  color: var(--mp-muted);
+  font-size: var(--mp-text-sm);
+}
+
+.mp-onboard-actions {
+  display: flex;
+  gap: var(--mp-space-3);
+  margin-top: var(--mp-space-5);
+}
+
 /* Who you are, not a status. Reads as a quiet label beside the controls. */
 .mp-role {
   font-size: var(--mp-text-xs);

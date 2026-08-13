@@ -7,11 +7,13 @@ import { listProducts } from '../../../../lib/api/products';
 import { formatMoney } from '../../../../lib/format';
 import { CursorTable } from '../../../../components/cursor-table';
 import { PageHeader } from '../../../../components/page-header';
-import { EmptyState } from '../../../../components/empty-state';
+import { OnboardingChecklist } from '../../../../components/onboarding-checklist';
 import { StatusTag } from '../../../../components/status-tag';
 import { placeholderFor } from '../../../../lib/placeholder';
+import { useAuth } from '../../../../lib/auth/auth-context';
 
 export default function AdminProductsPage() {
+  const { principal } = useAuth();
   return (
     <>
       <PageHeader
@@ -29,17 +31,7 @@ export default function AdminProductsPage() {
         caption="Products in your shop"
         noun={{ one: 'product', many: 'products' }}
         load={(cursor) => listProducts(25, cursor)}
-        empty={
-          <EmptyState
-            title="No products yet"
-            description="Create the first one to see it in the storefront."
-            action={
-              <Link href="/admin/products/new">
-                <Button type="primary">New product</Button>
-              </Link>
-            }
-          />
-        }
+        empty={<OnboardingChecklist shopId={principal?.tenantId ?? 'your shop'} />}
         columns={[
           {
             title: '',
