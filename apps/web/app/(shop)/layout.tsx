@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth/auth-context';
 import { onUnauthorized } from '../../lib/api/http';
 import { ShopHeader } from '../../components/shop-header';
+import { AnnouncementBar } from '../../components/announcement-bar';
 
 export default function ShopShell({ children }: { children: React.ReactNode }) {
   const { principal, ready } = useAuth();
@@ -26,6 +27,7 @@ export default function ShopShell({ children }: { children: React.ReactNode }) {
       <a href="#main" className="mp-skip">
         Skip to content
       </a>
+      <AnnouncementBar />
       <ShopHeader />
       <main className="mp-shop-main" id="main" tabIndex={-1}>
         {children}

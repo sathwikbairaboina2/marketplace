@@ -10,6 +10,7 @@ import {
   LogoutOutlined,
   NodeIndexOutlined,
   ProfileOutlined,
+  SettingOutlined,
   ShoppingCartOutlined,
   TagsOutlined,
 } from '@ant-design/icons';
@@ -48,6 +49,10 @@ const GROUPS: { label: string; items: Item[] }[] = [
       { href: '/admin/flows', label: 'Flows', icon: <NodeIndexOutlined /> },
       { href: '/admin/chat', label: 'Chat', icon: <CommentOutlined /> },
     ],
+  },
+  {
+    label: 'Shop',
+    items: [{ href: '/admin/settings', label: 'Settings', icon: <SettingOutlined /> }],
   },
 ];
 

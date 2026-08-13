@@ -41,7 +41,9 @@ export async function createApp(): Promise<INestApplication> {
       // preflight that silently drops it turns every order the browser places
       // into an opaque CORS failure with no server-side trace.
       allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
-      methods: ['GET', 'POST', 'OPTIONS'],
+      // PUT: the settings routes update in place -- without it the preflight
+      // rejects the request and the browser never sends the PUT at all.
+      methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
     });
   }
 
