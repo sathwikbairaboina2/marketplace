@@ -24,6 +24,11 @@ export function schemaSk(entityType: string): string {
   return `SCHEMA#${entityType}`;
 }
 
+/** Tenant-level settings records: one item per named setting. */
+export function settingsSk(name: string): string {
+  return `SETTINGS#${name}`;
+}
+
 export function gsi1UserPk(tenantId: string, userId: string): string {
   return `TENANT#${tenantId}#USER#${userId}`;
 }

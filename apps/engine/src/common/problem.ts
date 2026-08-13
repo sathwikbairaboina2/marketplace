@@ -16,6 +16,7 @@ export type ProblemType =
   | 'unsupported-media-type'
   | 'payload-too-large'
   | 'unauthorized'
+  | 'forbidden'
   | 'not-found'
   | 'invalid-request'
   | 'internal-error';
