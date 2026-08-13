@@ -54,19 +54,21 @@ export default function AdminEventsPage() {
             dataIndex: 'endDate',
             render: (at: string) => formatDateTime(at),
           },
-          { title: 'Capacity', dataIndex: 'capacity', className: 'mp-num' },
           // `bookedCount`, not `booked` -- EventRecord and ProductRecord are
           // not symmetrical.
           {
             title: 'Booked',
             dataIndex: 'bookedCount',
             className: 'mp-num',
-            render: (booked: number, row) => `${booked} / ${row.capacity}`,
+            align: 'right' as const,
+            // One fact, one column: how full the session is.
+            render: (booked: number, row) => `${booked} of ${row.capacity}`,
           },
           {
             title: 'Price',
             dataIndex: 'basePriceMinor',
             className: 'mp-num',
+            align: 'right' as const,
             render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
           },
         ]}

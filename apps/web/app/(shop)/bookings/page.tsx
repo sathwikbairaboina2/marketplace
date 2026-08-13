@@ -44,7 +44,12 @@ export default function BookingsPage() {
             dataIndex: 'status',
             render: (status: string) => <StatusTag status={status} />,
           },
-          { title: 'Tickets', dataIndex: 'ticketQuantity', className: 'mp-num' },
+          {
+            title: 'Tickets',
+            dataIndex: 'ticketQuantity',
+            className: 'mp-num',
+            align: 'right' as const,
+          },
           // No Event column. It held a second full ULID that named nothing, and
           // a row identifies one thing, not two -- the detail page resolves the
           // event's title and is one click away.

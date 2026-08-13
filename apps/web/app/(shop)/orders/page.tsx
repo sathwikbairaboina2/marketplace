@@ -52,11 +52,17 @@ export default function OrdersPage() {
             dataIndex: 'status',
             render: (status: string) => <StatusTag status={status} />,
           },
-          { title: 'Items', className: 'mp-num', render: (_, row) => row.items.length },
+          {
+            title: 'Items',
+            className: 'mp-num',
+            align: 'right' as const,
+            render: (_, row) => row.items.length,
+          },
           {
             title: 'Total',
             dataIndex: 'totalAmountMinor',
             className: 'mp-num',
+            align: 'right' as const,
             render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
           },
           {

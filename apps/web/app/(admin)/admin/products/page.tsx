@@ -74,10 +74,11 @@ export default function AdminProductsPage() {
             title: 'Price',
             dataIndex: 'priceMinor',
             className: 'mp-num',
+            align: 'right' as const,
             render: (minor: number, row) =>
               `${formatMoney(minor)} ${row.currency}`,
           },
-          { title: 'Stock', dataIndex: 'stock', className: 'mp-num' },
+          { title: 'Stock', dataIndex: 'stock', className: 'mp-num', align: 'right' as const },
           {
             title: 'Status',
             dataIndex: 'status',
