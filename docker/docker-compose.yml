@@ -124,7 +124,10 @@ services:
 
   ollama:
     image: ollama/ollama:0.32.5
-    ports: ['11434:11434']
+    # Host side is 11435: 11434 belongs to another project's ollama on this
+    # machine. Inside the compose network everything still speaks to
+    # `ollama:11434`, so only host-side tooling is affected.
+    ports: ['11435:11434']
     volumes: ['ollama-models:/root/.ollama']
     healthcheck:
       test: ['CMD-SHELL', 'ollama list >/dev/null 2>&1 || exit 1']
