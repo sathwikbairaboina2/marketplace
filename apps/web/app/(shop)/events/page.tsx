@@ -13,52 +13,54 @@ export default function EventsPage() {
   return (
     <>
       <PageHeader title="Events" subtitle="Sessions you can book a place at." />
+      <div className="mp-list-measure">
       <CursorTable<EventResponse>
-        rowKey="id"
-        caption="Scheduled events"
-        noun={{ one: 'event', many: 'events' }}
-        load={(cursor) => listEvents(25, cursor)}
-        empty={
-          <EmptyState
-            title="Nothing scheduled"
-            description="No events on sale yet. The shop's products are still open."
-            action={
-              <Link href="/products">
-                <Button type="primary">Browse products</Button>
-              </Link>
-            }
-          />
-        }
-        columns={[
-          {
-            title: 'Title',
-            dataIndex: 'title',
-            render: (title: string, row) => <Link href={`/events/${row.id}`}>{title}</Link>,
-          },
-          {
-            title: 'Starts',
-            dataIndex: 'startDate',
-            render: (at: string) => formatDateTime(at),
-          },
-          {
-            title: 'Booked',
-            // `bookedCount`, not `booked` -- EventRecord and ProductRecord are
-            // not symmetrical.
-            dataIndex: 'bookedCount',
-            className: 'mp-num',
-            align: 'right' as const,
-            // One fact, one column: how full the session is.
-            render: (booked: number, row) => `${booked} of ${row.capacity}`,
-          },
-          {
-            title: 'Price',
-            dataIndex: 'basePriceMinor',
-            className: 'mp-num',
-            align: 'right' as const,
-            render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
-          },
-        ]}
-      />
+          rowKey="id"
+          caption="Scheduled events"
+          noun={{ one: 'event', many: 'events' }}
+          load={(cursor) => listEvents(25, cursor)}
+          empty={
+            <EmptyState
+              title="Nothing scheduled"
+              description="No events on sale yet. The shop's products are still open."
+              action={
+                <Link href="/products">
+                  <Button type="primary">Browse products</Button>
+                </Link>
+              }
+            />
+          }
+          columns={[
+            {
+              title: 'Title',
+              dataIndex: 'title',
+              render: (title: string, row) => <Link href={`/events/${row.id}`}>{title}</Link>,
+            },
+            {
+              title: 'Starts',
+              dataIndex: 'startDate',
+              render: (at: string) => formatDateTime(at),
+            },
+            {
+              title: 'Booked',
+              // `bookedCount`, not `booked` -- EventRecord and ProductRecord are
+              // not symmetrical.
+              dataIndex: 'bookedCount',
+              className: 'mp-num',
+              align: 'right' as const,
+              // One fact, one column: how full the session is.
+              render: (booked: number, row) => `${booked} of ${row.capacity}`,
+            },
+            {
+              title: 'Price',
+              dataIndex: 'basePriceMinor',
+              className: 'mp-num',
+              align: 'right' as const,
+              render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
+            },
+          ]}
+        />
+      </div>
     </>
   );
 }

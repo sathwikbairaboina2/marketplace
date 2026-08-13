@@ -130,6 +130,32 @@
   margin: var(--mp-space-4) 0 var(--mp-space-6);
 }
 
+/* The row that keeps a detail page from trailing off into blank viewport. */
+.mp-more {
+  margin-top: var(--mp-space-10);
+  padding-top: var(--mp-space-6);
+  border-top: 1px solid var(--mp-line);
+}
+
+.mp-more h2 {
+  font-size: var(--mp-text-xs);
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mp-muted);
+  margin-bottom: var(--mp-space-4);
+}
+
+.mp-more-grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+/* A one-row table floats in a full-width void; give short storefront lists a
+   measure of their own. */
+.mp-list-measure {
+  max-width: 980px;
+}
+
 /* ==========================================================================
    Checkout
    ========================================================================== */

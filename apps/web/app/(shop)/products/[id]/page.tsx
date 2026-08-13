@@ -16,6 +16,7 @@ import { formatMoney } from '../../../../lib/format';
 import { StatusTag } from '../../../../components/status-tag';
 import { ErrorPanel } from '../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../components/skeletons';
+import { MoreFromShop } from '../../../../components/more-from-shop';
 
 const LOW_STOCK = 5;
 
@@ -124,6 +125,8 @@ export default function ProductDetailPage() {
           )}
         </div>
       </div>
+
+      <MoreFromShop excludeId={product.id} />
     </>
   );
 }

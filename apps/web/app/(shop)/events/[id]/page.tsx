@@ -16,6 +16,7 @@ import { useResource } from '../../../../lib/use-resource';
 import { formatDateTime, formatMoney } from '../../../../lib/format';
 import { ErrorPanel } from '../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../components/skeletons';
+import { MoreFromShop } from '../../../../components/more-from-shop';
 
 const BACKOFFS_MS = [500, 1000, 2000, 4000, 8000];
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -154,6 +155,11 @@ export default function EventDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* An event id can never appear in the product list, so nothing is
+          filtered -- the row simply shows the shop's products, which is the
+          point: the page ends with somewhere to go. */}
+      <MoreFromShop excludeId={event.id} />
     </>
   );
 }
