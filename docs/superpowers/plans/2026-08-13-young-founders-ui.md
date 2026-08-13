@@ -1390,7 +1390,39 @@ Open from `apps/web/test-results/audit/` and answer each question. **Light first
 
 Anything that reads wrong gets fixed and re-captured before this task closes. "Reviewed, nothing to fix" is a result — say it explicitly.
 
-- [ ] **Step 5: Record results in this plan and commit**
+**Result (2026-08-13).** Typecheck clean. Web 126, engine 129, contracts 63 unit tests
+green. Full e2e: **29/29 passed** — including `chat.spec` (its ollama dependency now runs
+on host port 11435 after the conflict with another project's ollama on 11434), `zz-a11y`
+(AA gate) and the new `announcement.spec`. Eye review of the re-baselined captures, light
+first, answered every question in the table:
+
+- `L-01`: hero reads as a light band with a teal wash; tiles draw from the palette band.
+- `L-02`: product detail ends with "More from this shop" — no dead half.
+- `L-03`: cart lines lead with a thumbnail or palette tile.
+- `L-04`: events shows one right-aligned `Booked` column reading `2 of 50`, inside a
+  measured container.
+- `L-10`: light sidebar, deep-blue heading ink, green primary, right-aligned numbers.
+- `L-12`: the form asks for `Price` in money; the subtitle explains the photo constraint
+  in user terms.
+- Onboarding checklist verified against the approved mock (globex, temporary capture).
+- `D-01`/`D-10`: dark hero stays composed; dark cockpit keeps its dark sidebar with
+  spring-green accents; tiles stay inside the hue band.
+- `M-01`: header is brand + icon buttons on one row, nav strip on the second.
+- Announcement strip verified above the header, one teal line (temporary capture);
+  editor page matches the mock.
+- `X-02`: empty orders sits in a measured container, no header collision.
+
+One judgement recorded rather than changed: light-theme placeholder tiles are quiet,
+near-pastel washes. That is the tokens' stated intent ("tinted neutrals" so photography
+stays the only saturated thing on the page) and it reads correctly beside real photos —
+left as designed.
+
+Two fixes landed outside the planned file list, both forced by reality:
+- `fix(docker): move ollama's host port off 11434` — another project owns that port.
+- `apps/engine/src/app.factory.ts`: CORS `methods` gained `PUT`, without which the
+  browser's preflight blocked the announcement save entirely. Caught by the new e2e.
+
+- [x] **Step 5: Record results in this plan and commit**
 
 ```bash
 git add -A
