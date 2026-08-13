@@ -291,10 +291,10 @@
      was a single flex child and the right ~60% of the band stayed empty. */
   justify-content: space-between;
   gap: var(--mp-space-8);
-  background:
-    radial-gradient(120% 140% at 88% 0%, rgb(13 148 136 / 22%) 0%, transparent 55%),
-    linear-gradient(135deg, #101c2e 0%, #0b1524 100%);
-  border: 1px solid rgb(148 163 184 / 14%);
+  /* Themed, not hard-coded: the light theme gets a light band with a teal
+     wash, the dark theme keeps its deep gradient. Values live in tokens.ts. */
+  background: var(--mp-hero-bg);
+  border: 1px solid var(--mp-hero-border);
   border-radius: var(--mp-radius-xl);
   padding: var(--mp-space-8);
   margin-bottom: var(--mp-space-8);
@@ -316,12 +316,12 @@
   font-weight: 640;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #5eead4;
+  color: var(--mp-hero-eyebrow);
   margin-bottom: var(--mp-space-3);
 }
 
 .mp-hero h1 {
-  color: #fff;
+  color: var(--mp-hero-ink);
   font-size: var(--mp-text-xxl);
   line-height: 1.1;
   letter-spacing: -0.03em;
@@ -337,7 +337,7 @@
   display: block;
   font-size: var(--mp-text-lg);
   font-weight: 660;
-  color: #fff;
+  color: var(--mp-hero-ink);
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
@@ -345,7 +345,7 @@
 .mp-hero-stat .k {
   display: block;
   font-size: var(--mp-text-xs);
-  color: #8ba0ba;
+  color: var(--mp-hero-muted);
   margin-top: 2px;
   letter-spacing: 0.02em;
 }

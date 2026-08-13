@@ -105,3 +105,19 @@ describe('tokens', () => {
     expect(cssVars('light')['--mp-sidebar']).toBe(cssVars('dark')['--mp-sidebar']);
   });
 });
+
+describe('hero and dropdown tokens', () => {
+  it('emits hero tokens that differ between themes', () => {
+    const light = cssVars('light');
+    const dark = cssVars('dark');
+    expect(light['--mp-hero-bg']).toBeDefined();
+    expect(light['--mp-hero-bg']).not.toBe(dark['--mp-hero-bg']);
+    expect(light['--mp-hero-ink']).toBe('#0f172a');
+    expect(dark['--mp-hero-ink']).toBe('#ffffff');
+  });
+
+  it('themes the Select dropdown from the palette, not ANTD blue', () => {
+    const cfg = antdTheme('light');
+    expect(cfg.components?.Select?.optionSelectedBg).toBe('rgb(13 148 136 / 10%)');
+  });
+});

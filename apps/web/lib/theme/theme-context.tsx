@@ -14,11 +14,6 @@ interface ThemeValue {
 
 const ThemeContext = createContext<ThemeValue | null>(null);
 
-const systemMode = (): Mode =>
-  typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches
-    ? 'dark'
-    : 'light';
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Starts light and corrects on mount. The inline bootstrap script in
   // app/layout.tsx has already stamped `data-theme` before first paint, so
@@ -27,8 +22,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeState] = useState<Mode>('light');
 
   useEffect(() => {
+    // Light-first: a new visitor gets the designed default, not whichever
+    // theme their OS happens to be in. An explicit stored choice still wins.
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    setModeState(stored === 'dark' || stored === 'light' ? stored : systemMode());
+    setModeState(stored === 'dark' || stored === 'light' ? stored : 'light');
   }, []);
 
   useEffect(() => {

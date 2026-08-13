@@ -27,8 +27,7 @@ export const metadata = { title: 'Marketplace' };
 const THEME_BOOTSTRAP = `
 (function(){try{
   var s=localStorage.getItem('marketplace.theme');
-  var m=s==='dark'||s==='light'?s:(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');
-  document.documentElement.dataset.theme=m;
+  document.documentElement.dataset.theme=(s==='dark'||s==='light')?s:'light';
 }catch(e){}})();`;
 
 // SchemaProvider sits inside AuthProvider because it fetches whenever `token`

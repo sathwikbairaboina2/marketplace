@@ -42,19 +42,20 @@ describe('ThemeProvider', () => {
     stubMatchMedia(false);
   });
 
-  it('defaults to the operating system preference when nothing is stored', async () => {
+  it('defaults to light when nothing is stored, even if the system prefers dark', async () => {
+    // The platform is light-first: a new visitor gets the designed theme, not
+    // whichever one their OS happens to be in. Their own toggle still wins.
     stubMatchMedia(true);
-    renderProbe();
-    await act(async () => {});
-    expect(screen.getByTestId('mode')).toHaveTextContent('dark');
-  });
-
-  it('prefers an explicitly stored choice over the OS preference', async () => {
-    stubMatchMedia(true);
-    localStorage.setItem(THEME_STORAGE_KEY, 'light');
     renderProbe();
     await act(async () => {});
     expect(screen.getByTestId('mode')).toHaveTextContent('light');
+  });
+
+  it('prefers an explicitly stored choice over the default', async () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    renderProbe();
+    await act(async () => {});
+    expect(screen.getByTestId('mode')).toHaveTextContent('dark');
   });
 
   it('persists a toggle so the choice survives a reload', async () => {

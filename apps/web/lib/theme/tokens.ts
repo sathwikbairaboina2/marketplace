@@ -140,6 +140,13 @@ export function antdTheme(mode: Mode): ThemeConfig {
         borderColor: c.line,
       },
       Button: { fontWeight: 550, primaryShadow: 'none', defaultShadow: 'none' },
+      // ANTD's option hover/selected fill derives from its own blue, which
+      // was the one place the component library still spoke its stock accent
+      // instead of the brand's -- visible on the login persona picker.
+      Select: {
+        optionSelectedBg: dark ? 'rgb(13 148 136 / 16%)' : 'rgb(13 148 136 / 10%)',
+        optionActiveBg: dark ? 'rgb(13 148 136 / 10%)' : 'rgb(13 148 136 / 6%)',
+      },
       Input: { paddingBlock: 6 },
       Tag: { defaultBg: dark ? c.surfaceSunken : palette.surfaceSunken },
       Drawer: { paddingLG: space[4] },
@@ -185,6 +192,16 @@ export function cssVars(mode: Mode): Record<string, string> {
     // lighter value in dark mode for the same reason ink does.
     '--mp-warning': dark ? '#f59e0b' : palette.warning,
     '--mp-danger': dark ? '#f87171' : palette.danger,
+
+    // The storefront hero, themed rather than hard-coded: it used to carry a
+    // dark gradient literally, which made it a dark billboard on a light page.
+    '--mp-hero-bg': dark
+      ? 'radial-gradient(120% 140% at 88% 0%, rgb(13 148 136 / 22%) 0%, transparent 55%), linear-gradient(135deg, #101c2e 0%, #0b1524 100%)'
+      : 'radial-gradient(120% 140% at 88% 0%, rgb(13 148 136 / 14%) 0%, transparent 55%), linear-gradient(135deg, #f0fdfa 0%, #ffffff 100%)',
+    '--mp-hero-border': dark ? 'rgb(148 163 184 / 14%)' : 'rgb(15 118 110 / 20%)',
+    '--mp-hero-ink': dark ? '#ffffff' : '#0f172a',
+    '--mp-hero-muted': dark ? '#8ba0ba' : '#5c6a7d',
+    '--mp-hero-eyebrow': dark ? '#5eead4' : '#0f766e',
 
     '--mp-sidebar': palette.sidebar,
     '--mp-sidebar-item': palette.sidebarItem,
