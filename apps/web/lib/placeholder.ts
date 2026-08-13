@@ -17,8 +17,14 @@ function hash(value: string): number {
  * the same product is a soft tint on a light page and a deep tone on a dark
  * one, instead of the same pastel slab glaring out of both.
  */
+// Five hues from the brand's neighbourhood -- green, teal, cyan, blue, indigo.
+// A tile can be any of these and still sit inside the page's palette; the old
+// hash % 360 produced maroon and olive slabs that sat outside it.
+const HUES = [158, 172, 199, 214, 244] as const;
+
 export function placeholderFor(id: string, name: string): { gradient: string; initials: string } {
-  const hue = hash(id) % 360;
+  const hue = HUES[hash(id) % HUES.length]!;
+  const next = HUES[(hash(id) + 1) % HUES.length]!;
   const initials =
     name
       .trim()
@@ -31,7 +37,7 @@ export function placeholderFor(id: string, name: string): { gradient: string; in
   return {
     gradient:
       `linear-gradient(135deg, hsl(${hue} var(--mp-placeholder-from)), ` +
-      `hsl(${(hue + 36) % 360} var(--mp-placeholder-to)))`,
+      `hsl(${next} var(--mp-placeholder-to)))`,
     initials,
   };
 }

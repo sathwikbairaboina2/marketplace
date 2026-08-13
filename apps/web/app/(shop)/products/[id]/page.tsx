@@ -105,6 +105,7 @@ export default function ProductDetailPage() {
                   name: product.name,
                   priceMinor: product.priceMinor,
                   qty,
+                  image: product.images[0],
                 });
                 void message.success(`${product.name} added to cart`);
               }}

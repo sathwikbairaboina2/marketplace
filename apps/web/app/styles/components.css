@@ -475,7 +475,9 @@
 .mp-card-media {
   display: block;
   position: relative;
-  aspect-ratio: 5 / 4;
+  /* 4:3, not 5:4: on a card whose only content is a monogram tile, the taller
+     ratio let the tile dominate the card. */
+  aspect-ratio: 4 / 3;
   background: var(--mp-surface-sunken);
   overflow: hidden;
 }
@@ -503,7 +505,7 @@
   place-items: center;
   width: 100%;
   height: 100%;
-  font-size: 26px;
+  font-size: 34px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--mp-placeholder-ink);
@@ -812,7 +814,7 @@
    cards arrive. */
 .mp-sk-media {
   height: 0;
-  padding-bottom: 72%;
+  padding-bottom: 66%;
   margin: 0 calc(-1 * var(--mp-space-4));
   border-radius: 0;
 }

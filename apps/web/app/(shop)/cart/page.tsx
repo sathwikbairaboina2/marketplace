@@ -12,6 +12,7 @@ import { notifyProblem } from '../../../lib/problem-notify';
 import { toAttributes, toFormItems } from '../../../lib/schema-fields';
 import { useSchema } from '../../../lib/schemas/schema-cache';
 import { formatMoney } from '../../../lib/format';
+import { placeholderFor } from '../../../lib/placeholder';
 import { PageHeader } from '../../../components/page-header';
 import { EmptyState } from '../../../components/empty-state';
 
@@ -106,6 +107,19 @@ export default function CartPage() {
           <ul className="mp-lines">
             {lines.map((line) => (
               <li key={line.productId} className="mp-line">
+                {/* A line the buyer can recognise at a glance -- the photo if
+                    there is one, the same palette tile as everywhere else if
+                    not. */}
+                {line.image ? (
+                  <img src={line.image} alt="" className="mp-table-thumb" />
+                ) : (
+                  <span
+                    className="mp-thumb-placeholder"
+                    style={{ background: placeholderFor(line.productId, line.name).gradient }}
+                  >
+                    {placeholderFor(line.productId, line.name).initials}
+                  </span>
+                )}
                 <div className="mp-line-info">
                   <Link href={`/products/${line.productId}`} className="mp-line-name">
                     {line.name}

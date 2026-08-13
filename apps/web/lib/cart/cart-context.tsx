@@ -7,6 +7,8 @@ export interface CartLine {
   name: string;
   priceMinor: number;
   qty: number;
+  /** First product image. Optional so lines persisted before it existed still parse. */
+  image?: string;
 }
 
 const LINES_KEY = 'marketplace.cart';

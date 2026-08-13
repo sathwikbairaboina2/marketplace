@@ -157,7 +157,7 @@
 
 .mp-line {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: auto 1fr auto auto auto;
   align-items: center;
   gap: var(--mp-space-4);
   padding: var(--mp-space-4) var(--mp-space-5);
@@ -308,7 +308,7 @@
     order: 1 !important;
   }
   .mp-line {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr auto;
     row-gap: var(--mp-space-2);
   }
   .mp-line-total {
