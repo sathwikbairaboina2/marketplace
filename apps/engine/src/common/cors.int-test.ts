@@ -62,6 +62,27 @@ describe('CORS', () => {
     expect(allowed).toContain('idempotency-key');
   });
 
+  // Every method a controller answers has to be named in the preflight, or the
+  // browser refuses before it sends anything: the request is well formed, the
+  // URL is right, the server is healthy, and nothing arrives. It has already
+  // happened twice here -- once for PUT on the announcement, once for PATCH on
+  // a product -- so it is asserted per method rather than described in a
+  // comment.
+  it.each(['GET', 'POST', 'PUT', 'PATCH'])('allows %s through the preflight', async (method) => {
+    const res = await fetch(`${baseUrl}/api/v1/products`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:3002',
+        'Access-Control-Request-Method': method,
+        'Access-Control-Request-Headers': 'authorization',
+      },
+    });
+
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:3002');
+    const allowedMethods = (res.headers.get('access-control-allow-methods') ?? '').toUpperCase();
+    expect(allowedMethods).toContain(method);
+  });
+
   it('does not allow an unconfigured origin', async () => {
     const res = await fetch(`${baseUrl}/api/v1/products`, {
       method: 'OPTIONS',

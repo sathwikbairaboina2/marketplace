@@ -43,7 +43,13 @@ export async function createApp(): Promise<INestApplication> {
       allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
       // PUT: the settings routes update in place -- without it the preflight
       // rejects the request and the browser never sends the PUT at all.
-      methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+      //
+      // PATCH: the same trap, one route later. Editing a product from the
+      // cockpit sent a correct body to a correct URL and nothing arrived,
+      // because the preflight for a method missing from this list fails before
+      // the request is ever made. A method added to a controller has to be
+      // added here too, or it works from a terminal and only from a terminal.
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
     });
   }
 
