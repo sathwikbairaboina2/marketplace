@@ -1,5 +1,12 @@
 import { defineConfig } from '@playwright/test';
 
+// The browser must be pointed at localhost, not 127.0.0.1: the client bundle is
+// built with NEXT_PUBLIC_ENGINE_URL=http://localhost:3000 and the engine allows
+// the http://localhost:3002 origin, so a browser on the IPv4 literal is a
+// different origin and every call it makes is refused by CORS. The API-side
+// harnesses in this repo do use 127.0.0.1, deliberately -- they are not browsers
+// and are not origin-checked.
+
 export default defineConfig({
   testDir: './test/e2e',
   // No `webServer`: scripts/e2e.mjs runs `docker:up` first, so the whole stack

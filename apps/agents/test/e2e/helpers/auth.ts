@@ -11,7 +11,12 @@ const PASSWORD = 'Passw0rd!';
 
 const client = new CognitoIdentityProviderClient({
   region: 'us-east-1',
-  endpoint: process.env.COGNITO_ENDPOINT_HOST,
+  // `localhost` resolves to ::1 before 127.0.0.1 on some hosts, and Docker
+  // Desktop's IPv6 loopback proxy is not reliably listening -- a state that
+  // fails every suite here at once, for reasons that have nothing to do with
+  // the code. The seed still writes `localhost` into JWT_ISSUER, which is
+  // correct: that string is stamped into tokens and validated, never dialled.
+  endpoint: process.env.COGNITO_ENDPOINT_HOST?.replace('localhost', '127.0.0.1'),
   credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
 });
 

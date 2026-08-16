@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
 export const PASSWORD = 'Passw0rd!';
-export const ENGINE_URL = 'http://localhost:3000/api/v1';
+export const ENGINE_URL = 'http://127.0.0.1:3000/api/v1';
 export const WEB_URL = 'http://localhost:3002';
 
 export async function signIn(page: Page, username: string): Promise<void> {

@@ -28,7 +28,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const WEB = 'http://localhost:3002';
-const ENGINE = 'http://localhost:3000/api/v1';
+const ENGINE = 'http://127.0.0.1:3000/api/v1';
 const OUT =
   process.env.JOURNEYS_OUT ??
   fileURLToPath(new URL('../../test-results/e2e-journeys', import.meta.url));
@@ -54,7 +54,9 @@ const env = Object.fromEntries(
 
 const cognito = new CognitoIdentityProviderClient({
   region: 'us-east-1',
-  endpoint: env.COGNITO_ENDPOINT_HOST,
+  // `localhost` resolves to ::1 first on some hosts, and Docker Desktop's
+  // IPv6 loopback proxy is not always listening; the IPv4 literal always is.
+  endpoint: (env.COGNITO_ENDPOINT_HOST ?? '').replace('localhost', '127.0.0.1'),
   credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
 });
 
