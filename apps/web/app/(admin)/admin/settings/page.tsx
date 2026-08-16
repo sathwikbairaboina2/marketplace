@@ -11,7 +11,15 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     getAnnouncement()
-      .then((a) => form.setFieldsValue(a))
+      .then((a) => {
+        // Field by field, and only where the seller has not already typed. A
+        // cold stack can take seconds to answer, and `setFieldsValue(a)` landing
+        // after someone has started writing replaced their sentence with the
+        // stored one -- silently, and with the toggle left on, so Save then
+        // published an empty announcement.
+        if (!form.isFieldTouched('text')) form.setFieldValue('text', a.text);
+        if (!form.isFieldTouched('enabled')) form.setFieldValue('enabled', a.enabled);
+      })
       .catch(notifyProblem);
   }, [form]);
 
