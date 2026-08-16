@@ -76,6 +76,20 @@ export default function AdminProductsPage() {
             dataIndex: 'status',
             render: (status: string) => <StatusTag status={status} />,
           },
+          {
+            title: '',
+            key: 'edit',
+            width: 72,
+            align: 'right' as const,
+            // Last column and unlabelled: the row is a product, not a toolbar,
+            // and a header reading "Actions" above one link says nothing the
+            // link does not.
+            render: (_: unknown, row) => (
+              <Link href={`/admin/products/${row.id}/edit`} aria-label={`Edit ${row.name}`}>
+                Edit
+              </Link>
+            ),
+          },
         ]}
       />
     </>

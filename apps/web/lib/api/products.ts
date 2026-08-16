@@ -1,5 +1,6 @@
 import {
   type CreateProduct,
+  type UpdateProduct,
   ProductResponseSchema,
   type SearchProducts,
   pageOf,
@@ -19,3 +20,6 @@ export const getProduct = (id: string) =>
 
 export const createProduct = (body: CreateProduct) =>
   request('/products', { method: 'POST', body, schema: ProductResponseSchema });
+
+export const updateProduct = (id: string, body: UpdateProduct) =>
+  request(`/products/${id}`, { method: 'PATCH', body, schema: ProductResponseSchema });
