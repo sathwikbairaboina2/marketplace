@@ -3,6 +3,7 @@ import {
   DynamicEntityTypeSchema,
   FieldNameSchema,
   FieldTypeSchema,
+  isReservedFieldName,
   type DynamicEntityType,
 } from './registry';
 
@@ -24,13 +25,34 @@ export const BlueprintDiffSchema = z
   .strict();
 export type BlueprintDiff = z.infer<typeof BlueprintDiffSchema>;
 
+/**
+ * Applied wherever a diff meets the entity it targets -- here and on the queue
+ * message the agents service sends -- because the reservation depends on which
+ * entity is being extended, and `BlueprintDiffSchema` alone does not know.
+ */
+export function refuseReservedFieldNames(
+  value: { targetEntity: DynamicEntityType; blueprintDiff: BlueprintDiff },
+  ctx: z.RefinementCtx,
+): void {
+  value.blueprintDiff.addedFields.forEach((field, index) => {
+    if (isReservedFieldName(value.targetEntity, field.name)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['blueprintDiff', 'addedFields', index, 'name'],
+        message: `${value.targetEntity} already has a field called ${field.name}`,
+      });
+    }
+  });
+}
+
 export const CreateFlowSchema = z
   .object({
     targetEntity: DynamicEntityTypeSchema,
     actionType: z.literal('ADD_FIELDS'),
     blueprintDiff: BlueprintDiffSchema,
   })
-  .strict();
+  .strict()
+  .superRefine(refuseReservedFieldNames);
 export type CreateFlow = z.infer<typeof CreateFlowSchema>;
 
 export interface FlowRecord {
