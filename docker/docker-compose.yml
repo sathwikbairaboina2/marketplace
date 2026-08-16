@@ -107,7 +107,12 @@ services:
       # The browser console runs on a different origin, so the engine's REST
       # surface needs an explicit allow-list. Empty everywhere else, including
       # every deployed build.
-      CORS_ORIGINS: http://localhost:3002
+      # Both loopback spellings. `localhost` resolves to ::1 before 127.0.0.1 on
+      # some hosts, and Docker Desktop's IPv6 loopback proxy is not always
+      # listening -- when it drops, the console is only reachable at the IPv4
+      # literal, which is a different origin and would otherwise have every call
+      # refused by CORS on top of the outage.
+      CORS_ORIGINS: http://localhost:3002,http://127.0.0.1:3002
       S3_ENDPOINT: http://localstack:4566
       # Host-facing on purpose -- this is the endpoint presigned URLs are signed
       # against, and the browser is what redeems them. S3_BUCKET arrives from
