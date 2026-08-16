@@ -1,0 +1,531 @@
+[
+  {
+    "images": [
+      "http://localhost:4566/marketplace-media/acme/products/01M04WZHT85W7302XW574P8YQ6/mug.jpg"
+    ],
+    "entityType": "Product",
+    "description": "Matte-glazed stoneware mug, 350ml. Photo: Didriks (CC BY).",
+    "priceMinor": 2400,
+    "createdAt": "2026-08-16T09:03:27.197Z",
+    "SK": "PRODUCT#01M04WZHYXV220TE47SVBV2Q4Q",
+    "name": "Coupe Stoneware Mug",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#acme",
+    "id": "01M04WZHYXV220TE47SVBV2Q4Q",
+    "category": "kitchen",
+    "stock": 13,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:25:54.437Z"
+  },
+  {
+    "images": [
+      "http://localhost:4566/marketplace-media/acme/products/01M04WZJ77Q3WD1KNC8HBTM35H/jug.jpg"
+    ],
+    "entityType": "Product",
+    "description": "Wheel-thrown jug with a tenmoku glaze, 1.2L. Photo: Martin Cathrae (CC BY-SA).",
+    "priceMinor": 5800,
+    "createdAt": "2026-08-16T09:03:27.551Z",
+    "name": "Glazed Stoneware Jug",
+    "SK": "PRODUCT#01M04WZJ9ZSFP9FZ8E00RMB0M1",
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04WZJ9ZSFP9FZ8E00RMB0M1",
+    "PK": "TENANT#acme",
+    "category": "kitchen",
+    "stock": 7,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:03:27.551Z"
+  },
+  {
+    "images": [
+      "http://localhost:4566/marketplace-media/acme/products/01M04WZJHBAF3ANSDMWMHX36ZQ/kettle-copper.jpg"
+    ],
+    "entityType": "Product",
+    "description": "Hammered copper pour-over kettle, 900ml. Photo: markolaz (CC BY).",
+    "priceMinor": 12900,
+    "createdAt": "2026-08-16T09:03:27.927Z",
+    "SK": "PRODUCT#01M04WZJNQR7B51E6PJ2SVNTJ6",
+    "name": "Copper Gooseneck Kettle",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#acme",
+    "id": "01M04WZJNQR7B51E6PJ2SVNTJ6",
+    "category": "coffee",
+    "stock": 4,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:03:31.827Z"
+  },
+  {
+    "images": [
+      "http://localhost:4566/marketplace-media/acme/products/01M04WZJWZ2GHJGBREKGPZVY0E/kettle-steel.jpg"
+    ],
+    "entityType": "Product",
+    "description": "Stainless gooseneck kettle, stovetop safe, 1.2L. Photo: Bean Poet (CC BY-SA).",
+    "priceMinor": 7400,
+    "createdAt": "2026-08-16T09:03:28.299Z",
+    "name": "Steel Pour-Over Kettle",
+    "SK": "PRODUCT#01M04WZK1B886F32P6GAAZ4SRG",
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04WZK1B886F32P6GAAZ4SRG",
+    "PK": "TENANT#acme",
+    "category": "coffee",
+    "stock": 11,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:03:28.299Z"
+  },
+  {
+    "images": [
+      "http://localhost:4566/marketplace-media/acme/products/01M04WZK8FA3PNNDTSF0545X80/notebook.jpg"
+    ],
+    "entityType": "Product",
+    "description": "A5 hardback, 192 dotted pages, lay-flat binding. Photo: Generationbass.com (CC BY).",
+    "priceMinor": 1850,
+    "createdAt": "2026-08-16T09:03:28.618Z",
+    "SK": "PRODUCT#01M04WZKBAEAEBXAHRPEBWPNSM",
+    "name": "Field Notes Journal",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#acme",
+    "id": "01M04WZKBAEAEBXAHRPEBWPNSM",
+    "category": "stationery",
+    "stock": 38,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:25:54.437Z"
+  },
+  {
+    "images": [
+      "http://localhost:4566/marketplace-media/acme/products/01M04WZM03KB2PMK6TV2H8KGVR/lamp.jpg"
+    ],
+    "entityType": "Product",
+    "description": "Warm dimmable LED, weighted base, articulated arm. Photo: Ivan Radic (CC BY).",
+    "priceMinor": 34000,
+    "createdAt": "2026-08-16T09:03:29.427Z",
+    "name": "Sculpted Desk Lamp",
+    "SK": "PRODUCT#01M04WZM4KZ39ZG88E99CCHQKT",
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04WZM4KZ39ZG88E99CCHQKT",
+    "PK": "TENANT#acme",
+    "category": "lighting",
+    "stock": 0,
+    "status": "out_of_stock",
+    "updatedAt": "2026-08-16T09:03:29.427Z"
+  },
+  {
+    "endDate": "2026-09-12T10:30:00.000Z",
+    "entityType": "Event",
+    "bookedCount": 2,
+    "title": "Glaze & Fire Workshop",
+    "capacity": 24,
+    "basePriceMinor": 6500,
+    "createdAt": "2026-08-16T09:03:30.172Z",
+    "SK": "EVENT#01M04WZMVWG562F0F8GSZ8MNW1",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#acme",
+    "id": "01M04WZMVWG562F0F8GSZ8MNW1",
+    "startDate": "2026-09-12T04:30:00.000Z"
+  },
+  {
+    "endDate": "2026-10-03T15:30:00.000Z",
+    "entityType": "Event",
+    "bookedCount": 3,
+    "title": "Pour-Over Tasting Night",
+    "capacity": 40,
+    "basePriceMinor": 3000,
+    "createdAt": "2026-08-16T09:03:30.987Z",
+    "SK": "EVENT#01M04WZNNB1575PXSQ2YV02G8S",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#acme",
+    "id": "01M04WZNNB1575PXSQ2YV02G8S",
+    "startDate": "2026-10-03T13:00:00.000Z"
+  },
+  {
+    "entityType": "Order",
+    "userId": "__SUB__acme-admin__",
+    "createdAt": "2026-08-16T09:03:31.827Z",
+    "GSI1PK": "TENANT#acme#USER#__SUB__acme-admin__",
+    "totalAmountMinor": 15300,
+    "GSI1SK": "ORDER#2026-08-16T09:03:31.827Z#01M04WZPFKW14X05AS510C6V9Z",
+    "SK": "ORDER#01M04WZPFKW14X05AS510C6V9Z",
+    "shippingAddress": {
+      "postcode": "BS1 4TR",
+      "city": "Bristol",
+      "line1": "42 Harbour Road"
+    },
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04WZPFKW14X05AS510C6V9Z",
+    "PK": "TENANT#acme",
+    "items": [
+      {
+        "productId": "01M04WZHYXV220TE47SVBV2Q4Q",
+        "unitPriceMinor": 2400,
+        "quantity": 1
+      },
+      {
+        "productId": "01M04WZJNQR7B51E6PJ2SVNTJ6",
+        "unitPriceMinor": 12900,
+        "quantity": 1
+      }
+    ],
+    "status": "confirmed"
+  },
+  {
+    "entityType": "Order",
+    "userId": "__SUB__acme-buyer__",
+    "createdAt": "2026-08-16T09:25:54.437Z",
+    "GSI1PK": "TENANT#acme#USER#__SUB__acme-buyer__",
+    "totalAmountMinor": 13300,
+    "GSI1SK": "ORDER#2026-08-16T09:25:54.437Z#01M04Y8NM5PBFF6489WGGJGJX5",
+    "SK": "ORDER#01M04Y8NM5PBFF6489WGGJGJX5",
+    "shippingAddress": {
+      "postcode": "BA1 5LP",
+      "city": "Bath",
+      "line1": "3 Kiln Row"
+    },
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04Y8NM5PBFF6489WGGJGJX5",
+    "PK": "TENANT#acme",
+    "items": [
+      {
+        "productId": "01M04WZHYXV220TE47SVBV2Q4Q",
+        "unitPriceMinor": 2400,
+        "quantity": 4
+      },
+      {
+        "productId": "01M04WZKBAEAEBXAHRPEBWPNSM",
+        "unitPriceMinor": 1850,
+        "quantity": 2
+      }
+    ],
+    "status": "confirmed"
+  },
+  {
+    "eventId": "01M04WZMVWG562F0F8GSZ8MNW1",
+    "createdAt": "2026-08-16T09:03:34.806Z",
+    "ticketQuantity": 2,
+    "GSI1PK": "TENANT#acme#USER#__SUB__acme-admin__",
+    "entityType": "Booking",
+    "GSI1SK": "BOOKING#2026-08-16T09:03:34.806Z#01M04WZSCN6WVGC8RME1E334H6",
+    "SK": "BOOKING#01M04WZSCN6WVGC8RME1E334H6",
+    "attributes": {},
+    "id": "01M04WZSCN6WVGC8RME1E334H6",
+    "PK": "TENANT#acme",
+    "userId": "__SUB__acme-admin__",
+    "status": "confirmed"
+  },
+  {
+    "eventId": "01M04WZNNB1575PXSQ2YV02G8S",
+    "createdAt": "2026-08-16T09:26:53.295Z",
+    "ticketQuantity": 3,
+    "GSI1PK": "TENANT#acme#USER#__SUB__acme-buyer__",
+    "entityType": "Booking",
+    "GSI1SK": "BOOKING#2026-08-16T09:26:53.295Z#01M04YAF3FMAQVF8AE8FW93GXX",
+    "SK": "BOOKING#01M04YAF3FMAQVF8AE8FW93GXX",
+    "attributes": {},
+    "id": "01M04YAF3FMAQVF8AE8FW93GXX",
+    "PK": "TENANT#acme",
+    "userId": "__SUB__acme-buyer__",
+    "status": "confirmed"
+  },
+  {
+    "SK": "SETTINGS#announcement",
+    "text": "Handmade week \u2014 free shipping over $50",
+    "PK": "TENANT#acme",
+    "enabled": true
+  },
+  {
+    "images": [],
+    "entityType": "Product",
+    "description": "EN 397 shell with a six-point harness and a chin strap that stays done up. Ships with two visor mounts.",
+    "priceMinor": 7200,
+    "createdAt": "2026-08-16T09:21:54.737Z",
+    "SK": "PRODUCT#01M04Y1BHHHK0FBZGJNK8EEQ6K",
+    "name": "Globex Site Safety Helmet",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#globex",
+    "id": "01M04Y1BHHHK0FBZGJNK8EEQ6K",
+    "category": "Safety",
+    "stock": 194,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:24:07.399Z"
+  },
+  {
+    "images": [],
+    "entityType": "Product",
+    "description": "Class 3 retroreflective jacket rated to minus fifteen, with a detachable hood and radio loops on both shoulders.",
+    "priceMinor": 14800,
+    "createdAt": "2026-08-16T09:22:36.922Z",
+    "name": "Hi-Vis Insulated Jacket",
+    "SK": "PRODUCT#01M04Y2MQT7XG9T1GWXXDQT5EX",
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04Y2MQT7XG9T1GWXXDQT5EX",
+    "PK": "TENANT#globex",
+    "category": "Workwear",
+    "stock": 85,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:22:36.922Z"
+  },
+  {
+    "entityType": "Order",
+    "userId": "__SUB__globex-buyer__",
+    "createdAt": "2026-08-16T09:24:07.399Z",
+    "GSI1PK": "TENANT#globex#USER#__SUB__globex-buyer__",
+    "totalAmountMinor": 43200,
+    "GSI1SK": "ORDER#2026-08-16T09:24:07.399Z#01M04Y5D379V1DE7AM62B8ZMV8",
+    "SK": "ORDER#01M04Y5D379V1DE7AM62B8ZMV8",
+    "shippingAddress": {
+      "postcode": "S9 1XH",
+      "city": "Sheffield",
+      "line1": "Unit 12, Barlow Industrial Estate"
+    },
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04Y5D379V1DE7AM62B8ZMV8",
+    "PK": "TENANT#globex",
+    "items": [
+      {
+        "productId": "01M04Y1BHHHK0FBZGJNK8EEQ6K",
+        "unitPriceMinor": 7200,
+        "quantity": 6
+      }
+    ],
+    "status": "confirmed"
+  },
+  {
+    "images": [],
+    "entityType": "Product",
+    "description": "Three-layer waterproof shell with taped seams and a roll-away hood. Cut long at the back for cycling.",
+    "priceMinor": 12900,
+    "createdAt": "2026-08-16T09:05:47.059Z",
+    "SK": "PRODUCT#01M04X3THKM3WCMA2VYTPRY0SP",
+    "name": "Stormline Rain Shell",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#nimbus",
+    "id": "01M04X3THKM3WCMA2VYTPRY0SP",
+    "category": "Outerwear",
+    "stock": 38,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:13:59.443Z"
+  },
+  {
+    "images": [],
+    "entityType": "Product",
+    "description": "Folds into its own chest pocket. Long enough to cover a daypack, with side vents so it does not balloon in wind.",
+    "priceMinor": 4500,
+    "createdAt": "2026-08-16T09:10:45.954Z",
+    "name": "Drizzle Packable Poncho",
+    "SK": "PRODUCT#01M04XCYE2CCGTQT3M0TPN3Z1D",
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04XCYE2CCGTQT3M0TPN3Z1D",
+    "PK": "TENANT#nimbus",
+    "category": "Outerwear",
+    "stock": 120,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:10:45.954Z"
+  },
+  {
+    "images": [],
+    "entityType": "Product",
+    "description": "Fibreglass ribs that invert instead of snapping, and a 98 cm canopy that still fits a pack side pocket.",
+    "priceMinor": 3200,
+    "createdAt": "2026-08-16T09:11:40.878Z",
+    "SK": "PRODUCT#01M04XEM2EARZ5CR08Z6PV4PDR",
+    "name": "Cirrus Trail Umbrella",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#nimbus",
+    "id": "01M04XEM2EARZ5CR08Z6PV4PDR",
+    "category": "Accessories",
+    "stock": 74,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:13:59.443Z"
+  },
+  {
+    "images": [],
+    "entityType": "Product",
+    "description": "Our hardest shell. Fully taped, pit zips, and a hood that takes a helmet without swallowing your view.",
+    "priceMinor": 24900,
+    "createdAt": "2026-08-16T09:40:05.050Z",
+    "name": "Tempest Storm Jacket",
+    "SK": "PRODUCT#01M04Z2M9T04M5ZZ4PCX700PPE",
+    "currency": "USD",
+    "attributes": {
+      "waterproofRating": 20000
+    },
+    "id": "01M04Z2M9T04M5ZZ4PCX700PPE",
+    "PK": "TENANT#nimbus",
+    "category": "Outerwear",
+    "stock": 25,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:40:05.050Z"
+  },
+  {
+    "endDate": "2026-09-12T10:30:00.000Z",
+    "entityType": "Event",
+    "bookedCount": 2,
+    "title": "Wet Weather Layering Workshop",
+    "capacity": 30,
+    "basePriceMinor": 2500,
+    "createdAt": "2026-08-16T09:09:44.614Z",
+    "SK": "EVENT#01M04XB2H6V8SDMH5DA2G393K4",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#nimbus",
+    "id": "01M04XB2H6V8SDMH5DA2G393K4",
+    "startDate": "2026-09-11T18:30:00.000Z"
+  },
+  {
+    "targetEntity": "Product",
+    "entityType": "Schema",
+    "SK": "SCHEMA#Product",
+    "PK": "TENANT#nimbus",
+    "fields": {
+      "waterproofRating": {
+        "type": "number",
+        "required": false,
+        "default": null
+      }
+    },
+    "version": 1,
+    "updatedAt": "2026-08-16T09:39:19.002Z"
+  },
+  {
+    "executedBy": "__SUB__nimbus-admin__",
+    "targetEntity": "Product",
+    "entityType": "Flow",
+    "blueprintDiff": {
+      "addedFields": [
+        {
+          "name": "waterproofRating",
+          "default": null,
+          "type": "number",
+          "required": false
+        }
+      ]
+    },
+    "actionType": "ADD_FIELDS",
+    "createdAt": "2026-08-16T09:37:13.014Z",
+    "proposedBy": "system:agents",
+    "SK": "FLOW#FDVXD4GZ9WVEMSY8WH261RJSBM",
+    "resultingVersion": 1,
+    "id": "FDVXD4GZ9WVEMSY8WH261RJSBM",
+    "PK": "TENANT#nimbus",
+    "appliedAt": "2026-08-16T09:39:19.008Z",
+    "status": "applied"
+  },
+  {
+    "entityType": "Order",
+    "userId": "__SUB__nimbus-buyer__",
+    "createdAt": "2026-08-16T09:13:59.443Z",
+    "GSI1PK": "TENANT#nimbus#USER#__SUB__nimbus-buyer__",
+    "totalAmountMinor": 29000,
+    "GSI1SK": "ORDER#2026-08-16T09:13:59.443Z#01M04XJVCK5NR9FCM3RD0KH9QY",
+    "SK": "ORDER#01M04XJVCK5NR9FCM3RD0KH9QY",
+    "shippingAddress": {
+      "postcode": "BS1 4TR",
+      "city": "Bristol",
+      "line1": "18 Cloudbank Way"
+    },
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04XJVCK5NR9FCM3RD0KH9QY",
+    "PK": "TENANT#nimbus",
+    "items": [
+      {
+        "productId": "01M04X3THKM3WCMA2VYTPRY0SP",
+        "unitPriceMinor": 12900,
+        "quantity": 2
+      },
+      {
+        "productId": "01M04XEM2EARZ5CR08Z6PV4PDR",
+        "unitPriceMinor": 3200,
+        "quantity": 1
+      }
+    ],
+    "status": "confirmed"
+  },
+  {
+    "eventId": "01M04XB2H6V8SDMH5DA2G393K4",
+    "createdAt": "2026-08-16T09:15:08.298Z",
+    "ticketQuantity": 2,
+    "GSI1PK": "TENANT#nimbus#USER#__SUB__nimbus-buyer__",
+    "entityType": "Booking",
+    "GSI1SK": "BOOKING#2026-08-16T09:15:08.298Z#01M04XMYMARET9GSWAN1NKJV6Q",
+    "SK": "BOOKING#01M04XMYMARET9GSWAN1NKJV6Q",
+    "attributes": {},
+    "id": "01M04XMYMARET9GSWAN1NKJV6Q",
+    "PK": "TENANT#nimbus",
+    "userId": "__SUB__nimbus-buyer__",
+    "status": "confirmed"
+  },
+  {
+    "images": [],
+    "entityType": "Product",
+    "description": "Six herb varieties, coir pellets and a windowsill tray. Everything germinates indoors in under two weeks.",
+    "priceMinor": 3800,
+    "createdAt": "2026-08-16T09:16:39.246Z",
+    "SK": "PRODUCT#01M04XQQEE024ZP9N3XD8PCHVN",
+    "name": "Verde Kitchen Garden Kit",
+    "attributes": {},
+    "currency": "USD",
+    "PK": "TENANT#verde",
+    "id": "01M04XQQEE024ZP9N3XD8PCHVN",
+    "category": "Garden",
+    "stock": 87,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:19:43.535Z"
+  },
+  {
+    "images": [],
+    "entityType": "Product",
+    "description": "Unglazed terracotta with a two-litre reservoir. Holds a fortnight of water for anyone who travels.",
+    "priceMinor": 5400,
+    "createdAt": "2026-08-16T09:17:33.882Z",
+    "name": "Terracotta Self-Watering Planter",
+    "SK": "PRODUCT#01M04XSCSTMBR3YBFG9BA9YS85",
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04XSCSTMBR3YBFG9BA9YS85",
+    "PK": "TENANT#verde",
+    "category": "Garden",
+    "stock": 60,
+    "status": "active",
+    "updatedAt": "2026-08-16T09:17:33.882Z"
+  },
+  {
+    "entityType": "Order",
+    "userId": "__SUB__verde-buyer__",
+    "createdAt": "2026-08-16T09:19:43.535Z",
+    "GSI1PK": "TENANT#verde#USER#__SUB__verde-buyer__",
+    "totalAmountMinor": 11400,
+    "GSI1SK": "ORDER#2026-08-16T09:19:43.535Z#01M04XXBDFP133ZH8S59TWJPTP",
+    "SK": "ORDER#01M04XXBDFP133ZH8S59TWJPTP",
+    "shippingAddress": {
+      "postcode": "LS6 2QT",
+      "city": "Leeds",
+      "line1": "7 Alder Lane"
+    },
+    "currency": "USD",
+    "attributes": {},
+    "id": "01M04XXBDFP133ZH8S59TWJPTP",
+    "PK": "TENANT#verde",
+    "items": [
+      {
+        "productId": "01M04XQQEE024ZP9N3XD8PCHVN",
+        "unitPriceMinor": 3800,
+        "quantity": 3
+      }
+    ],
+    "status": "confirmed"
+  }
+]

@@ -8,6 +8,7 @@ import { S3Client, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DEMO_USERS, DEMO_PASSWORD } from './cognito';
+import { loadCatalogue } from './catalogue';
 import { BUCKET_NAME } from './s3';
 
 const env = Object.fromEntries(
@@ -102,5 +103,62 @@ describe('seeded infrastructure', () => {
     const res = await fetch(`http://localhost:4566/${BUCKET_NAME}/${key}`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('hello');
+  });
+
+  it('gives every demo tenant a catalogue', async () => {
+    const byTenant = new Map<string, number>();
+    for (const record of loadCatalogue()) {
+      if (record.entityType !== 'Product') continue;
+      const tenant = record.PK.replace('TENANT#', '');
+      byTenant.set(tenant, (byTenant.get(tenant) ?? 0) + 1);
+    }
+
+    for (const user of DEMO_USERS) {
+      expect(byTenant.get(user.tenantId) ?? 0).toBeGreaterThan(0);
+    }
+  });
+
+  /**
+   * The failure this guards against is silent and looks like a product bug: the
+   * pool is rebuilt on every `docker:up`, so a `sub` captured yesterday is dead
+   * today. Orders written against a dead `sub` still exist -- they just belong
+   * to nobody, and the buyer signs in to an empty order list beside a catalogue
+   * that obviously sold. Reading the orders back through the API as the buyer
+   * is the only check that proves the substitution ran.
+   */
+  it('shows each seeded order to the buyer who placed it', async () => {
+    const cognito = new CognitoIdentityProviderClient({
+      region: 'us-east-1',
+      endpoint: 'http://localhost:9229',
+      credentials: creds,
+    });
+
+    const tenantsWithOrders = new Set(
+      loadCatalogue()
+        .filter((r) => r.entityType === 'Order')
+        .map((r) => r.PK.replace('TENANT#', '')),
+    );
+    expect(tenantsWithOrders.size).toBeGreaterThan(0);
+
+    for (const tenant of tenantsWithOrders) {
+      const buyer = DEMO_USERS.find((u) => u.tenantId === tenant && u.role === 'buyer');
+      expect(buyer).toBeDefined();
+
+      const auth = await cognito.send(
+        new InitiateAuthCommand({
+          ClientId: env.COGNITO_CLIENT_ID,
+          AuthFlow: 'USER_PASSWORD_AUTH',
+          AuthParameters: { USERNAME: buyer!.username, PASSWORD: DEMO_PASSWORD },
+        }),
+      );
+
+      const res = await fetch('http://localhost:3000/api/v1/orders?limit=50', {
+        headers: { Authorization: `Bearer ${auth.AuthenticationResult!.IdToken}` },
+      });
+      expect(res.status).toBe(200);
+
+      const body = (await res.json()) as { items: unknown[] };
+      expect(body.items.length).toBeGreaterThan(0);
+    }
   });
 });

@@ -1,8 +1,9 @@
 import { writeFileSync, rmSync } from 'node:fs';
 import { ensureTable } from './dynamo';
 import { ensureQueues } from './sqs';
-import { ensureUserPool, ensureDemoUsers } from './cognito';
-import { ensureBucket } from './s3';
+import { ensureUserPool, ensureDemoUsers, DEMO_USERS, DEMO_PASSWORD } from './cognito';
+import { ensureBucket, seedImages } from './s3';
+import { loadCatalogue, seedCatalogue } from './catalogue';
 
 async function main(): Promise<void> {
   // A stale .env.generated from a previous successful run must not survive a
@@ -15,8 +16,13 @@ async function main(): Promise<void> {
   await ensureTable();
   const { queueUrl, dlqUrl } = await ensureQueues();
   const { userPoolId, clientId } = await ensureUserPool();
-  await ensureDemoUsers(userPoolId);
+  const subs = await ensureDemoUsers(userPoolId);
   const bucket = await ensureBucket();
+
+  // Catalogue last: it needs the table, the bucket, and today's `sub` values.
+  const catalogue = loadCatalogue();
+  await seedCatalogue(subs);
+  await seedImages(catalogue);
 
   // The issuer and the JWKS URI deliberately use different hosts locally.
   //
@@ -41,6 +47,12 @@ async function main(): Promise<void> {
     `QUEUE_URL=${queueUrl}`,
     `DLQ_URL=${dlqUrl}`,
     `S3_BUCKET=${bucket}`,
+    // Derived from DEMO_USERS rather than repeated in docker-compose.yml: a
+    // persona list that drifts from the pool shows the web console a name that
+    // cannot sign in, and the failure looks like broken auth rather than stale
+    // configuration.
+    `DEV_PERSONAS=${DEMO_USERS.map((u) => u.username).join(',')}`,
+    `DEV_PASSWORD=${DEMO_PASSWORD}`,
     '',
   ];
   writeFileSync(process.env.ENV_OUT!, lines.join('\n'), 'utf8');

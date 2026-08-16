@@ -1,9 +1,13 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   S3Client,
   CreateBucketCommand,
   HeadBucketCommand,
   PutBucketPolicyCommand,
+  PutObjectCommand,
 } from '@aws-sdk/client-s3';
+import type { CatalogueRecord } from './catalogue';
 
 export const BUCKET_NAME = 'marketplace-media';
 
@@ -49,4 +53,52 @@ export async function ensureBucket(): Promise<string> {
   );
 
   return BUCKET_NAME;
+}
+
+/**
+ * Uploads the product photographs the catalogue fixture points at.
+ *
+ * The keys are not listed here: they are read back out of the fixture's own
+ * image URLs, so a re-captured catalogue cannot end up pointing at objects this
+ * function never uploads. Only the file basename has to exist under
+ * `fixtures/images/`.
+ */
+export async function seedImages(records: CatalogueRecord[]): Promise<number> {
+  const s3 = new S3Client({ endpoint: process.env.S3_ENDPOINT, forcePathStyle: true });
+  const prefix = `/${BUCKET_NAME}/`;
+  let uploaded = 0;
+
+  for (const record of records) {
+    const images = Array.isArray(record.images) ? (record.images as string[]) : [];
+    for (const url of images) {
+      const at = url.indexOf(prefix);
+      if (at === -1) continue;
+      const key = url.slice(at + prefix.length);
+      const file = path.join(__dirname, 'fixtures', 'images', path.basename(key));
+
+      let body: Buffer;
+      try {
+        body = readFileSync(file);
+      } catch {
+        // A missing photograph must not fail the whole seed: the product still
+        // renders from its initials, which is exactly what every product
+        // created through the UI looks like.
+        console.warn(`no fixture image for ${key} (expected ${path.basename(key)})`);
+        continue;
+      }
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: key,
+          Body: body,
+          ContentType: key.endsWith('.png') ? 'image/png' : 'image/jpeg',
+        }),
+      );
+      uploaded += 1;
+    }
+  }
+
+  console.log(`uploaded ${uploaded} product image(s)`);
+  return uploaded;
 }

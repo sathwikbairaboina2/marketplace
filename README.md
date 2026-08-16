@@ -68,24 +68,36 @@ unless `DOCS_ENABLED=true` **and** `COGNITO_ENDPOINT` is set — true only in
 
 ## The console
 
-`http://localhost:3002` is a browser client for both services. Sign in with one
-of three seeded personas, all sharing the password `Passw0rd!`:
+`http://localhost:3002` is a browser client for both services. Sign in with any
+of eight seeded personas — four tenants, a seller and a buyer each — all sharing
+the password `Passw0rd!`:
 
-| Username | Tenant | Role |
-|---|---|---|
-| `acme-admin` | `acme` | `admin` |
-| `acme-buyer` | `acme` | `buyer` |
-| `globex-admin` | `globex` | `admin` |
+| Username | Tenant | Role | Shop |
+|---|---|---|---|
+| `acme-admin` / `acme-buyer` | `acme` | admin / buyer | handmade homeware, 6 products, 2 events |
+| `globex-admin` / `globex-buyer` | `globex` | admin / buyer | site safety and workwear, 2 products |
+| `nimbus-admin` / `nimbus-buyer` | `nimbus` | admin / buyer | rain gear, 4 products, 1 event |
+| `verde-admin` / `verde-buyer` | `verde` | admin / buyer | garden goods, 2 products |
 
-`globex-admin` exists so tenant isolation is visible rather than merely
-asserted: signed in as Globex, none of Acme's catalogue is reachable, including
-by pasting a product URL.
+`globex` exists so tenant isolation is visible rather than merely asserted:
+signed in as Globex, none of Acme's catalogue is reachable, including by pasting
+a product URL. Every tenant has a buyer because an order is only visible to the
+user whose `sub` placed it — a tenant with no buyer has no visible sales.
+
+The catalogue, its product photographs, and one order (plus a booking where the
+tenant has events) are seeded on every `docker:up` from
+`docker/seed/fixtures/catalogue.json`. `nimbus` additionally ships the result of
+an agent conversation: an applied Flow that added `waterproofRating` to Product,
+so the registry-driven UI has something to render on a cold stack.
 
 Sign-in posts to `/api/login`, a Next.js route handler that calls Cognito
 server-side; every other request goes straight from the browser to the engine's
 REST API or the agents' WebSocket. The persona list and that password come from
-`DEV_PERSONAS`/`DEV_PASSWORD`, read per request by `/api/personas` and absent
-from any build that does not set them.
+`DEV_PERSONAS`/`DEV_PASSWORD`, which the seed derives from its own `DEMO_USERS`
+and writes into `docker/.env.generated` — they are deliberately not repeated in
+`docker-compose.yml`, since a list kept in two places will disagree with itself.
+`/api/personas` reads them per request, and they are absent from any build that
+does not set them.
 
 Role selects which navigation is shown and nothing more. **It is not an
 authorization boundary** — the engine enforces tenant isolation on every route

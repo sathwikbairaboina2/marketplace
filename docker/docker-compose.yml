@@ -193,8 +193,10 @@ services:
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
-      DEV_PERSONAS: acme-admin,acme-buyer,globex-admin
-      DEV_PASSWORD: Passw0rd!
+      # DEV_PERSONAS and DEV_PASSWORD are NOT set here. The seed writes them into
+      # .env.generated (read above) from its own DEMO_USERS list, because a value
+      # repeated in two places is a value that will disagree with itself. Setting
+      # either here would win over the env_file and reintroduce the drift.
     depends_on:
       engine: { condition: service_healthy }
       agents: { condition: service_healthy }
