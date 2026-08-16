@@ -20,6 +20,23 @@ type Filters = Pick<SearchProducts, 'priceMinorMin' | 'priceMinorMax' | 'attribu
 
 const PAGE = 25;
 
+/**
+ * What a shopper is allowed to see.
+ *
+ * `GET /products` returns every status, because the same route serves the
+ * seller's own cockpit — so a draft (a half-written listing) and an archived
+ * product (one deliberately withdrawn) were both being rendered in the shop
+ * window, priced and clickable.
+ *
+ * Filtered here rather than in the query: `SearchProducts` can express one
+ * status, not "any of these", and its filter is applied by DynamoDB *after* the
+ * page is read, so asking the engine would trade a leak for short pages. When
+ * the catalogue is indexed by status, this belongs in the query instead.
+ */
+const SHOPPER_VISIBLE: ReadonlySet<string> = new Set(['active', 'out_of_stock']);
+const onSale = (products: ProductResponse[]) =>
+  products.filter((product) => SHOPPER_VISIBLE.has(product.status));
+
 export default function ProductsPage() {
   const schema = useSchema('Product');
   const { principal } = useAuth();
@@ -47,7 +64,8 @@ export default function ProductsPage() {
             })
           : await listProducts(PAGE, from);
 
-        setItems((prev) => (append ? [...prev, ...page.items] : page.items));
+        const visible = onSale(page.items);
+        setItems((prev) => (append ? [...prev, ...visible] : visible));
         setCursor(page.nextCursor);
         setDone(page.nextCursor === null);
         setError(null);
