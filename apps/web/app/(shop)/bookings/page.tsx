@@ -10,6 +10,7 @@ import { EmptyState } from '../../../components/empty-state';
 import { StatusTag } from '../../../components/status-tag';
 import { PageHeader } from '../../../components/page-header';
 import { Ref } from '../../../components/ref';
+import { EventName } from '../../../components/record-name';
 
 export default function BookingsPage() {
   return (
@@ -39,6 +40,13 @@ export default function BookingsPage() {
               render: (at: string, row) => (
                 <Link href={`/bookings/${row.id}`}>{formatRelative(at)}</Link>
               ),
+            },
+            {
+              // Which event, in the words it was booked under. A row that says
+              // only "2 tickets, 4 days ago" tells the holder nothing.
+              title: 'Event',
+              dataIndex: 'eventId',
+              render: (eventId: string) => <EventName id={eventId} href={`/events/${eventId}`} />,
             },
             {
               title: 'Status',

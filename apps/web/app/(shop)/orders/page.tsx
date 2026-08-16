@@ -10,6 +10,7 @@ import { EmptyState } from '../../../components/empty-state';
 import { StatusTag } from '../../../components/status-tag';
 import { PageHeader } from '../../../components/page-header';
 import { Ref } from '../../../components/ref';
+import { ProductName } from '../../../components/record-name';
 
 export default function OrdersPage() {
   return (
@@ -54,10 +55,15 @@ export default function OrdersPage() {
               render: (status: string) => <StatusTag status={status} />,
             },
             {
+              // What was bought, not how many rows it came to. Two orders
+              // placed the same afternoon were otherwise identical at a glance.
               title: 'Items',
-              className: 'mp-num',
-              align: 'right' as const,
-              render: (_, row) => row.items.length,
+              render: (_, row) =>
+                row.items.length === 0 ? (
+                  '—'
+                ) : (
+                  <ProductName id={row.items[0].productId} extra={row.items.length - 1} />
+                ),
             },
             {
               title: 'Total',

@@ -999,3 +999,18 @@
   }
 }
 
+
+/* A row names what it refers to, with the count of anything else it holds
+   muted behind it -- the name is what a reader recognises, "+2 more" is a
+   footnote to it, not a second heading. */
+.mp-record-name {
+  align-items: baseline;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.mp-record-extra {
+  color: var(--mp-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
