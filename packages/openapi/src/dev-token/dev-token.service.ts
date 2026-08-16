@@ -44,7 +44,13 @@ export class DevTokenService {
           UserPoolId: userPoolId,
           Username: username,
           MessageAction: 'SUPPRESS',
-          UserAttributes: [{ Name: 'custom:tenant_id', Value: tenantId }],
+          UserAttributes: [
+            { Name: 'custom:tenant_id', Value: tenantId },
+            // The docs page is for trying every route, and the engine's writes
+            // are admin-only. A dev token that could only read would make
+            // "Try it out" answer 403 for half the document.
+            { Name: 'custom:role', Value: 'admin' },
+          ],
         }),
       );
     } catch (err) {
@@ -58,7 +64,10 @@ export class DevTokenService {
         new AdminUpdateUserAttributesCommand({
           UserPoolId: userPoolId,
           Username: username,
-          UserAttributes: [{ Name: 'custom:tenant_id', Value: tenantId }],
+          UserAttributes: [
+            { Name: 'custom:tenant_id', Value: tenantId },
+            { Name: 'custom:role', Value: 'admin' },
+          ],
         }),
       );
     }

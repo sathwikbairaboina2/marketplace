@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadedImage } from '@marketplace/contracts';
+import { Roles } from '../auth/roles.decorator';
 import { ENV, EnvConfig } from '../config/env.schema';
 import { ProblemException } from '../common/problem';
 import { IncomingFile, UploadsService } from './uploads.service';
@@ -23,6 +24,7 @@ export class UploadsController {
   // this API, and there is no route at which it could subsequently be found.
   @Post('product-image')
   @HttpCode(200)
+  @Roles('admin')
   @UseInterceptors(
     FileInterceptor('file', {
       // Enforced by multer while the request is being read, so an oversized

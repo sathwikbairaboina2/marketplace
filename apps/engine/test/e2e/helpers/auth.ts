@@ -15,9 +15,23 @@ const client = new CognitoIdentityProviderClient({
   credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
 });
 
-export async function tokenFor(tenantId: string, username: string): Promise<string> {
+/**
+ * `role` defaults to `admin` because most of what these suites do -- creating
+ * products, events and flows -- is now behind `@Roles('admin')`. Pass `buyer`
+ * to mint the token a shopper actually holds, which is what the role-boundary
+ * assertions use.
+ */
+export async function tokenFor(
+  tenantId: string,
+  username: string,
+  role: string = 'admin',
+): Promise<string> {
   const poolId = process.env.COGNITO_USER_POOL_ID!;
   const clientId = process.env.COGNITO_CLIENT_ID!;
+  const attributes = [
+    { Name: 'custom:tenant_id', Value: tenantId },
+    { Name: 'custom:role', Value: role },
+  ];
 
   try {
     await client.send(
@@ -25,7 +39,7 @@ export async function tokenFor(tenantId: string, username: string): Promise<stri
         UserPoolId: poolId,
         Username: username,
         MessageAction: 'SUPPRESS',
-        UserAttributes: [{ Name: 'custom:tenant_id', Value: tenantId }],
+        UserAttributes: attributes,
       }),
     );
   } catch (err) {
@@ -41,7 +55,7 @@ export async function tokenFor(tenantId: string, username: string): Promise<stri
       new AdminUpdateUserAttributesCommand({
         UserPoolId: poolId,
         Username: username,
-        UserAttributes: [{ Name: 'custom:tenant_id', Value: tenantId }],
+        UserAttributes: attributes,
       }),
     );
   }

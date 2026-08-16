@@ -15,7 +15,15 @@ const client = new CognitoIdentityProviderClient({
   credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
 });
 
-export async function tokenFor(tenantId: string, username: string): Promise<string> {
+/**
+ * `role` defaults to `admin`: the engine now puts its writes behind
+ * `@Roles('admin')`, and this suite executes a flow through it.
+ */
+export async function tokenFor(
+  tenantId: string,
+  username: string,
+  role: string = 'admin',
+): Promise<string> {
   const poolId = process.env.COGNITO_USER_POOL_ID!;
   const clientId = process.env.COGNITO_CLIENT_ID!;
 
@@ -25,7 +33,10 @@ export async function tokenFor(tenantId: string, username: string): Promise<stri
         UserPoolId: poolId,
         Username: username,
         MessageAction: 'SUPPRESS',
-        UserAttributes: [{ Name: 'custom:tenant_id', Value: tenantId }],
+        UserAttributes: [
+          { Name: 'custom:tenant_id', Value: tenantId },
+          { Name: 'custom:role', Value: role },
+        ],
       }),
     );
   } catch (err) {
@@ -41,7 +52,10 @@ export async function tokenFor(tenantId: string, username: string): Promise<stri
       new AdminUpdateUserAttributesCommand({
         UserPoolId: poolId,
         Username: username,
-        UserAttributes: [{ Name: 'custom:tenant_id', Value: tenantId }],
+        UserAttributes: [
+          { Name: 'custom:tenant_id', Value: tenantId },
+          { Name: 'custom:role', Value: role },
+        ],
       }),
     );
   }

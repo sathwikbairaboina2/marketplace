@@ -1,4 +1,5 @@
 import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Roles } from '../auth/roles.decorator';
 import {
   CreateProduct,
   CreateProductSchema,
@@ -15,6 +16,7 @@ export class ProductsController {
   constructor(private readonly products: ProductsService) {}
 
   @Post()
+  @Roles('admin')
   create(@ZodBody(CreateProductSchema) body: CreateProduct): Promise<ProductResponse> {
     return this.products.create(body);
   }
