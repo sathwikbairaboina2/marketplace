@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
+import helmet from 'helmet';
 import { setupOpenApi } from '@marketplace/openapi';
 import { AppModule } from './app.module';
 import { ProblemFilter } from './common/problem.filter';
@@ -16,6 +17,17 @@ import { ENV, EnvConfig } from './config/env.schema';
 export async function createApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+
+  // Sensible defaults for an API: nosniff, no framing, a referrer policy, and
+  // no `x-powered-by` announcing the framework to anyone deciding which CVE
+  // list to work through.
+  //
+  // `contentSecurityPolicy` is off deliberately. This service answers JSON to a
+  // browser on another origin; the only HTML it serves is the Swagger UI, which
+  // helmet's default policy breaks (it loads its own inline bundle). A CSP that
+  // matters belongs on the console, which is what actually renders documents.
+  app.use(helmet({ contentSecurityPolicy: false }));
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ProblemFilter());
   // Without this, Nest never wires SIGTERM/SIGINT to the lifecycle it manages, so

@@ -28,6 +28,8 @@ function makeEnv(overrides: Partial<EnvConfig> = {}): EnvConfig {
     SQS_CONSUMER_ENABLED: true,
     DOCS_ENABLED: false,
     CORS_ORIGINS: '',
+    RATE_LIMIT: 600,
+    RATE_LIMIT_WINDOW_MS: 60_000,
     MAX_IMAGE_BYTES: 5_242_880,
     DEV_TENANT_ID: 'tenant-dev',
     DEV_USERNAME: 'dev@marketplace.local',

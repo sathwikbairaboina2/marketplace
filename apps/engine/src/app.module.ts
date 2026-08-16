@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { DevTokenModule } from '@marketplace/openapi';
 import { ConfigModule } from './config/config.module';
 import { loggerOptions } from './config/logger.options';
-import { DevTokenEnvSchema } from './config/env.schema';
+import { DevTokenEnvSchema, ENV, EnvConfig } from './config/env.schema';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { PersistenceModule } from './persistence/persistence.module';
@@ -32,6 +33,17 @@ import { MessagingModule } from './messaging/messaging.module';
       },
     }),
     ConfigModule,
+    // Async, so the limit comes from the validated environment at
+    // instantiation. Read synchronously here it would be captured when this
+    // file is first imported -- before anything has had a chance to configure
+    // it, which is exactly how a test asking for a limit of five got the
+    // default of six hundred.
+    ThrottlerModule.forRootAsync({
+      inject: [ENV],
+      useFactory: (env: EnvConfig) => [
+        { ttl: env.RATE_LIMIT_WINDOW_MS, limit: env.RATE_LIMIT },
+      ],
+    }),
     DevTokenModule.registerIfEnabled(DevTokenEnvSchema.parse(process.env)),
     AuthModule,
     HealthModule,

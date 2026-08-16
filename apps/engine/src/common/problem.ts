@@ -15,6 +15,7 @@ export type ProblemType =
   // the file's own bytes disagree with what was declared.
   | 'unsupported-media-type'
   | 'payload-too-large'
+  | 'too-many-requests'
   | 'unauthorized'
   | 'forbidden'
   | 'not-found'

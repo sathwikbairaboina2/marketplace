@@ -24,6 +24,12 @@ export const EnvSchema = z.object({
   // stays off entirely, so a deployed build behaves exactly as it did before
   // this existed -- the same posture as DOCS_ENABLED.
   CORS_ORIGINS: z.string().default(''),
+  // Requests per window per caller, and the window. Defaults are generous
+  // because this protects the service from a runaway client rather than
+  // policing normal use: the console's own first paint is a handful of calls,
+  // and the end-to-end suites burst harder than any person does.
+  RATE_LIMIT: z.coerce.number().int().positive().default(600),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   // Object storage for product images. The uploads module registers only when
   // S3_BUCKET is set, so an engine without object storage configured behaves
   // exactly as it did before this existed.
