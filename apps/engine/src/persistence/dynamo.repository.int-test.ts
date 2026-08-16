@@ -108,11 +108,17 @@ describe('DynamoRepository', () => {
     expect(page.items.map((i) => i.price)).toEqual([20]);
   });
 
-  it('applies Limit before FilterExpression, so a filtered page can return zero items with a non-null cursor', async () => {
+  // DynamoDB applies Limit to the items it *reads* and the FilterExpression
+  // afterwards, so a single Query answers "nothing matched" whenever the
+  // matches happen to sit behind other rows. End to end that reads as a shop
+  // with no products in it: a buyer filtering by price saw an empty grid while
+  // the catalogue held things that matched. The repository now keeps reading
+  // until it has the page it was asked for.
+  it('finds a match that sits behind the first items read', async () => {
     const t = `t_${uniq()}`;
     await asTenant(t, async () => {
-      // `ZZZ` is the one the query reaches first, because the scan runs
-      // descending -- so it is the one that must *not* match the filter.
+      // `ZZZ` is reached first -- the scan runs descending -- so it is the one
+      // that must not match.
       await repo.put(entitySk('Product', 'ZZZ'), { entityType: 'Product', category: 'other' });
       await repo.put(entitySk('Product', 'AAA'), { entityType: 'Product', category: 'target' });
     });
@@ -124,8 +130,82 @@ describe('DynamoRepository', () => {
       }),
     );
 
-    expect(page.items).toHaveLength(0);
-    expect(page.nextCursor).not.toBeNull();
+    expect(page.items.map((i) => i.category)).toEqual(['target']);
+  });
+
+  it('finds a single match buried behind thirty non-matching rows', async () => {
+    const t = `t_${uniq()}`;
+    await asTenant(t, async () => {
+      // Written first, so it sorts last and is read last.
+      await repo.put(entitySk('Product', 'A000'), { entityType: 'Product', tag: 'needle' });
+      for (let i = 0; i < 30; i += 1) {
+        await repo.put(entitySk('Product', `B${String(i).padStart(3, '0')}`), {
+          entityType: 'Product',
+          tag: 'hay',
+        });
+      }
+    });
+
+    const page = await asTenant(t, () =>
+      repo.queryPrefix<{ tag: string }>(skPrefix('Product'), {
+        limit: 25,
+        filter: { expression: '#t = :t', names: { '#t': 'tag' }, values: { ':t': 'needle' } },
+      }),
+    );
+
+    expect(page.items.map((i) => i.tag)).toEqual(['needle']);
+    expect(page.nextCursor).toBeNull();
+  });
+
+  it('returns a full page of matches and a cursor that resumes after them', async () => {
+    const t = `t_${uniq()}`;
+    await asTenant(t, async () => {
+      for (let i = 0; i < 12; i += 1) {
+        await repo.put(entitySk('Product', `M${String(i).padStart(3, '0')}`), {
+          entityType: 'Product',
+          tag: i % 2 === 0 ? 'wanted' : 'skip',
+        });
+      }
+    });
+
+    const filter = { expression: '#t = :t', names: { '#t': 'tag' }, values: { ':t': 'wanted' } };
+    const first = await asTenant(t, () =>
+      repo.queryPrefix<{ id?: string; SK: string }>(skPrefix('Product'), { limit: 3, filter }),
+    );
+    expect(first.items).toHaveLength(3);
+    expect(first.nextCursor).not.toBeNull();
+
+    const second = await asTenant(t, () =>
+      repo.queryPrefix<{ SK: string }>(skPrefix('Product'), {
+        limit: 3,
+        cursor: first.nextCursor,
+        filter,
+      }),
+    );
+
+    // The second page must continue, never repeat.
+    const firstKeys = first.items.map((i) => i.SK);
+    const secondKeys = second.items.map((i) => i.SK);
+    expect(secondKeys.some((k) => firstKeys.includes(k))).toBe(false);
+    expect(second.items.length).toBeGreaterThan(0);
+  });
+
+  it('never returns more than the caller asked for', async () => {
+    const t = `t_${uniq()}`;
+    await asTenant(t, async () => {
+      for (let i = 0; i < 8; i += 1) {
+        await repo.put(entitySk('Product', `N${i}`), { entityType: 'Product', tag: 'all' });
+      }
+    });
+
+    const page = await asTenant(t, () =>
+      repo.queryPrefix<{ tag: string }>(skPrefix('Product'), {
+        limit: 3,
+        filter: { expression: '#t = :t', names: { '#t': 'tag' }, values: { ':t': 'all' } },
+      }),
+    );
+
+    expect(page.items).toHaveLength(3);
   });
 
   it('throws if a filter tries to redefine the tenant-scoped :pk placeholder', async () => {

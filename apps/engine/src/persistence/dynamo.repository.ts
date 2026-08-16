@@ -35,6 +35,12 @@ type TransactItem = NonNullable<TransactItems>[number];
 
 const RESERVED_FILTER_KEYS = [':pk', ':sk'];
 
+// How many Query round-trips one filtered page may cost. Ten pages of 25 is
+// 250 rows examined for a page of 25 -- enough to find matches that are merely
+// unlucky, and a hard stop before a filter that matches nothing walks an entire
+// partition on every request.
+const FILTERED_READ_BUDGET = 10;
+
 @Injectable()
 export class DynamoRepository {
   private readonly doc: DynamoDBDocumentClient;
@@ -90,31 +96,75 @@ export class DynamoRepository {
       }
     }
     const pk = tenantPk(currentTenantId());
-    const out = await this.doc.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
-        FilterExpression: opts.filter?.expression,
-        ExpressionAttributeNames: opts.filter?.names,
-        ExpressionAttributeValues: {
-          // Filter values are spread first so the tenant-derived `:pk`/`:sk` always win even
-          // though the reserved-key check above should already have rejected a collision.
-          ...filterValues,
-          ':pk': pk,
-          ':sk': prefix,
-        },
-        Limit: opts.limit,
-        ExclusiveStartKey: opts.cursor ? { ...decodeCursor(opts.cursor), PK: pk } : undefined,
-        // Newest first, matching `queryUserIndex` below. Sort keys end in a ULID,
-        // so descending order is creation order reversed: the listing somebody
-        // just added is on the first page, not the last.
-        ScanIndexForward: false,
-      }),
+    const wanted = opts.limit;
+    const collected: T[] = [];
+    let startKey: Record<string, unknown> | undefined = opts.cursor
+      ? { ...decodeCursor(opts.cursor), PK: pk }
+      : undefined;
+    let lastEvaluatedKey: Record<string, unknown> | undefined;
+    let reads = 0;
+
+    // DynamoDB applies `Limit` to the items it reads and the FilterExpression
+    // afterwards, so one Query answers "nothing matched" whenever the matches
+    // sit behind other rows. Unfiltered that is fine -- every row read is a row
+    // returned -- but filtered it produced a shop that told a buyer it had no
+    // products while holding several that matched their price range.
+    //
+    // So: keep reading until the page the caller asked for is full, the
+    // partition is exhausted, or the read budget runs out. The budget is what
+    // keeps a filter that matches nothing from walking a whole partition on
+    // every request; when it stops early the cursor is still returned, so the
+    // caller can continue rather than being told the search is over.
+    do {
+      const out = await this.doc.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
+          FilterExpression: opts.filter?.expression,
+          ExpressionAttributeNames: opts.filter?.names,
+          ExpressionAttributeValues: {
+            // Filter values are spread first so the tenant-derived `:pk`/`:sk` always win even
+            // though the reserved-key check above should already have rejected a collision.
+            ...filterValues,
+            ':pk': pk,
+            ':sk': prefix,
+          },
+          Limit: wanted,
+          ExclusiveStartKey: startKey,
+          // Newest first, matching `queryUserIndex` below. Sort keys end in a ULID,
+          // so descending order is creation order reversed: the listing somebody
+          // just added is on the first page, not the last.
+          ScanIndexForward: false,
+        }),
+      );
+
+      collected.push(...((out.Items ?? []) as T[]));
+      lastEvaluatedKey = out.LastEvaluatedKey;
+      startKey = out.LastEvaluatedKey;
+      reads += 1;
+    } while (
+      opts.filter &&
+      startKey &&
+      (wanted === undefined || collected.length < wanted) &&
+      reads < FILTERED_READ_BUDGET
     );
-    return {
-      items: (out.Items ?? []) as T[],
-      nextCursor: out.LastEvaluatedKey ? encodeCursor(out.LastEvaluatedKey) : null,
-    };
+
+    // Trimming to `limit` means the caller's next page has to resume from the
+    // last row actually handed over, not from the last row read -- otherwise
+    // everything between the two is skipped. Records carry their own PK/SK, so
+    // that resume point is exactly the last item returned.
+    const items = wanted === undefined ? collected : collected.slice(0, wanted);
+    const trimmed = items.length < collected.length;
+    const last = items[items.length - 1] as { PK?: string; SK?: string } | undefined;
+
+    let nextCursor: string | null = null;
+    if (trimmed && last?.PK && last?.SK) {
+      nextCursor = encodeCursor({ PK: last.PK, SK: last.SK });
+    } else if (!trimmed && lastEvaluatedKey) {
+      nextCursor = encodeCursor(lastEvaluatedKey);
+    }
+
+    return { items, nextCursor };
   }
 
   async queryUserIndex<T>(userId: string, prefix: string, opts: PageOptions = {}): Promise<Page<T>> {
