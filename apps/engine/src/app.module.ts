@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { DevTokenModule } from '@marketplace/openapi';
 import { ConfigModule } from './config/config.module';
+import { loggerOptions } from './config/logger.options';
 import { DevTokenEnvSchema } from './config/env.schema';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
@@ -22,7 +23,7 @@ import { MessagingModule } from './messaging/messaging.module';
   imports: [
     LoggerModule.forRoot({
       pinoHttp: {
-        level: process.env.LOG_LEVEL ?? 'info',
+        ...loggerOptions,
         genReqId: (req, res) => {
           const id = (req.headers['x-request-id'] as string) ?? crypto.randomUUID();
           res.setHeader('x-request-id', id);
