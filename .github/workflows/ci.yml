@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit and integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build (packages the apps compile against)
+        run: pnpm build
+
+      - name: Typecheck
+        run: |
+          npx tsc -p packages/contracts/tsconfig.json --noEmit
+          npx tsc -p apps/engine/tsconfig.json --noEmit
+          npx tsc -p apps/agents/tsconfig.json --noEmit
+          npx tsc -p apps/web/tsconfig.json --noEmit
+
+      # `--concurrency=1`, not the default fan-out. Running every package's
+      # jest and vitest at once on a two-core runner produced a dozen unrelated
+      # suites failing together while each package passed alone -- a red build
+      # that says nothing about the code. Sequential costs about a minute here.
+      - name: Test
+        run: npx turbo run test --concurrency=1
+
+  engine-e2e:
+    name: Engine end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Deliberately not `pnpm docker:up`: that also starts `agents`, which
+      # waits on `ollama-init` pulling a 4.7GB model. The engine suite needs
+      # none of it, and a CI job should not download that on every run. The
+      # agents and web suites, which do need the model, are left to a manual
+      # or nightly run until there is somewhere to cache it.
+      - name: Bring up the data plane and the engine
+        run: |
+          node scripts/reset-env-generated.mjs
+          docker compose -f docker/docker-compose.yml up -d --wait --build \
+            dynamodb-local localstack redis cognito-local seed
+          node scripts/wait-for-seed-env.mjs
+          docker compose -f docker/docker-compose.yml up -d --wait --build --force-recreate engine
+
+      - name: Engine e2e
+        run: pnpm --filter @marketplace/engine test:e2e
+
+      - name: Engine logs on failure
+        if: failure()
+        run: docker compose -f docker/docker-compose.yml logs engine --tail 200
+
+      - name: Tear down
+        if: always()
+        run: pnpm docker:down
