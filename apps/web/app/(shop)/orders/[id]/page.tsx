@@ -6,9 +6,11 @@ import { Descriptions, Table } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { OrderResponse } from '@marketplace/contracts';
 import { getOrder } from '../../../../lib/api/orders';
+import { getProduct } from '../../../../lib/api/products';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { useResource } from '../../../../lib/use-resource';
+import { Ref } from '../../../../components/ref';
 import { StatusTag } from '../../../../components/status-tag';
 import { PageHeader } from '../../../../components/page-header';
 import { ErrorPanel } from '../../../../components/error-panel';
@@ -24,6 +26,28 @@ export default function OrderDetailPage() {
     loading,
     retry,
   } = useResource<OrderResponse>(() => getOrder(id), [id]);
+
+  // Declared above the early returns: a hook cannot live after a conditional
+  // `return`. A line item carries only the id its price was locked against, and
+  // an order has at most MAX_ORDER_LINE_ITEMS of them, so the names are resolved
+  // here -- the same trade the booking page makes for its one event, and the
+  // reason /orders (a whole list of orders) does not.
+  const productIds = order?.items.map((item) => item.productId).join(',') ?? '';
+  const { data: names } = useResource<Record<string, string>>(async () => {
+    if (!productIds) return {};
+    const resolved = await Promise.all(
+      productIds.split(',').map(async (productId) => {
+        // One unreachable product must not cost the order its other names, and
+        // must not raise a toast either: the row degrades to its reference.
+        try {
+          return [productId, (await getProduct(productId)).name] as const;
+        } catch {
+          return [productId, null] as const;
+        }
+      }),
+    );
+    return Object.fromEntries(resolved.filter(([, name]) => name !== null) as [string, string][]);
+  }, [productIds]);
 
   if (loading) return <DetailSkeleton />;
   if (error) return <ErrorPanel error={error} onRetry={retry} />;
@@ -59,14 +83,15 @@ export default function OrderDetailPage() {
               {
                 title: 'Product',
                 dataIndex: 'productId',
-                // A line item carries no name, only the id the price was
-                // locked against, so the link is what makes the row
-                // identifiable at all.
-                render: (productId: string) => (
-                  <Link className="mp-id" href={`/products/${productId}`}>
-                    {productId}
-                  </Link>
-                ),
+                // What was bought, in the words the buyer chose it by. Until the
+                // name lands -- or if the product is gone -- the row still
+                // identifies itself by reference rather than by nothing.
+                render: (productId: string) =>
+                  names?.[productId] ? (
+                    <Link href={`/products/${productId}`}>{names[productId]}</Link>
+                  ) : (
+                    <Ref value={productId} href={`/products/${productId}`} />
+                  ),
               },
               { title: 'Qty', dataIndex: 'quantity', align: 'right', width: 80 },
               {
