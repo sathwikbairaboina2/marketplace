@@ -87,7 +87,7 @@ export default function EventDetailPage() {
         <div className="mp-detail-buy" style={{ order: 2 }}>
           <h2 style={{ marginBottom: 'var(--mp-space-4)' }}>Book tickets</h2>
           <div className="mp-detail-price">
-            {event.basePriceMinor === 0 ? 'Free' : formatMoney(event.basePriceMinor)}
+            {event.basePriceMinor === 0 ? 'Free' : formatMoney(event.basePriceMinor, event.currency)}
             {event.basePriceMinor > 0 && <span className="cur">{event.currency}</span>}
           </div>
 

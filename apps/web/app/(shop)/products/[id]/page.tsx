@@ -70,7 +70,7 @@ export default function ProductDetailPage() {
           <h1>{product.name}</h1>
 
           <div className="mp-detail-price">
-            {formatMoney(product.priceMinor)}
+            {formatMoney(product.priceMinor, product.currency)}
             <span className="cur">{product.currency}</span>
           </div>
 

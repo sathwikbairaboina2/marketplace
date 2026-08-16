@@ -68,7 +68,7 @@ export default function AdminProductsPage() {
             className: 'mp-num',
             align: 'right' as const,
             render: (minor: number, row) =>
-              `${formatMoney(minor)} ${row.currency}`,
+              `${formatMoney(minor, row.currency)} ${row.currency}`,
           },
           { title: 'Stock', dataIndex: 'stock', className: 'mp-num', align: 'right' as const },
           {

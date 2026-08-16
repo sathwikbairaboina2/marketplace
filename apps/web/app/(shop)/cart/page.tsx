@@ -125,7 +125,7 @@ export default function CartPage() {
                     {line.name}
                   </Link>
                   <span className="mp-line-unit">
-                    {formatMoney(line.priceMinor)} {currency} each
+                    {formatMoney(line.priceMinor, currency)} {currency} each
                   </span>
                 </div>
                 <InputNumber
@@ -135,7 +135,7 @@ export default function CartPage() {
                   onChange={(v) => setQty(line.productId, v ?? 1)}
                 />
                 <span className="mp-line-total">
-                  {formatMoney(line.priceMinor * line.qty)} {currency}
+                  {formatMoney(line.priceMinor * line.qty, currency)} {currency}
                 </span>
                 <Button
                   type="text"
@@ -188,13 +188,13 @@ export default function CartPage() {
               Subtotal · {units} item{units === 1 ? '' : 's'}
             </span>
             <span className="mp-num">
-              {formatMoney(total)} {currency}
+              {formatMoney(total, currency)} {currency}
             </span>
           </div>
           <div className="mp-summary-row mp-summary-total">
             <span>Total</span>
             <span className="mp-num">
-              {formatMoney(total)} {currency}
+              {formatMoney(total, currency)} {currency}
             </span>
           </div>
           {/* Indicative only: POST /orders locks unit prices server-side at

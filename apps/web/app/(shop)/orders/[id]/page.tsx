@@ -53,7 +53,7 @@ export default function OrderDetailPage() {
   if (error) return <ErrorPanel error={error} onRetry={retry} />;
   if (!order) return null;
 
-  const money = (minor: number) => `${formatMoney(minor)} ${order.currency}`;
+  const money = (minor: number) => `${formatMoney(minor, order.currency)} ${order.currency}`;
   const attributeRows = schema ? toDescriptionRows(schema.fields, order.attributes) : [];
 
   return (

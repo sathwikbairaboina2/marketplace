@@ -41,14 +41,45 @@ export function formatDate(value: string | null | undefined): string {
 }
 
 /**
+ * How many minor units make one of a currency, and how many decimals it shows.
+ *
+ * "Minor" is not always a hundredth. A yen has no subunit, so ¥3,400 arrives
+ * from the engine as `3400` and dividing by 100 rendered it as 34.00 -- out by
+ * a factor of a hundred, in the direction that makes a shop look cheap. A
+ * Bahraini dinar goes the other way, at a thousand fils.
+ *
+ * Asked of Intl rather than hard-coded: the browser already ships the table,
+ * and a list maintained here would drift from it. An unknown code falls back
+ * to two decimals, which is what the overwhelming majority of currencies use
+ * and what this function did for every currency before.
+ */
+function fractionDigitsFor(currency?: string): number {
+  if (!currency) return 2;
+  try {
+    const resolved = new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+    }).resolvedOptions();
+    return resolved.maximumFractionDigits ?? 2;
+  } catch {
+    return 2;
+  }
+}
+
+/**
  * Minor units to a grouped decimal string: `124990000` -> `1,249,900.00`.
+ *
  * Grouping matters more than it looks -- an unseparated eight-digit price is
  * genuinely hard to read at a glance.
+ *
+ * `currency` is optional so every existing caller keeps its behaviour, but
+ * passing it is what makes a zero-decimal currency come out right.
  */
-export function formatMoney(minor: number): string {
-  return (minor / 100).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+export function formatMoney(minor: number, currency?: string): string {
+  const digits = fractionDigitsFor(currency);
+  return (minor / 10 ** digits).toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   });
 }
 

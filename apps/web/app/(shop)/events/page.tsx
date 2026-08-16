@@ -56,7 +56,7 @@ export default function EventsPage() {
               dataIndex: 'basePriceMinor',
               className: 'mp-num',
               align: 'right' as const,
-              render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
+              render: (minor: number, row) => `${formatMoney(minor, row.currency)} ${row.currency}`,
             },
           ]}
         />

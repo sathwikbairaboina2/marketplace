@@ -70,7 +70,7 @@ export default function OrdersPage() {
               dataIndex: 'totalAmountMinor',
               className: 'mp-num',
               align: 'right' as const,
-              render: (minor: number, row) => `${formatMoney(minor)} ${row.currency}`,
+              render: (minor: number, row) => `${formatMoney(minor, row.currency)} ${row.currency}`,
             },
             {
               title: 'Ref',

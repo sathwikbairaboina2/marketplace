@@ -44,7 +44,7 @@ export function ProductCard({ product }: { product: ProductResponse }) {
 
         <div className="mp-card-foot">
           <span className="mp-card-price">
-            {formatMoney(product.priceMinor)}
+            {formatMoney(product.priceMinor, product.currency)}
             <span className="cur">{product.currency}</span>
           </span>
           <span className="mp-card-stock" data-low={soldOut || product.stock <= LOW_STOCK}>
