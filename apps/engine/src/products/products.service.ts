@@ -5,6 +5,7 @@ import {
   ProductRecord,
   ProductResponse,
   SearchProducts,
+  UpdateProduct,
 } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
@@ -66,6 +67,44 @@ export class ProductsService {
     const found = await this.repo.get<ProductRecord>(entitySk('Product', id));
     if (!found) throw new ProblemException('not-found', 404, 'Product not found');
     return toResponse(found);
+  }
+
+  /**
+   * A partial change to an existing product.
+   *
+   * Read-modify-write rather than a Dynamo UpdateExpression: the record is
+   * small, and it keeps one description of a product's shape -- the same
+   * `put` creation uses -- instead of a second one built out of SET clauses.
+   *
+   * Two things are deliberately not the caller's to set. `createdAt` is
+   * carried over from the stored record, so a patch cannot rewrite when the
+   * product appeared; `updatedAt` is stamped here, so it cannot be faked.
+   *
+   * Repricing does not disturb orders already placed: an order records the
+   * unit price it locked at the time, and nothing here reaches into one.
+   */
+  async update(id: string, patch: UpdateProduct): Promise<ProductResponse> {
+    const existing = await this.repo.get<ProductRecord>(entitySk('Product', id));
+    if (!existing) throw new ProblemException('not-found', 404, 'Product not found');
+
+    // Validated against the tenant's registry on the way in, exactly as on
+    // creation -- an attribute nobody declared must not arrive by the side
+    // door of an edit.
+    const attributes =
+      patch.attributes === undefined
+        ? existing.attributes
+        : await this.registry.validate('Product', patch.attributes);
+
+    const updated: ProductResponse = {
+      ...toResponse(existing),
+      ...patch,
+      attributes,
+      createdAt: existing.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.repo.put(entitySk('Product', id), updated);
+    return updated;
   }
 
   async list(limit: number, cursor: string | null): Promise<Page<ProductResponse>> {

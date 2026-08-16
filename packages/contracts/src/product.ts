@@ -22,6 +22,32 @@ export const CreateProductSchema = z
   .strict();
 export type CreateProduct = z.infer<typeof CreateProductSchema>;
 
+/**
+ * A partial change to a product.
+ *
+ * Every field is optional and every bound is the one creation applies -- a
+ * price that could not be created must not be reachable by editing either.
+ * `id`, `entityType` and the audit stamps are absent rather than optional:
+ * they belong to the engine, and `.strict()` turns an attempt to set one into
+ * a 400 that names it instead of a silent no-op.
+ *
+ * An empty patch is refused. It is almost always a caller bug -- a mistyped
+ * field name, or a form that submitted nothing -- and answering 200 hides it.
+ */
+export const UpdateProductSchema = CreateProductSchema
+  .omit({ images: true, status: true, attributes: true })
+  .extend({
+    images: z.array(z.string().url()).max(20),
+    status: ProductStatusSchema,
+    attributes: AttributesSchema,
+  })
+  .partial()
+  .strict()
+  .refine((patch: Record<string, unknown>) => Object.keys(patch).length > 0, {
+    message: 'a patch must change at least one field',
+  });
+export type UpdateProduct = z.infer<typeof UpdateProductSchema>;
+
 export const SearchProductsSchema = z
   .object({
     category: z.string().optional(),

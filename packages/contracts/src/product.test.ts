@@ -1,4 +1,4 @@
-import { CreateProductSchema, SearchProductsSchema } from './product';
+import { CreateProductSchema, SearchProductsSchema, UpdateProductSchema } from './product';
 
 const valid = {
   name: 'Chair',
@@ -76,5 +76,59 @@ describe('SearchProductsSchema', () => {
 
   it('rejects an unknown core field', () => {
     expect(() => SearchProductsSchema.parse({ categroy: 'chairs' })).toThrow();
+  });
+});
+
+describe('UpdateProductSchema', () => {
+  it('accepts a single field on its own', () => {
+    expect(UpdateProductSchema.parse({ priceMinor: 999 })).toEqual({ priceMinor: 999 });
+  });
+
+  it('accepts several fields at once', () => {
+    const parsed = UpdateProductSchema.parse({ name: 'Renamed', stock: 3, status: 'archived' });
+    expect(parsed).toEqual({ name: 'Renamed', stock: 3, status: 'archived' });
+  });
+
+  // A PATCH with nothing in it is almost always a caller bug -- a typo in a
+  // field name, or a form that sent an empty object -- and answering 200 to it
+  // hides that.
+  it('rejects an empty patch', () => {
+    expect(() => UpdateProductSchema.parse({})).toThrow();
+  });
+
+  it('applies the same bounds as creation', () => {
+    expect(() => UpdateProductSchema.parse({ priceMinor: -1 })).toThrow();
+    expect(() => UpdateProductSchema.parse({ stock: -1 })).toThrow();
+    expect(() => UpdateProductSchema.parse({ name: '   ' })).toThrow();
+    expect(() => UpdateProductSchema.parse({ currency: 'usd' })).toThrow();
+    expect(() => UpdateProductSchema.parse({ status: 'nearly' })).toThrow();
+  });
+
+  it('rejects a field that is not part of a product', () => {
+    expect(() => UpdateProductSchema.parse({ sneaky: 'value' })).toThrow();
+  });
+
+  // The identifiers and the audit stamps are the engine's, not the caller's.
+  it.each(['id', 'entityType', 'createdAt', 'updatedAt'])('rejects %s', (field) => {
+    expect(() => UpdateProductSchema.parse({ [field]: 'x' })).toThrow();
+  });
+
+  it('trims a name exactly as creation does', () => {
+    expect(UpdateProductSchema.parse({ name: '  Spaced  ' }).name).toBe('Spaced');
+  });
+
+  it('allows replacing the photographs', () => {
+    const images = ['https://example.test/a.png'];
+    expect(UpdateProductSchema.parse({ images }).images).toEqual(images);
+  });
+
+  it('allows clearing the photographs', () => {
+    expect(UpdateProductSchema.parse({ images: [] }).images).toEqual([]);
+  });
+
+  it('allows updating tenant-defined attributes', () => {
+    expect(UpdateProductSchema.parse({ attributes: { colour: 'red' } }).attributes).toEqual({
+      colour: 'red',
+    });
   });
 });
