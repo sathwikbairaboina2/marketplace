@@ -128,4 +128,26 @@ describe('products', () => {
     const page2Ids = page2.items.map((i) => i.id);
     expect(page2Ids.some((id) => page1Ids.includes(id))).toBe(false);
   });
+
+  // A cursor is client-controlled input that ends up as DynamoDB's
+  // ExclusiveStartKey. Anything that parsed as an object used to be forwarded
+  // verbatim, and DynamoDB's `ValidationException` came back to the caller as
+  // an unhandled 500. Asserted over HTTP because the 500 was produced by the
+  // filter, not by the decoder.
+  it.each([
+    ['not base64 at all', 'not-a-cursor'],
+    ['base64 JSON with no sort key', Buffer.from('{"PK":"TENANT#x"}').toString('base64url')],
+    [
+      'base64 JSON carrying a non-key attribute',
+      Buffer.from('{"PK":"TENANT#x","SK":"PRODUCT#1","stock":5}').toString('base64url'),
+    ],
+    ['base64 of an empty object', Buffer.from('{}').toString('base64url')],
+  ])('answers 400, never 500, for a cursor that is %s', async (_label, cursor) => {
+    const res = await fetch(
+      `${baseUrl}/api/v1/products?limit=5&cursor=${encodeURIComponent(cursor)}`,
+      { headers: headersA },
+    );
+    expect(res.status).toBe(400);
+    expect(res.headers.get('content-type')).toContain('application/problem+json');
+  });
 });
