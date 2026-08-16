@@ -6,11 +6,14 @@ export type ProductStatus = z.infer<typeof ProductStatusSchema>;
 
 export const CreateProductSchema = z
   .object({
-    name: z.string().min(1).max(200),
+    // Trimmed before the length check, so `min(1)` means "has a name" rather
+    // than "has a character". A name of nothing but spaces used to satisfy it
+    // and reach the storefront as a card with no title on it.
+    name: z.string().trim().min(1).max(200),
     description: z.string().max(5000),
     priceMinor: MinorAmountSchema,
     currency: CurrencySchema,
-    category: z.string().min(1).max(100),
+    category: z.string().trim().min(1).max(100),
     stock: StockSchema,
     images: z.array(z.string().url()).max(20).default([]),
     status: ProductStatusSchema.default('draft'),

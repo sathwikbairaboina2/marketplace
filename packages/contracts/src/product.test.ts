@@ -17,6 +17,24 @@ describe('CreateProductSchema', () => {
     expect(parsed.attributes).toEqual({});
   });
 
+  // `.min(1)` counted characters, so a name of nothing but spaces passed and a
+  // product with no visible name reached the storefront as a blank card.
+  it('rejects a name that is only whitespace', () => {
+    expect(() => CreateProductSchema.parse({ ...valid, name: '   ' })).toThrow();
+  });
+
+  it('rejects a name that is only a tab or newline', () => {
+    expect(() => CreateProductSchema.parse({ ...valid, name: '\t\n' })).toThrow();
+  });
+
+  it('keeps a name that merely has surrounding space, trimmed', () => {
+    expect(CreateProductSchema.parse({ ...valid, name: '  Chair  ' }).name).toBe('Chair');
+  });
+
+  it('rejects a category that is only whitespace', () => {
+    expect(() => CreateProductSchema.parse({ ...valid, category: ' ' })).toThrow();
+  });
+
   it('rejects fractional money', () => {
     expect(() => CreateProductSchema.parse({ ...valid, priceMinor: 49.99 })).toThrow();
   });
