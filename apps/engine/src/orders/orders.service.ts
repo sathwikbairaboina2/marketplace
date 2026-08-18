@@ -523,10 +523,29 @@ export class OrdersService {
     // could read any other user's order (shipping address, totals, line items) just by knowing
     // its id. Reported as 404, not 403 -- per the project-wide rule that a 403 would itself leak
     // that the order exists, just to someone who isn't allowed to see it.
-    if (!found || found.userId !== currentPrincipal().userId) {
+    // A tenant admin may read any order in their own tenant: they are the ones
+    // who pack and dispatch it, and `advance` and the seller's side of the
+    // message thread both already work this way. Everyone else sees only their
+    // own, and a stranger gets 404 rather than 403 -- a 403 would confirm the
+    // order exists to somebody not allowed to see it.
+    const principal = currentPrincipal();
+    if (!found || (found.userId !== principal.userId && principal.role !== 'admin')) {
       throw new ProblemException('not-found', 404, 'Order not found');
     }
     return toResponse(found);
+  }
+
+  /**
+   * Every order in the tenant, newest first. Admin only: this is the seller's
+   * queue of work, and it deliberately crosses the per-user scoping that
+   * `listForCurrentUser` applies, so it is gated rather than filtered.
+   */
+  async listForTenant(limit: number, cursor: string | null): Promise<Page<OrderResponse>> {
+    if (currentPrincipal().role !== 'admin') {
+      throw new ProblemException('forbidden', 403, 'Only an admin can list the shop orders');
+    }
+    const page = await this.repo.queryPrefix<OrderRecord>(skPrefix('Order'), { limit, cursor });
+    return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
   }
 
   async listForCurrentUser(limit: number, cursor: string | null): Promise<Page<OrderResponse>> {

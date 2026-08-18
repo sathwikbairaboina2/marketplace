@@ -245,3 +245,58 @@ describe('cancelling an order', () => {
     }
   });
 });
+
+describe('the seller queue', () => {
+  let admin: Record<string, string>;
+  let buyer: Record<string, string>;
+
+  beforeAll(async () => {
+    await waitForHealthy();
+    admin = await authHeaders('tenant_queue', 'queue-admin@example.com', 'admin');
+    buyer = await authHeaders('tenant_queue', 'queue-buyer@example.com', 'buyer');
+  });
+
+  it('lets an admin read an order they did not place', async () => {
+    await setStages(admin, [{ name: 'Received', cancellable: true }, { name: 'Done' }]);
+    const product = await createProduct(admin, { stock: 3 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 1 }]);
+
+    // The seller packs and dispatches it, so they have to be able to see it.
+    const seen = await getOrder(admin, order.id);
+    expect(seen.id).toBe(order.id);
+  });
+
+  it('lists every order in the tenant for an admin', async () => {
+    const product = await createProduct(admin, { stock: 3 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 1 }]);
+
+    const res = await fetch(`${baseUrl}/api/v1/orders/all?limit=50`, { headers: admin });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: { id: string }[] };
+    expect(body.items.some((o) => o.id === order.id)).toBe(true);
+  });
+
+  it('refuses the shop queue to a buyer', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/orders/all`, { headers: buyer });
+    expect(res.status).toBe(403);
+  });
+
+  it('still hides an order from a buyer who did not place it', async () => {
+    const product = await createProduct(admin, { stock: 3 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 1 }]);
+
+    const other = await authHeaders('tenant_queue', 'queue-other@example.com', 'buyer');
+    const res = await fetch(`${baseUrl}/api/v1/orders/${order.id}`, { headers: other });
+    expect(res.status).toBe(404);
+  });
+
+  it('keeps orders inside their own tenant', async () => {
+    const product = await createProduct(admin, { stock: 3 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 1 }]);
+
+    // An admin of another tenant is still an admin -- and must still see nothing.
+    const outsider = await authHeaders('tenant_elsewhere', 'elsewhere@example.com', 'admin');
+    const res = await fetch(`${baseUrl}/api/v1/orders/${order.id}`, { headers: outsider });
+    expect(res.status).toBe(404);
+  });
+});

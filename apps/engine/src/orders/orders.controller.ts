@@ -27,6 +27,14 @@ export class OrdersController {
     return this.orders.listForCurrentUser(query.limit, query.cursor ?? null);
   }
 
+  // Declared before `:id`, or Nest would match "all" as an order id and this
+  // route would never be reached.
+  @Get('all')
+  @Roles('admin')
+  listForTenant(@ZodQuery(ListQuerySchema) query: ListQuery): Promise<Page<OrderResponse>> {
+    return this.orders.listForTenant(query.limit, query.cursor ?? null);
+  }
+
   @Get(':id')
   get(@Param('id') id: string): Promise<OrderResponse> {
     return this.orders.get(id);

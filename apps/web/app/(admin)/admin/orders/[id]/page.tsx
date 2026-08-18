@@ -1,0 +1,148 @@
+'use client';
+
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { Button, Descriptions, Table } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import type { MessageResponse, OrderResponse } from '@marketplace/contracts';
+import { advanceOrder, getOrder } from '../../../../../lib/api/orders';
+import { listMessages } from '../../../../../lib/api/messages';
+import { ProblemError } from '../../../../../lib/api/http';
+import { notifyProblem } from '../../../../../lib/problem-notify';
+import { useResource } from '../../../../../lib/use-resource';
+import { StatusTag } from '../../../../../components/status-tag';
+import { PageHeader } from '../../../../../components/page-header';
+import { ErrorPanel } from '../../../../../components/error-panel';
+import { DetailSkeleton } from '../../../../../components/skeletons';
+import { StageTracker } from '../../../../../components/stage-tracker';
+import { StageThread } from '../../../../../components/stage-thread';
+import { Ref } from '../../../../../components/ref';
+import { formatDateTime, formatMoney } from '../../../../../lib/format';
+
+/**
+ * The seller's side of one order: where it is, what to do next, and the
+ * customer's messages. The advance button names the next stage rather than
+ * saying "advance", because the stages are the shop's own words.
+ */
+export default function AdminOrderDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const { data: order, error, loading, retry } = useResource<OrderResponse>(
+    () => getOrder(id),
+    [id],
+  );
+  const { data: messagePage, retry: retryMessages } = useResource<{
+    items: MessageResponse[];
+    nextCursor: string | null;
+  }>(() => listMessages(id, 100, null), [id]);
+
+  if (loading) return <DetailSkeleton />;
+  if (error) return <ErrorPanel error={error} onRetry={retry} />;
+  if (!order) return null;
+
+  const messages = messagePage?.items ?? [];
+  const index = order.stages.findIndex((stage) => stage.id === order.currentStageId);
+  const next = order.stages[index + 1];
+  const money = (minor: number) => `${formatMoney(minor, order.currency)} ${order.currency}`;
+
+  const advance = async () => {
+    try {
+      // The stage the seller is looking at, so a stale page cannot skip a stage.
+      await advanceOrder(order.id, order.currentStageId);
+      retry();
+    } catch (err) {
+      notifyProblem(err);
+      if (err instanceof ProblemError && err.type.includes('stage-moved')) retry();
+    }
+  };
+
+  return (
+    <>
+      <Link href="/admin/orders" className="mp-back">
+        <ArrowLeftOutlined /> All orders
+      </Link>
+
+      <PageHeader
+        title="Order"
+        subtitle={`Placed ${formatDateTime(order.createdAt)}`}
+        extra={<StatusTag status={order.status} />}
+      />
+
+      <div className="mp-checkout">
+        <div className="mp-checkout-main">
+          <Table
+            rowKey="productId"
+            pagination={false}
+            dataSource={order.items}
+            columns={[
+              {
+                title: 'Product',
+                dataIndex: 'productId',
+                render: (productId: string) => (
+                  <Ref value={productId} href={`/admin/products/${productId}`} />
+                ),
+              },
+              { title: 'Qty', dataIndex: 'quantity', align: 'right', width: 80 },
+              {
+                title: 'Unit price',
+                dataIndex: 'unitPriceMinor',
+                align: 'right',
+                width: 150,
+                render: (minor: number) => money(minor),
+              },
+            ]}
+          />
+
+          <div className="mp-detail-specs">
+            <h2>Shipping to</h2>
+            <Descriptions
+              column={1}
+              size="small"
+              items={Object.entries(order.shippingAddress).map(([label, value]) => ({
+                key: label,
+                label,
+                children: value,
+              }))}
+            />
+          </div>
+        </div>
+
+        <aside className="mp-summary">
+          <h2>Progress</h2>
+          <StageTracker
+            stages={order.stages}
+            currentStageId={order.currentStageId}
+            cancelled={order.status === 'cancelled'}
+            renderStageExtra={(stage, state) => {
+              if (!stage.messaging) return null;
+              const forStage = messages.filter((message) => message.stageId === stage.id);
+              if (state !== 'current' && forStage.length === 0) return null;
+              return (
+                <StageThread
+                  orderId={order.id}
+                  messages={forStage}
+                  open={state === 'current' && order.status === 'confirmed'}
+                  onPosted={retryMessages}
+                />
+              );
+            }}
+          />
+
+          {/* Rendered only when there is somewhere to go. A shop that has never
+              configured its stages has exactly one, so every advance there is a
+              legitimate 409 -- the seller should meet that as a missing button,
+              not as an error. */}
+          {next && order.status === 'confirmed' && (
+            <Button type="primary" block style={{ marginTop: 12 }} onClick={advance}>
+              Advance to {next.name}
+            </Button>
+          )}
+
+          <div className="mp-summary-row mp-summary-total" style={{ marginTop: 16 }}>
+            <span>Total</span>
+            <span className="mp-num">{money(order.totalAmountMinor)}</span>
+          </div>
+        </aside>
+      </div>
+    </>
+  );
+}

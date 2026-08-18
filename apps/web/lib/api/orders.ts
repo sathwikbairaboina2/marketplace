@@ -29,3 +29,9 @@ export const advanceOrder = (id: string, currentStageId: string) =>
  * than a replayed success. */
 export const cancelOrder = (id: string) =>
   request(`/orders/${id}/cancel`, { method: 'POST', schema: OrderResponseSchema });
+
+/** Every order in the shop, newest first. Admin only -- this is the seller's
+ * queue of work, and it deliberately crosses the per-user scoping `listOrders`
+ * applies. */
+export const listAllOrders = (limit: number, cursor: string | null) =>
+  request('/orders/all', { query: { limit, cursor: cursor ?? undefined }, schema: Page });

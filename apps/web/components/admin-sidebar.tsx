@@ -39,7 +39,8 @@ const GROUPS: { label: string; items: Item[] }[] = [
   {
     label: 'Sales',
     items: [
-      { href: '/orders', label: 'Orders', icon: <ShoppingCartOutlined /> },
+      // The shop's queue of work, not the signed-in admin's own purchases.
+      { href: '/admin/orders', label: 'Orders', icon: <ShoppingCartOutlined /> },
       { href: '/bookings', label: 'Bookings', icon: <ProfileOutlined /> },
     ],
   },
