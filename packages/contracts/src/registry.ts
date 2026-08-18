@@ -41,7 +41,13 @@ const STRUCTURAL_FIELDS = ['id', 'entityType', 'createdAt', 'updatedAt', 'attrib
 
 const ENTITY_FIELDS: Record<DynamicEntityType, readonly string[]> = {
   Product: ['name', 'description', 'priceMinor', 'currency', 'category', 'stock', 'images', 'status'],
-  Order: ['userId', 'status', 'totalAmountMinor', 'currency', 'items', 'shippingAddress'],
+  // The last four are the stage snapshot an order carries: core lifecycle, not
+  // tenant data, and shadowing them would put a dynamic `stages` beside the one
+  // the buyer's tracker renders.
+  Order: [
+    'userId', 'status', 'totalAmountMinor', 'currency', 'items', 'shippingAddress',
+    'stages', 'currentStageId', 'pipelineVersion', 'stageEnteredAt',
+  ],
   Event: ['title', 'capacity', 'bookedCount', 'startDate', 'endDate', 'basePriceMinor', 'currency'],
   Booking: ['eventId', 'userId', 'status', 'ticketQuantity'],
 };

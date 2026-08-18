@@ -93,6 +93,17 @@ describe('a dynamic field may not shadow a field the entity already has', () => 
     expect(() => CreateFlowSchema.parse(flow('Order', 'totalAmountMinor'))).toThrow();
   });
 
+  // The stage snapshot an order carries is core, not dynamic: a tenant field
+  // called `stages` would shadow it exactly as a second `name` shadowed a
+  // product's, and here it would also be indistinguishable from the lifecycle
+  // the buyer's tracker renders.
+  it.each(['stages', 'currentStageId', 'pipelineVersion', 'stageEnteredAt'])(
+    'rejects an Order field called %s',
+    (name) => {
+      expect(() => CreateFlowSchema.parse(flow('Order', name))).toThrow();
+    },
+  );
+
   // The reservation is per entity: `capacity` means something to an Event and
   // nothing to a Product, so a shop selling containers may still describe one.
   it('allows a Product field called capacity, which only Events reserve', () => {
