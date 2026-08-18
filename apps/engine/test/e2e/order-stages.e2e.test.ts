@@ -3,11 +3,13 @@ import { authHeaders } from './helpers/auth';
 import {
   advance,
   advanceRaw,
+  cancelRaw,
   createProduct,
   getOrder,
   placeOrder,
   problemType,
   setStages,
+  stockOf,
 } from './helpers/stages';
 
 // Its own tenant: the pipeline is tenant-scoped, so configuring stages here must
@@ -133,5 +135,113 @@ describe('advancing an order along its stages', () => {
     });
     expect(res.status).toBe(409);
     expect(await problemType(res)).toContain('pipeline-version-conflict');
+  });
+});
+
+describe('cancelling an order', () => {
+  let admin: Record<string, string>;
+  let buyer: Record<string, string>;
+
+  beforeAll(async () => {
+    await waitForHealthy();
+    admin = await authHeaders(TENANT, 'stage-admin@example.com', 'admin');
+    buyer = await authHeaders(TENANT, 'stage-buyer@example.com', 'buyer');
+  });
+
+  it('restores stock for every line item', async () => {
+    await setStages(admin, [{ name: 'On the bench', cancellable: true }, { name: 'Gone' }]);
+    const a = await createProduct(admin, { stock: 5 });
+    const b = await createProduct(admin, { stock: 9 });
+    const order = await placeOrder(buyer, [
+      { productId: a.id, quantity: 2 },
+      { productId: b.id, quantity: 3 },
+    ]);
+    expect(await stockOf(admin, a.id)).toBe(3);
+
+    const res = await cancelRaw(buyer, order.id);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { status: string }).status).toBe('cancelled');
+
+    expect(await stockOf(admin, a.id)).toBe(5);
+    expect(await stockOf(admin, b.id)).toBe(9);
+  });
+
+  it('refuses a second cancel and leaves stock alone', async () => {
+    await setStages(admin, [{ name: 'Cancellable here', cancellable: true }]);
+    const product = await createProduct(admin, { stock: 4 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 1 }]);
+    expect((await cancelRaw(buyer, order.id)).status).toBe(200);
+
+    const res = await cancelRaw(buyer, order.id);
+    expect(res.status).toBe(409);
+    expect(await problemType(res)).toContain('order-not-cancellable');
+    expect(await stockOf(admin, product.id)).toBe(4);
+  });
+
+  it('refuses a cancel once the order reaches a stage the owner did not mark cancellable', async () => {
+    await setStages(admin, [{ name: 'Packing', cancellable: true }, { name: 'Dispatched' }]);
+    const product = await createProduct(admin, { stock: 4 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 1 }]);
+    await advance(admin, order.id, order.currentStageId);
+
+    const res = await cancelRaw(buyer, order.id);
+    expect(res.status).toBe(409);
+    expect(await problemType(res)).toContain('order-not-cancellable');
+    // The stock stayed out, which is the entire point: those goods have gone.
+    expect(await stockOf(admin, product.id)).toBe(3);
+  });
+
+  it('hides another buyer order behind a 404', async () => {
+    await setStages(admin, [{ name: 'Cancellable', cancellable: true }]);
+    const product = await createProduct(admin, { stock: 4 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 1 }]);
+
+    const mallory = await authHeaders(TENANT, 'stage-mallory@example.com', 'buyer');
+    const res = await cancelRaw(mallory, order.id);
+    expect(res.status).toBe(404);
+    expect(await stockOf(admin, product.id)).toBe(3);
+  });
+
+  it('restores stock exactly once when two cancels race', async () => {
+    await setStages(admin, [{ name: 'Cancellable', cancellable: true }]);
+    const product = await createProduct(admin, { stock: 6 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 2 }]);
+
+    const [one, two] = await Promise.all([cancelRaw(buyer, order.id), cancelRaw(buyer, order.id)]);
+
+    // Asserted on the resulting stock, not on the error class: orders.service.ts
+    // documents that DynamoDB Local surfaces ConditionalCheckFailed where a real
+    // table gives TransactionConflict, so the code is not stable across
+    // environments but the invariant is.
+    expect([one.status, two.status].sort()).toEqual([200, 409]);
+    expect(await stockOf(admin, product.id)).toBe(6);
+  });
+
+  it('has exactly one winner when a cancel races the seller advancing', async () => {
+    // Stage one is cancellable, stage two is not: whoever loses this race must
+    // lose completely. If both applied, the buyer would have cancelled goods
+    // already dispatched and the stock would come back for items that left.
+    await setStages(admin, [{ name: 'On the bench', cancellable: true }, { name: 'Dispatched' }]);
+    const product = await createProduct(admin, { stock: 6 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 2 }]);
+
+    const [cancelled, advanced] = await Promise.all([
+      cancelRaw(buyer, order.id),
+      advanceRaw(admin, order.id, order.currentStageId),
+    ]);
+
+    const final = await getOrder(buyer, order.id);
+    if (cancelled.status === 200) {
+      expect(advanced.status).toBe(409);
+      expect(final.status).toBe('cancelled');
+      // Stopped where it died, so the tracker can say where rather than only that.
+      expect(final.currentStageId).toBe(order.currentStageId);
+      expect(await stockOf(admin, product.id)).toBe(6);
+    } else {
+      expect(advanced.status).toBe(200);
+      expect(final.status).toBe('confirmed');
+      expect(final.currentStageId).not.toBe(order.currentStageId);
+      expect(await stockOf(admin, product.id)).toBe(4);
+    }
   });
 });

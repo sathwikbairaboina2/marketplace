@@ -377,6 +377,135 @@ export class OrdersService {
     return { ...current, currentStageId: next.id, stageEnteredAt: now };
   }
 
+  /**
+   * The buyer's own withdrawal, permitted only while the stage the order sits in
+   * was marked cancellable by the shop that defined it. Restores the stock the
+   * order took, in the mirror image of `create`'s transaction.
+   */
+  async cancel(id: string): Promise<OrderResponse> {
+    // Ownership is checked exactly as `get` does, and reported the same way: a
+    // 403 here would confirm the order exists to somebody not allowed to see it.
+    const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
+    if (!found || found.userId !== currentPrincipal().userId) {
+      throw new ProblemException('not-found', 404, 'Order not found');
+    }
+    const current = toResponse(found);
+
+    const stage = current.stages.find((s) => s.id === current.currentStageId);
+    if (current.status !== 'confirmed' || !stage?.cancellable) {
+      throw new ProblemException(
+        'order-not-cancellable',
+        409,
+        'Order cannot be cancelled',
+        current.status !== 'confirmed'
+          ? `order ${id} is already ${current.status}`
+          : `this shop does not allow cancelling at ${stage?.name ?? 'this stage'}`,
+        { stageId: current.currentStageId },
+      );
+    }
+
+    // Item i restores the stock for line item i; the order Update is last. The
+    // same ordering `create` uses, and `explainCancelFailure` depends on it.
+    const transactItems = [
+      ...current.items.map((item) => ({
+        Update: {
+          TableName: this.repo.tableName,
+          Key: this.repo.key(entitySk('Product', item.productId)),
+          UpdateExpression: 'SET #stock = #stock + :qty',
+          // No price condition on the way back: `create` conditions on price
+          // because it is charging money, and returning stock does not care what
+          // the product costs now. No upper-bound check either -- StockSchema's
+          // cap is an input bound, and conditioning on it would fail a buyer's
+          // cancel for a reason they cannot fix.
+          ConditionExpression: 'attribute_exists(PK)',
+          ExpressionAttributeNames: { '#stock': 'stock' },
+          ExpressionAttributeValues: { ':qty': item.quantity },
+        },
+      })),
+      {
+        Update: {
+          TableName: this.repo.tableName,
+          Key: this.repo.key(entitySk('Order', id)),
+          UpdateExpression: 'SET #status = :cancelled',
+          // The status condition is what makes a double cancel impossible and the
+          // stock restore exactly-once. The stage condition is what stops a buyer
+          // cancelling goods the seller dispatched in the gap between their page
+          // rendering and their click.
+          ConditionExpression: '#status = :confirmed AND #currentStageId = :stage',
+          ExpressionAttributeNames: { '#status': 'status', '#currentStageId': 'currentStageId' },
+          ExpressionAttributeValues: {
+            ':cancelled': 'cancelled',
+            ':confirmed': 'confirmed',
+            ':stage': current.currentStageId,
+          },
+        },
+      },
+    ];
+
+    try {
+      await this.repo.transactWrite(transactItems);
+    } catch (err) {
+      await this.explainCancelFailure(err, current);
+      throw err;
+    }
+
+    // The order keeps its stage, so the tracker can say where it stopped rather
+    // than only that it stopped.
+    return { ...current, status: 'cancelled' };
+  }
+
+  /** Turns a cancelled cancellation into the specific problem that caused it. */
+  private async explainCancelFailure(err: unknown, order: OrderResponse): Promise<never | void> {
+    const failed = failedTransactionIndexes(err);
+
+    const productIndex = failed.find((i) => i < order.items.length);
+    if (productIndex !== undefined) {
+      // There is no delete-product endpoint today, but `attribute_exists` and
+      // this branch must agree on what "gone" means regardless -- without it the
+      // raw AWS error would surface as an unhelpful 500.
+      throw new ProblemException(
+        'not-found',
+        404,
+        'Product no longer exists',
+        `product ${order.items[productIndex].productId} was removed, so its stock cannot be restored`,
+        { productId: order.items[productIndex].productId },
+      );
+    }
+
+    if (failed.includes(order.items.length)) {
+      // The order item's condition combines status and stage with AND, so a
+      // cancellation alone does not say which failed. Re-read to tell them
+      // apart: a stage that moved is recoverable by reloading, an order already
+      // cancelled is not.
+      const now = await this.repo.get<OrderRecord>(entitySk('Order', order.id));
+      if (now && now.status === 'confirmed') {
+        throw new ProblemException(
+          'stage-moved',
+          409,
+          'Order stage moved',
+          'this order moved to another stage before your cancellation was applied; reload it',
+          { stageId: order.currentStageId },
+        );
+      }
+      throw new ProblemException(
+        'order-not-cancellable',
+        409,
+        'Order cannot be cancelled',
+        `order ${order.id} is already cancelled`,
+      );
+    }
+
+    const conflict = conflictedTransactionIndexes(err).find((i) => i <= order.items.length);
+    if (conflict !== undefined) {
+      throw new ProblemException(
+        'transaction-conflict',
+        409,
+        'Concurrent write conflict',
+        'this order was updated by another request at the same moment; retry',
+      );
+    }
+  }
+
   async get(id: string): Promise<OrderResponse> {
     const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
     // Cross-tenant access already 404s because `repo.get` is scoped to the current tenant's

@@ -35,6 +35,15 @@ export class OrdersController {
   // Admin only on the route as well as in the service, matching every other
   // admin-only write: the decorator is what shows the restriction in the
   // OpenAPI document, the service check is what the tests pin.
+  // No IdempotencyInterceptor: the status condition in the service already makes
+  // cancel single-shot, and a replayed 200 would tell a buyer a second cancel
+  // succeeded when it did nothing.
+  @Post(':id/cancel')
+  @HttpCode(200)
+  cancel(@Param('id') id: string): Promise<OrderResponse> {
+    return this.orders.cancel(id);
+  }
+
   @Post(':id/advance')
   // 200, not Nest's default 201: an advance creates nothing, it moves an order
   // that already exists.
