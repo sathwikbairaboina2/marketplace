@@ -108,55 +108,62 @@ export function StageEditor() {
       <div className="mp-stage-editor">
         <div>
           {stages.map((stage, index) => (
-            <Space.Compact
-              key={stage.key}
-              data-testid={`stage-row-${index}`}
-              style={{ display: 'flex', marginBottom: 8 }}
-            >
+            <div key={stage.key} data-testid={`stage-row-${index}`} className="mp-stage-row">
+              {/* The name gets the full width of the column. Sharing a line with
+                  five controls squeezed it to a few characters, which left the
+                  owner editing stages they could not read. */}
               <Input
                 value={stage.name}
                 placeholder="Stage name"
                 aria-label={`Stage ${index + 1} name`}
                 onChange={(event) => patch(stage.key, { name: event.target.value })}
               />
-              <Tooltip title="A buyer may cancel while the order is here">
+              <div className="mp-stage-row-controls">
+                <Tooltip title="A buyer may cancel while the order is here">
+                  <Button
+                    size="small"
+                    type={stage.cancellable ? 'primary' : 'default'}
+                    onClick={() => patch(stage.key, { cancellable: !stage.cancellable })}
+                  >
+                    Cancellable
+                  </Button>
+                </Tooltip>
+                <Tooltip title="This stage has a message thread">
+                  <Button
+                    size="small"
+                    type={stage.messaging ? 'primary' : 'default'}
+                    onClick={() => patch(stage.key, { messaging: !stage.messaging })}
+                  >
+                    Messages
+                  </Button>
+                </Tooltip>
+                <span className="mp-stage-row-spacer" />
                 <Button
-                  type={stage.cancellable ? 'primary' : 'default'}
-                  onClick={() => patch(stage.key, { cancellable: !stage.cancellable })}
-                >
-                  Cancellable
-                </Button>
-              </Tooltip>
-              <Tooltip title="This stage has a message thread">
+                  size="small"
+                  icon={<ArrowUpOutlined />}
+                  aria-label={`Move ${stage.name || 'stage'} earlier`}
+                  disabled={index === 0}
+                  onClick={() => move(index, -1)}
+                />
                 <Button
-                  type={stage.messaging ? 'primary' : 'default'}
-                  onClick={() => patch(stage.key, { messaging: !stage.messaging })}
-                >
-                  Messages
-                </Button>
-              </Tooltip>
-              <Button
-                icon={<ArrowUpOutlined />}
-                aria-label={`Move ${stage.name || 'stage'} earlier`}
-                disabled={index === 0}
-                onClick={() => move(index, -1)}
-              />
-              <Button
-                icon={<ArrowDownOutlined />}
-                aria-label={`Move ${stage.name || 'stage'} later`}
-                disabled={index === stages.length - 1}
-                onClick={() => move(index, 1)}
-              />
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                aria-label={`Remove ${stage.name || 'stage'}`}
-                // One stage is the floor: a shop with none has no lifecycle to
-                // place an order into, and the contract requires at least one.
-                disabled={stages.length === 1}
-                onClick={() => setStages((c) => c.filter((s) => s.key !== stage.key))}
-              />
-            </Space.Compact>
+                  size="small"
+                  icon={<ArrowDownOutlined />}
+                  aria-label={`Move ${stage.name || 'stage'} later`}
+                  disabled={index === stages.length - 1}
+                  onClick={() => move(index, 1)}
+                />
+                <Button
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  aria-label={`Remove ${stage.name || 'stage'}`}
+                  // One stage is the floor: a shop with none has no lifecycle to
+                  // place an order into, and the contract requires at least one.
+                  disabled={stages.length === 1}
+                  onClick={() => setStages((c) => c.filter((s) => s.key !== stage.key))}
+                />
+              </div>
+            </div>
           ))}
 
           <Button
