@@ -19,6 +19,13 @@ export const CreateOrderSchema = z
   .strict();
 export type CreateOrder = z.infer<typeof CreateOrderSchema>;
 
+/**
+ * The stage the seller was looking at when they clicked. Sent so the engine can
+ * condition the write on it: a stale page must not be able to skip a stage.
+ */
+export const AdvanceOrderSchema = z.object({ currentStageId: z.string() }).strict();
+export type AdvanceOrder = z.infer<typeof AdvanceOrderSchema>;
+
 export interface OrderLineItem {
   productId: string;
   quantity: number;

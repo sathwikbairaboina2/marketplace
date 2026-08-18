@@ -297,6 +297,86 @@ export class OrdersService {
     }
   }
 
+  /**
+   * Moves an order to the next stage of the snapshot it was placed under. Admin
+   * only: advancing is the seller's account of what they have physically done.
+   */
+  async advance(id: string, expectedStageId: string): Promise<OrderResponse> {
+    if (currentPrincipal().role !== 'admin') {
+      throw new ProblemException('forbidden', 403, 'Only an admin can advance an order');
+    }
+
+    const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
+    if (!found) throw new ProblemException('not-found', 404, 'Order not found');
+    const current = toResponse(found);
+
+    if (current.status !== 'confirmed') {
+      throw new ProblemException(
+        'order-not-advanceable',
+        409,
+        'Order is not advanceable',
+        `order ${id} is ${current.status}`,
+      );
+    }
+
+    const index = current.stages.findIndex((stage) => stage.id === current.currentStageId);
+    const next = current.stages[index + 1];
+    if (!next) {
+      // A shop that has never configured a pipeline has exactly one stage, which
+      // is therefore also its last: there is nowhere to advance to, and that is
+      // correct rather than a defect. The cockpit renders no button at all here,
+      // so a seller should never meet this as an error.
+      throw new ProblemException(
+        'order-at-final-stage',
+        409,
+        'Order is at its final stage',
+        `${current.stages[index]?.name ?? 'this stage'} is the last stage this order was placed under`,
+        { stageId: current.currentStageId },
+      );
+    }
+
+    const now = new Date().toISOString();
+    try {
+      await this.repo.transactWrite([
+        {
+          Update: {
+            TableName: this.repo.tableName,
+            Key: this.repo.key(entitySk('Order', id)),
+            UpdateExpression: 'SET #currentStageId = :next, #stageEnteredAt = :now',
+            // Conditioned rather than read-then-written, so two sellers clicking
+            // at the same moment cannot skip a stage between them -- the same
+            // reasoning as `#stock >= :qty` in `create`.
+            ConditionExpression: '#currentStageId = :expected AND #status = :confirmed',
+            ExpressionAttributeNames: {
+              '#currentStageId': 'currentStageId',
+              '#stageEnteredAt': 'stageEnteredAt',
+              '#status': 'status',
+            },
+            ExpressionAttributeValues: {
+              ':next': next.id,
+              ':now': now,
+              ':expected': expectedStageId,
+              ':confirmed': 'confirmed',
+            },
+          },
+        },
+      ]);
+    } catch (err) {
+      if (failedTransactionIndexes(err).includes(0)) {
+        throw new ProblemException(
+          'stage-moved',
+          409,
+          'Order stage moved',
+          'this order left that stage before your change was applied; reload it',
+          { expectedStageId },
+        );
+      }
+      throw err;
+    }
+
+    return { ...current, currentStageId: next.id, stageEnteredAt: now };
+  }
+
   async get(id: string): Promise<OrderResponse> {
     const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
     // Cross-tenant access already 404s because `repo.get` is scoped to the current tenant's
