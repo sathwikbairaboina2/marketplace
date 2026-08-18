@@ -87,6 +87,9 @@ export class ThreadsService {
     const page = await this.repo.queryPrefix<MessageRecord>(messagePrefix(orderId), {
       limit,
       cursor,
+      // Oldest first: this is a conversation, not a listing. The default order
+      // would hand the buyer their thread upside down.
+      ascending: true,
     });
     return {
       items: page.items.map(({ PK: _pk, SK: _sk, ...rest }) => rest),

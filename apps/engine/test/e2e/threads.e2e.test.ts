@@ -72,6 +72,21 @@ describe('order stage threads', () => {
     expect(all.map((m) => m.body).sort()).toEqual(['in stage one', 'in stage two']);
   });
 
+  // A conversation reads top to bottom. The repository's default is newest
+  // first, which is right for a listing and upside down for a thread.
+  it('returns a thread oldest first', async () => {
+    await shopWithTwoTalkingStages();
+    const product = await createProduct(admin, { stock: 3 });
+    const order = await placeOrder(buyer, [{ productId: product.id, quantity: 1 }]);
+
+    await postMessage(buyer, order.id, 'first');
+    await postMessage(admin, order.id, 'second');
+    await postMessage(buyer, order.id, 'third');
+
+    const thread = await listMessages(buyer, order.id);
+    expect(thread.map((m) => m.body)).toEqual(['first', 'second', 'third']);
+  });
+
   it('refuses a message in a stage the shop left unmessageable', async () => {
     await shopWithTwoTalkingStages();
     const product = await createProduct(admin, { stock: 3 });

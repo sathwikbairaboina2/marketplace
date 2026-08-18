@@ -28,6 +28,13 @@ export interface PageOptions {
 
 export interface QueryOptions extends PageOptions {
   filter?: FilterSpec;
+  /**
+   * Oldest first. Listings want the default (newest first) -- the listing
+   * somebody just added should be on the first page. A conversation wants the
+   * opposite: read top to bottom, a thread that arrives newest-first reads
+   * backwards.
+   */
+  ascending?: boolean;
 }
 
 type TransactItems = TransactWriteCommandInput['TransactItems'];
@@ -131,10 +138,11 @@ export class DynamoRepository {
           },
           Limit: wanted,
           ExclusiveStartKey: startKey,
-          // Newest first, matching `queryUserIndex` below. Sort keys end in a ULID,
-          // so descending order is creation order reversed: the listing somebody
-          // just added is on the first page, not the last.
-          ScanIndexForward: false,
+          // Newest first by default, matching `queryUserIndex` below. Sort keys end
+          // in a ULID, so descending order is creation order reversed: the listing
+          // somebody just added is on the first page, not the last. `ascending`
+          // flips it for the one caller that reads a sequence rather than a list.
+          ScanIndexForward: opts.ascending === true,
         }),
       );
 
