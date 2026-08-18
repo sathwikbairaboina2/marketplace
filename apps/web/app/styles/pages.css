@@ -171,6 +171,19 @@
   min-width: 0;
 }
 
+/* ==========================================================================
+   Order stages
+   ========================================================================== */
+
+/* The editor beside a live preview of the buyer's tracker: an owner naming
+   their own stages should see what they are publishing while they name them. */
+.mp-stage-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: var(--mp-space-8);
+  align-items: start;
+}
+
 .mp-lines {
   list-style: none;
   margin: 0 0 var(--mp-space-8);
@@ -318,6 +331,10 @@
 }
 
 @media (max-width: 991px) {
+  .mp-stage-editor {
+    grid-template-columns: 1fr;
+    gap: var(--mp-space-6);
+  }
   .mp-detail,
   .mp-checkout {
     grid-template-columns: 1fr;
