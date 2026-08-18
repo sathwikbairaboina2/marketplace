@@ -190,6 +190,34 @@ describe('orders', () => {
     expect(((await after.json()) as { stock: number }).stock).toBe(4);
   });
 
+  it('places a new order in the shop first stage', async () => {
+    const product = await createProduct(headers, { stock: 5 });
+    const res = await fetch(`${baseUrl}/api/v1/orders`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        items: [{ productId: product.id, quantity: 1 }],
+        currency: 'INR',
+        shippingAddress: { line1: '1 Road' },
+      }),
+    });
+    expect(res.status).toBe(201);
+    const order = (await res.json()) as {
+      stages: { id: string; name: string }[];
+      currentStageId: string;
+      stageEnteredAt: string;
+      createdAt: string;
+      pipelineVersion: number;
+    };
+
+    // The snapshot travels with the order rather than being looked up: whatever
+    // the shop's stages were at this moment, these are they, for good.
+    expect(order.stages.length).toBeGreaterThanOrEqual(1);
+    expect(order.currentStageId).toBe(order.stages[0].id);
+    expect(order.stageEnteredAt).toBe(order.createdAt);
+    expect(order.pipelineVersion).toBeGreaterThanOrEqual(0);
+  });
+
   it('lists the caller own orders', async () => {
     const product = await createProduct(headers, { stock: 5 });
     const created = await fetch(`${baseUrl}/api/v1/orders`, {

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   CreateOrder,
+  DEFAULT_PIPELINE,
   MAX_ORDER_LINE_ITEMS,
   OrderLineItem,
   OrderRecord,
@@ -10,11 +11,12 @@ import {
 } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
-import { entitySk, gsi1UserPk, gsi1UserSk, skPrefix } from '../persistence/keys';
+import { entitySk, gsi1UserPk, gsi1UserSk, PIPELINE_SK, skPrefix } from '../persistence/keys';
 import { currentPrincipal } from '../common/tenant-context';
 import { newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
 import { conflictedTransactionIndexes, failedTransactionIndexes } from '../common/transaction-errors';
+import { PipelineService } from '../pipeline/pipeline.service';
 
 // The HTTP-facing shape of an order. `OrderRecord` (from @marketplace/contracts) mirrors
 // exactly what is stored in DynamoDB, including the single-table `PK`/`SK` attributes and the
@@ -29,7 +31,17 @@ export type { OrderResponse };
 
 function toResponse(record: OrderRecord): OrderResponse {
   const { PK: _pk, SK: _sk, GSI1PK: _gsi1pk, GSI1SK: _gsi1sk, ...rest } = record;
-  return rest;
+  // Orders written before stages existed carry none of these attributes. They are
+  // filled here rather than backfilled into the table, so the response schema can
+  // require them without a migration and without a dual-shape type: an old order
+  // reads as a one-stage shop, which is exactly what it was.
+  return {
+    ...rest,
+    pipelineVersion: rest.pipelineVersion ?? DEFAULT_PIPELINE.version,
+    stages: rest.stages ?? DEFAULT_PIPELINE.stages,
+    currentStageId: rest.currentStageId ?? DEFAULT_PIPELINE.stages[0].id,
+    stageEnteredAt: rest.stageEnteredAt ?? rest.createdAt,
+  };
 }
 
 @Injectable()
@@ -37,6 +49,7 @@ export class OrdersService {
   constructor(
     private readonly repo: DynamoRepository,
     private readonly registry: SchemaRegistryService,
+    private readonly pipeline: PipelineService,
   ) {}
 
   async create(input: CreateOrder): Promise<OrderResponse> {
@@ -64,6 +77,11 @@ export class OrdersService {
     }
 
     const attributes = await this.registry.validate('Order', input.attributes);
+
+    // Copied onto the order below, at write time, exactly as `unitPriceMinor` is:
+    // a later rename or reorder by the owner publishes a new pipeline version and
+    // must never rewrite the lifecycle an order already in flight is walking.
+    const pipeline = await this.pipeline.get();
 
     const products = await Promise.all(
       ids.map(async (id) => {
@@ -127,6 +145,10 @@ export class OrdersService {
       shippingAddress: input.shippingAddress,
       createdAt,
       attributes,
+      pipelineVersion: pipeline.version,
+      stages: pipeline.stages,
+      currentStageId: pipeline.stages[0].id,
+      stageEnteredAt: createdAt,
     };
 
     const fullRecord: OrderRecord = {
@@ -167,6 +189,26 @@ export class OrdersService {
           TableName: this.repo.tableName,
           Item: fullRecord,
           ConditionExpression: 'attribute_not_exists(PK)',
+        },
+      },
+      {
+        // The pipeline was read a moment ago and nothing else pins it. If the
+        // owner saves a new one between that read and this commit, the order
+        // would be stamped with a lifecycle already superseded; fail the whole
+        // transaction instead and let the buyer retry against the new pipeline.
+        //
+        // Deliberately last: `explainFailure` maps a failed index 0..n-1 back to
+        // a line item, so nothing may be inserted ahead of the stock updates.
+        ConditionCheck: {
+          TableName: this.repo.tableName,
+          Key: this.repo.key(PIPELINE_SK),
+          ...(pipeline.version === 0
+            ? { ConditionExpression: 'attribute_not_exists(#version)' }
+            : {
+                ConditionExpression: '#version = :expectedVersion',
+                ExpressionAttributeValues: { ':expectedVersion': pipeline.version },
+              }),
+          ExpressionAttributeNames: { '#version': 'version' },
         },
       },
     ];
