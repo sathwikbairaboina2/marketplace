@@ -128,3 +128,40 @@ export const cancelRaw = (headers: Record<string, string>, id: string): Promise<
 
 export const problemType = async (res: Response): Promise<string> =>
   ((await res.json()) as { type: string }).type;
+
+export interface MessageView {
+  id: string;
+  stageId: string;
+  authorRole: 'buyer' | 'seller';
+  body: string;
+}
+
+export const postMessageRaw = (
+  headers: Record<string, string>,
+  orderId: string,
+  body: string,
+): Promise<Response> =>
+  fetch(`${baseUrl}/api/v1/orders/${orderId}/messages`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ body }),
+  });
+
+export async function postMessage(
+  headers: Record<string, string>,
+  orderId: string,
+  body: string,
+): Promise<MessageView> {
+  const res = await postMessageRaw(headers, orderId, body);
+  expect(res.status).toBe(201);
+  return (await res.json()) as MessageView;
+}
+
+export async function listMessages(
+  headers: Record<string, string>,
+  orderId: string,
+): Promise<MessageView[]> {
+  const res = await fetch(`${baseUrl}/api/v1/orders/${orderId}/messages?limit=50`, { headers });
+  expect(res.status).toBe(200);
+  return ((await res.json()) as { items: MessageView[] }).items;
+}
