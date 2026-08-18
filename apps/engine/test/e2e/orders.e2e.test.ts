@@ -244,7 +244,12 @@ describe('orders', () => {
   });
 
   it('hides another user order within the same tenant', async () => {
-    const otherHeaders = await authHeaders('tenant_a', 'carol@example.com');
+    // A buyer explicitly: `authHeaders` mints an admin by default, and a tenant
+    // admin may now read any order in their own shop -- they are the ones who
+    // pack and dispatch it. That exception is asserted in the seller-queue
+    // tests; what this test protects is the rule it was written for, that one
+    // shopper cannot read another shopper's order.
+    const otherHeaders = await authHeaders('tenant_a', 'carol@example.com', 'buyer');
     const product = await createProduct(headers, { stock: 5 });
     const created = await fetch(`${baseUrl}/api/v1/orders`, {
       method: 'POST',

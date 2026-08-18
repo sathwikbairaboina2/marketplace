@@ -7,10 +7,17 @@ import { ThreadsService } from './threads.service';
 
 /**
  * A message POST is a cheaper spam vector than anything else exposed: one small
- * write, no transaction, and a buyer legitimately sends a handful per order
- * rather than dozens a minute.
+ * write and no transaction, so it gets a bucket ten times tighter than the
+ * global 600 a minute.
+ *
+ * Not tighter than this, because the limiter is keyed by address and runs
+ * *before* authentication -- deliberately, since a limiter that only sees
+ * authenticated requests stops neither a flood nor a password list. That means
+ * one bucket is shared by everyone behind a single address, so a household or
+ * an office would hit a stricter limit between them while each person was
+ * sending perfectly ordinary messages.
  */
-export const MESSAGE_RATE_LIMIT = 10;
+export const MESSAGE_RATE_LIMIT = 60;
 export const MESSAGE_RATE_TTL_MS = 60_000;
 
 @Controller('orders')
