@@ -26,6 +26,25 @@ const product = {
   attributes: { colour: 'red' },
 };
 
+const order = {
+  entityType: 'Order' as const,
+  id: '01J0000000000000000000000D',
+  userId: 'u1',
+  status: 'confirmed' as const,
+  totalAmountMinor: 3000,
+  currency: 'USD',
+  items: [{ productId: product.id, quantity: 2, unitPriceMinor: 1500 }],
+  shippingAddress: { line1: '1 Test Street' },
+  createdAt: '2026-08-07T00:00:00.000Z',
+  attributes: {},
+  pipelineVersion: 0,
+  stages: [
+    { id: '00000000000000000000000000', name: 'Confirmed', cancellable: true, messaging: false },
+  ],
+  currentStageId: '00000000000000000000000000',
+  stageEnteredAt: '2026-08-07T00:00:00.000Z',
+};
+
 describe('response schemas', () => {
   it('accepts a product response and rejects one missing priceMinor', () => {
     expect(ProductResponseSchema.parse(product)).toMatchObject({ name: 'Widget' });
@@ -67,19 +86,28 @@ describe('response schemas', () => {
   });
 
   it('accepts an order response with its line items', () => {
-    const order = {
-      entityType: 'Order' as const,
-      id: '01J0000000000000000000000D',
-      userId: 'u1',
-      status: 'confirmed' as const,
-      totalAmountMinor: 3000,
-      currency: 'USD',
-      items: [{ productId: product.id, quantity: 2, unitPriceMinor: 1500 }],
-      shippingAddress: { line1: '1 Test Street' },
-      createdAt: '2026-08-07T00:00:00.000Z',
-      attributes: {},
-    };
     expect(OrderResponseSchema.parse(order).items).toHaveLength(1);
+  });
+
+  // The snapshot is required on the response even though it is absent from
+  // orders written before stages existed: OrdersService fills it on read, so
+  // the wire shape stays single and the table needs no backfill.
+  it('requires the stage snapshot on an order response', () => {
+    const { stages, ...withoutStages } = order;
+    expect(OrderResponseSchema.safeParse(withoutStages).success).toBe(false);
+  });
+
+  it('accepts an order carrying a multi-stage snapshot', () => {
+    const parsed = OrderResponseSchema.parse({
+      ...order,
+      pipelineVersion: 3,
+      stages: [
+        { id: '01ARZ3NDEKTSV4RRFFQ69G5FAV', name: 'Cut', cancellable: true, messaging: true },
+        { id: '01ARZ3NDEKTSV4RRFFQ69G5FAW', name: 'Sealed', cancellable: false, messaging: false },
+      ],
+      currentStageId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',
+    });
+    expect(parsed.stages).toHaveLength(2);
   });
 
   it('accepts a booking response', () => {

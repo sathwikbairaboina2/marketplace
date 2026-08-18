@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { AttributesSchema, CurrencySchema, QuantitySchema, UlidSchema } from './common';
+import type { Stage } from './pipeline';
 
 export const OrderStatusSchema = z.enum(['pending', 'confirmed', 'cancelled']);
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
@@ -39,4 +40,11 @@ export interface OrderRecord {
   shippingAddress: Record<string, string>;
   createdAt: string;
   attributes: Record<string, unknown>;
+  // Optional on the stored record, required on the response: orders written
+  // before stages existed have none of these, and `toResponse` fills them from
+  // DEFAULT_PIPELINE rather than a migration backfilling the table.
+  pipelineVersion?: number;
+  stages?: Stage[];
+  currentStageId?: string;
+  stageEnteredAt?: string;
 }
