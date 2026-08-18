@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Button } from 'antd';
 import type { OrderResponse } from '@marketplace/contracts';
 import { listAllOrders } from '../../../../lib/api/orders';
 import { formatMoney, formatRelative } from '../../../../lib/format';
@@ -29,6 +30,11 @@ export default function AdminOrdersPage() {
             <EmptyState
               title="No orders yet"
               description="Orders your customers place appear here, with the stage each one has reached."
+              action={
+                <Link href="/admin/settings">
+                  <Button>Set your order stages</Button>
+                </Link>
+              }
             />
           }
           columns={[

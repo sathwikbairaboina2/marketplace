@@ -108,7 +108,11 @@ export function StageEditor() {
       <div className="mp-stage-editor">
         <div>
           {stages.map((stage, index) => (
-            <Space.Compact key={stage.key} style={{ display: 'flex', marginBottom: 8 }}>
+            <Space.Compact
+              key={stage.key}
+              data-testid={`stage-row-${index}`}
+              style={{ display: 'flex', marginBottom: 8 }}
+            >
               <Input
                 value={stage.name}
                 placeholder="Stage name"
