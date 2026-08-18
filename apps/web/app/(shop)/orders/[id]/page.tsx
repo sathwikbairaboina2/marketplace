@@ -2,11 +2,16 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Descriptions, Table } from 'antd';
+import { Button, Descriptions, Popconfirm, Table } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import type { OrderResponse } from '@marketplace/contracts';
-import { getOrder } from '../../../../lib/api/orders';
+import type { MessageResponse, OrderResponse } from '@marketplace/contracts';
+import { cancelOrder, getOrder } from '../../../../lib/api/orders';
 import { getProduct } from '../../../../lib/api/products';
+import { listMessages } from '../../../../lib/api/messages';
+import { ProblemError } from '../../../../lib/api/http';
+import { notifyProblem } from '../../../../lib/problem-notify';
+import { StageTracker } from '../../../../components/stage-tracker';
+import { StageThread } from '../../../../components/stage-thread';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { useResource } from '../../../../lib/use-resource';
@@ -49,12 +54,41 @@ export default function OrderDetailPage() {
     return Object.fromEntries(resolved.filter(([, name]) => name !== null) as [string, string][]);
   }, [productIds]);
 
+  // Declared with the other hooks, above the early returns. Closed threads come
+  // back too -- they are the history -- and are grouped by stage below against
+  // the order's own snapshot.
+  const {
+    data: messagePage,
+    retry: retryMessages,
+  } = useResource<{ items: MessageResponse[]; nextCursor: string | null }>(
+    () => listMessages(id, 100, null),
+    [id],
+  );
+
   if (loading) return <DetailSkeleton />;
   if (error) return <ErrorPanel error={error} onRetry={retry} />;
   if (!order) return null;
 
   const money = (minor: number) => `${formatMoney(minor, order.currency)} ${order.currency}`;
   const attributeRows = schema ? toDescriptionRows(schema.fields, order.attributes) : [];
+
+  const messages = messagePage?.items ?? [];
+  const currentStage = order.stages.find((stage) => stage.id === order.currentStageId);
+  const canCancel = order.status === 'confirmed' && currentStage?.cancellable === true;
+
+  const cancel = async () => {
+    try {
+      await cancelOrder(order.id);
+      retry();
+    } catch (err) {
+      // The seller can advance this order between the page rendering and the
+      // click. The engine refuses on the stage condition rather than cancelling
+      // goods that have just gone out; the honest response is to reload and show
+      // what actually happened, never to replay the click.
+      notifyProblem(err);
+      if (err instanceof ProblemError && err.type.includes('stage-moved')) retry();
+    }
+  };
 
   return (
     <>
@@ -121,6 +155,43 @@ export default function OrderDetailPage() {
         </div>
 
         <aside className="mp-summary">
+          <h2>Progress</h2>
+          <StageTracker
+            stages={order.stages}
+            currentStageId={order.currentStageId}
+            cancelled={order.status === 'cancelled'}
+            renderStageExtra={(stage, state) => {
+              if (!stage.messaging) return null;
+              const forStage = messages.filter((message) => message.stageId === stage.id);
+              // A stage already passed with nothing said in it is not worth a heading.
+              if (state !== 'current' && forStage.length === 0) return null;
+              return (
+                <StageThread
+                  orderId={order.id}
+                  messages={forStage}
+                  open={state === 'current' && order.status === 'confirmed'}
+                  onPosted={retryMessages}
+                />
+              );
+            }}
+          />
+
+          {canCancel && (
+            /* Popconfirm, never window.confirm: a native modal blocks the
+               browser harness and takes the whole campaign with it. */
+            <Popconfirm
+              title="Cancel this order?"
+              description="The items go back into stock."
+              okText="Cancel order"
+              cancelText="Keep it"
+              onConfirm={cancel}
+            >
+              <Button danger block style={{ marginTop: 12 }}>
+                Cancel order
+              </Button>
+            </Popconfirm>
+          )}
+
           <h2>Summary</h2>
           <div className="mp-summary-row mp-summary-total">
             <span>Total</span>
