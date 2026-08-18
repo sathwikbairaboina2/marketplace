@@ -7,6 +7,7 @@ export * from './event';
 export * from './booking';
 export * from './flow';
 export * from './pipeline';
+export * from './thread';
 export * from './sqs';
 export * from './agent';
 export * from './responses';

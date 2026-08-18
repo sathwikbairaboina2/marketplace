@@ -52,6 +52,14 @@ export class OrdersService {
     private readonly pipeline: PipelineService,
   ) {}
 
+  /**
+   * Exposed for ThreadsService: one normalisation of a stored order, not two.
+   * An order written before stages existed must read the same wherever it is read.
+   */
+  toResponsePublic(record: OrderRecord): OrderResponse {
+    return toResponse(record);
+  }
+
   async create(input: CreateOrder): Promise<OrderResponse> {
     if (input.items.length > MAX_ORDER_LINE_ITEMS) {
       throw new ProblemException(
