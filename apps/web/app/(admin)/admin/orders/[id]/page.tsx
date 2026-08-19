@@ -6,7 +6,7 @@ import { Button, Descriptions, Table } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { MessageResponse, OrderResponse } from '@marketplace/contracts';
 import { advanceOrder, getOrder } from '../../../../../lib/api/orders';
-import { listMessages } from '../../../../../lib/api/messages';
+import { listWholeThread } from '../../../../../lib/api/messages';
 import { ProblemError } from '../../../../../lib/api/http';
 import { notifyProblem } from '../../../../../lib/problem-notify';
 import { useResource } from '../../../../../lib/use-resource';
@@ -32,8 +32,8 @@ export default function AdminOrderDetailPage() {
   );
   const { data: messagePage, retry: retryMessages } = useResource<{
     items: MessageResponse[];
-    nextCursor: string | null;
-  }>(() => listMessages(id, 100, null), [id]);
+    truncated: boolean;
+  }>(() => listWholeThread(id), [id]);
 
   if (loading) return <DetailSkeleton />;
   if (error) return <ErrorPanel error={error} onRetry={retry} />;

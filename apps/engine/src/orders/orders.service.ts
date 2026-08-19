@@ -328,6 +328,22 @@ export class OrdersService {
     }
 
     const index = current.stages.findIndex((stage) => stage.id === current.currentStageId);
+    if (index === -1) {
+      // The order points at a stage its own snapshot does not contain. Nothing
+      // in this service can produce that -- `create` takes the first stage of
+      // the snapshot it just wrote and `advance` only ever moves to another
+      // member of it -- but `stages[-1 + 1]` is `stages[0]`, so without this an
+      // order in that state would silently "advance" back to its first stage.
+      // The tracker deliberately falls back to the first stage for *rendering*;
+      // a state transition is not allowed the same guess.
+      throw new ProblemException(
+        'order-not-advanceable',
+        409,
+        'Order is not advanceable',
+        `order ${id} is in a stage that is not part of the stages it was placed under`,
+        { stageId: current.currentStageId },
+      );
+    }
     const next = current.stages[index + 1];
     if (!next) {
       // A shop that has never configured a pipeline has exactly one stage, which

@@ -17,8 +17,7 @@ vi.mock('../../../../lib/problem-notify', () => ({ notifyProblem: vi.fn() }));
 const listMessages = vi.fn();
 const cancelOrder = vi.fn();
 vi.mock('../../../../lib/api/messages', () => ({
-  listMessages: (id: string, limit: number, cursor: string | null) =>
-    listMessages(id, limit, cursor),
+  listWholeThread: (id: string) => listMessages(id),
   postMessage: vi.fn(),
 }));
 
@@ -56,7 +55,7 @@ beforeEach(() => {
   getProduct.mockReset();
   getOrder.mockResolvedValue(ORDER);
   listMessages.mockReset();
-  listMessages.mockResolvedValue({ items: [], nextCursor: null });
+  listMessages.mockResolvedValue({ items: [], truncated: false });
   cancelOrder.mockReset();
 });
 

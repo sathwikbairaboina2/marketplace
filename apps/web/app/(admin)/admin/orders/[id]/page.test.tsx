@@ -13,8 +13,7 @@ vi.mock('../../../../../lib/api/orders', () => ({
   advanceOrder: (id: string, stageId: string) => advanceOrder(id, stageId),
 }));
 vi.mock('../../../../../lib/api/messages', () => ({
-  listMessages: (id: string, limit: number, cursor: string | null) =>
-    listMessages(id, limit, cursor),
+  listWholeThread: (id: string) => listMessages(id),
   postMessage: vi.fn(),
 }));
 vi.mock('../../../../../lib/problem-notify', () => ({ notifyProblem: vi.fn() }));
@@ -46,7 +45,7 @@ beforeEach(() => {
   advanceOrder.mockReset();
   listMessages.mockReset();
   getOrder.mockResolvedValue(ORDER);
-  listMessages.mockResolvedValue({ items: [], nextCursor: null });
+  listMessages.mockResolvedValue({ items: [], truncated: false });
   advanceOrder.mockResolvedValue(orderAt({ currentStageId: 'st-2' }));
 });
 

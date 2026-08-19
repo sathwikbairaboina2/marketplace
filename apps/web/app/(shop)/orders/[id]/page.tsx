@@ -7,7 +7,7 @@ import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { MessageResponse, OrderResponse } from '@marketplace/contracts';
 import { cancelOrder, getOrder } from '../../../../lib/api/orders';
 import { getProduct } from '../../../../lib/api/products';
-import { listMessages } from '../../../../lib/api/messages';
+import { listWholeThread } from '../../../../lib/api/messages';
 import { ProblemError } from '../../../../lib/api/http';
 import { notifyProblem } from '../../../../lib/problem-notify';
 import { StageTracker } from '../../../../components/stage-tracker';
@@ -60,8 +60,8 @@ export default function OrderDetailPage() {
   const {
     data: messagePage,
     retry: retryMessages,
-  } = useResource<{ items: MessageResponse[]; nextCursor: string | null }>(
-    () => listMessages(id, 100, null),
+  } = useResource<{ items: MessageResponse[]; truncated: boolean }>(
+    () => listWholeThread(id),
     [id],
   );
 
