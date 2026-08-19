@@ -130,5 +130,6 @@ passed alone immediately after); and ollama on `11434` belonging to another
 project, this stack using `11435`.
 
 Rebuilding one container for the edit-test loop is
-`_devkit\marketplace\devup.ps1 -Rebuild engine` — about two minutes against nine
-for a full boot, with the same health and tenant-isolation checks.
+`docker compose -f docker/docker-compose.yml up -d --build --force-recreate engine`
+— about two minutes against nine for a full boot, most of which is the agents
+container pulling its ollama model, which an engine change cannot invalidate.

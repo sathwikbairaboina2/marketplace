@@ -88,8 +88,10 @@ Ten defects, every one caught by a test rather than by reading code.
   red suites twice, every one passing alone. `int-test` suites boot Nest
   applications and one calls a local model that holds a core for a minute.
   Jest is capped at two workers per app and CI pins `--concurrency=1`.
-- **Ollama on `11434` belongs to another project** on this machine; this stack
-  publishes `11435`.
+- **Ollama publishes `11435`, not its default `11434`.** Any other ollama on the
+  machine already answers on the default, and a host-side wait against it
+  succeeds while talking to a daemon that has never heard of this project's
+  model.
 
 ## Next
 

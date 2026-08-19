@@ -6,10 +6,10 @@ import { EnvConfig } from '../config/env.schema';
 
 // 11435, not 11434: this is the only test in the repo that calls a model for
 // real, so it is the only one that has to agree with the host port
-// docker/docker-compose.yml publishes -- 11434 belongs to another project's
-// ollama on this machine (see 8973672). Pointed at 11434 it reaches that
-// daemon, finds no qwen2.5:7b-instruct, and fails as `llm-unavailable`, which
-// reads as a broken provider rather than a misaddressed one.
+// docker/docker-compose.yml publishes. 11434 is ollama's default, so any other
+// ollama on the machine already answers there; pointed at it this test reaches
+// that daemon, finds no qwen2.5:7b-instruct, and fails as `llm-unavailable`,
+// which reads as a broken provider rather than a misaddressed one.
 const env = {
   OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11435',
   LLM_MODEL: process.env.LLM_MODEL ?? 'qwen2.5:7b-instruct',
