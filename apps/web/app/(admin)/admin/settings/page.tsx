@@ -5,6 +5,7 @@ import { Button, Card, Form, Input, Switch, message } from 'antd';
 import { getAnnouncement, putAnnouncement } from '../../../../lib/api/settings';
 import { PageHeader } from '../../../../components/page-header';
 import { notifyProblem } from '../../../../lib/problem-notify';
+import { StageEditor } from './stage-editor';
 
 export default function AdminSettingsPage() {
   const [form] = Form.useForm();
@@ -35,6 +36,7 @@ export default function AdminSettingsPage() {
   return (
     <>
       <PageHeader title="Settings" subtitle="What your shop says for itself." />
+      <StageEditor />
       <Card className="mp-form-card" title="Announcement">
         <Form
           form={form}

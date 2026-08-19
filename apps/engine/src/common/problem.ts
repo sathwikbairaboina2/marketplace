@@ -9,6 +9,15 @@ export type ProblemType =
   | 'schema-version-conflict'
   | 'too-many-line-items'
   | 'mixed-currency-order'
+  // A second admin saved the shop's order stages while this one was editing.
+  | 'pipeline-version-conflict'
+  // The order left the stage the caller was looking at before their change landed.
+  | 'stage-moved'
+  | 'order-at-final-stage'
+  | 'order-not-advanceable'
+  | 'order-not-cancellable'
+  | 'stage-not-messageable'
+  | 'order-not-messageable'
   | 'transaction-conflict'
   | 'request-in-progress'
   // Upload rejected on inspection: either the declared type is not accepted, or

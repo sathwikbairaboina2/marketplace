@@ -1018,6 +1018,156 @@ await journey('an expired-looking or forged token is refused everywhere', async 
   }
 });
 
+// ================================================= N. owner-defined stages
+section('A shop with stages of its own');
+
+/**
+ * Names no part of this system has ever seen. That is the point: if any of it
+ * were keyed to "Shipped", or to a fixed number of stages, this section is
+ * where it would show.
+ */
+const STAGE_ONE = `Received in studio ${RUN}`;
+const STAGE_TWO = `Mount cut ${RUN}`;
+const STAGE_THREE = `Collected ${RUN}`;
+
+let stagedOrder;
+
+await journey('an owner names the stages an order will pass through', async () => {
+  await seller.goto(`${WEB}/admin/settings`);
+  await seller.getByLabel('Stage 1 name').waitFor({ timeout: 30_000 });
+
+  // A shop that has never configured one starts with a single cancellable
+  // stage; this renames it and turns its thread on.
+  await seller.getByLabel('Stage 1 name').fill(STAGE_ONE);
+  await seller.getByTestId('stage-row-0').getByRole('button', { name: 'Messages' }).click();
+
+  await seller.getByRole('button', { name: 'Add stage' }).click();
+  await seller.getByLabel('Stage 2 name').fill(STAGE_TWO);
+  await seller.getByTestId('stage-row-1').getByRole('button', { name: 'Messages' }).click();
+
+  await seller.getByRole('button', { name: 'Add stage' }).click();
+  await seller.getByLabel('Stage 3 name').fill(STAGE_THREE);
+
+  await seller.getByRole('button', { name: 'Publish stages' }).click();
+  await seller.waitForTimeout(1500);
+
+  // Checked where it landed, not merely where it was typed.
+  const stored = await api(tokenAdminA, 'GET', '/settings/pipeline');
+  must(stored.status === 200, `pipeline read answered ${stored.status}`);
+  must(
+    stored.json.stages.map((s) => s.name).join(' | ') ===
+      [STAGE_ONE, STAGE_TWO, STAGE_THREE].join(' | '),
+    `engine holds ${JSON.stringify(stored.json.stages.map((s) => s.name))}`,
+  );
+  must(stored.json.stages[0].cancellable === true, 'first stage should be cancellable');
+  must(stored.json.stages[2].messaging === false, 'third stage should have no thread');
+});
+
+await journey('an order placed afterwards starts in the shop own first stage', async () => {
+  const product = await createProduct({ stock: '4' });
+  stagedOrder = await addToCartAndOrder(shopper, product.id);
+  await shopper.waitForTimeout(1000);
+
+  must(
+    await shopper.getByText(STAGE_ONE).first().isVisible(),
+    'the buyer order page does not show the first stage',
+  );
+
+  const fromApi = await api(tokenBuyerA, 'GET', `/orders/${stagedOrder}`);
+  must(fromApi.status === 200, `order read answered ${fromApi.status}`);
+  must(
+    fromApi.json.currentStageId === fromApi.json.stages[0].id,
+    'the order did not start in the first stage',
+  );
+});
+
+await journey('a buyer writes to the shop on a stage that allows it', async () => {
+  await shopper.getByPlaceholder('Write a message…').first().fill('Artwork is in the post');
+  await shopper.getByRole('button', { name: 'Send' }).first().click();
+  await shopper.waitForTimeout(1200);
+
+  const thread = await api(tokenBuyerA, 'GET', `/orders/${stagedOrder}/messages`);
+  must(thread.status === 200, `thread read answered ${thread.status}`);
+  must(thread.json.items.length === 1, `thread holds ${thread.json.items.length} messages`);
+  must(thread.json.items[0].authorRole === 'buyer', 'the buyer was not recorded as the buyer');
+});
+
+await journey('a seller advances the order and the buyer sees it move', async () => {
+  await seller.goto(`${WEB}/admin/orders/${stagedOrder}`);
+  await seller.getByRole('button', { name: `Advance to ${STAGE_TWO}` }).click();
+  await seller.waitForTimeout(1500);
+
+  await shopper.reload();
+  await shopper.waitForTimeout(1200);
+  must(
+    await shopper.getByText(STAGE_TWO).first().isVisible(),
+    'the buyer page does not show the new stage',
+  );
+
+  const fromApi = await api(tokenBuyerA, 'GET', `/orders/${stagedOrder}`);
+  must(
+    fromApi.json.currentStageId === fromApi.json.stages[1].id,
+    'the order did not advance to the second stage',
+  );
+});
+
+await journey('a message written after the move belongs to the new stage', async () => {
+  await shopper.getByPlaceholder('Write a message…').first().fill('Any idea when it is ready?');
+  await shopper.getByRole('button', { name: 'Send' }).first().click();
+  await shopper.waitForTimeout(1200);
+
+  const thread = await api(tokenBuyerA, 'GET', `/orders/${stagedOrder}/messages`);
+  const stages = (await api(tokenBuyerA, 'GET', `/orders/${stagedOrder}`)).json.stages;
+  const landed = thread.json.items.map((m) => m.stageId);
+  must(landed.includes(stages[0].id), 'the first message left its stage');
+  must(landed.includes(stages[1].id), 'the second message did not land in the new stage');
+});
+
+await journey('the shop withholds cancellation in a stage that forbids it', async () => {
+  // Stage two was left uncancellable, so the control is simply not there.
+  must(
+    (await shopper.getByRole('button', { name: 'Cancel order' }).count()) === 0,
+    'the buyer is still offered a cancellation',
+  );
+
+  const refused = await api(tokenBuyerA, 'POST', `/orders/${stagedOrder}/cancel`);
+  must(refused.status === 409, `the engine answered ${refused.status} to a forbidden cancel`);
+});
+
+await journey('a cancellation in an allowed stage puts the stock back', async () => {
+  const product = await createProduct({ stock: '7' });
+  const orderId = await addToCartAndOrder(shopper, product.id, { qty: 3 });
+
+  const during = await api(tokenAdminA, 'GET', `/products/${product.id}`);
+  must(during.json.stock === 4, `stock during the order was ${during.json.stock}`);
+
+  await shopper.getByRole('button', { name: 'Cancel order' }).click();
+  await shopper.getByRole('button', { name: 'Cancel order', exact: true }).last().click();
+  await shopper.waitForTimeout(1800);
+
+  const after = await api(tokenAdminA, 'GET', `/products/${product.id}`);
+  must(after.json.stock === 7, `stock after the cancellation was ${after.json.stock}`);
+
+  const order = await api(tokenBuyerA, 'GET', `/orders/${orderId}`);
+  must(order.json.status === 'cancelled', `the order is ${order.json.status}`);
+  // It keeps its stage, so the tracker can say where it stopped.
+  must(order.json.currentStageId === order.json.stages[0].id, 'the cancelled order moved');
+});
+
+await journey('an order already in flight keeps the stages it was placed under', async () => {
+  await seller.goto(`${WEB}/admin/settings`);
+  await seller.getByLabel('Stage 1 name').waitFor({ timeout: 30_000 });
+  await seller.getByLabel('Stage 1 name').fill(`Renamed entirely ${RUN}`);
+  await seller.getByRole('button', { name: 'Publish stages' }).click();
+  await seller.waitForTimeout(1500);
+
+  const order = await api(tokenBuyerA, 'GET', `/orders/${stagedOrder}`);
+  must(
+    order.json.stages[0].name === STAGE_ONE,
+    `an in-flight order now reads ${order.json.stages[0].name}`,
+  );
+});
+
 await journey('the whole run produced no server error on any page the browser touched', async () => {
   must(serverErrors.length === 0, `server errors: ${serverErrors.slice(0, 3).join(' | ')}`);
 });

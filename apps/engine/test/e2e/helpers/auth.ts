@@ -85,6 +85,13 @@ export async function tokenFor(
   return res.AuthenticationResult!.IdToken!;
 }
 
-export async function authHeaders(tenantId: string, username: string): Promise<Record<string, string>> {
-  return { authorization: `Bearer ${await tokenFor(tenantId, username)}`, 'content-type': 'application/json' };
+export async function authHeaders(
+  tenantId: string,
+  username: string,
+  role: string = 'admin',
+): Promise<Record<string, string>> {
+  return {
+    authorization: `Bearer ${await tokenFor(tenantId, username, role)}`,
+    'content-type': 'application/json',
+  };
 }

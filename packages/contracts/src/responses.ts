@@ -4,6 +4,7 @@ import { ProductStatusSchema } from './product';
 import { OrderStatusSchema } from './order';
 import { BookingStatusSchema } from './booking';
 import { BlueprintDiffSchema, FlowStatusSchema } from './flow';
+import { MAX_STAGES, StageSchema } from './pipeline';
 import { DynamicEntityTypeSchema, FieldDefinitionSchema, FieldNameSchema } from './registry';
 
 // The engine's `*Response` types are `Omit<*Record, 'PK' | 'SK' | ...>` -- the
@@ -76,6 +77,13 @@ export const OrderResponseSchema = z
     shippingAddress: z.record(z.string(), z.string()),
     createdAt: IsoDateTimeSchema,
     attributes: AttributesSchema,
+    // The stage list this order was placed under, copied at write time. A later
+    // rename or reorder by the owner publishes a new pipeline version and never
+    // touches this snapshot -- the same argument `unitPriceMinor` makes for price.
+    pipelineVersion: z.number().int().nonnegative(),
+    stages: z.array(StageSchema).min(1).max(MAX_STAGES),
+    currentStageId: z.string(),
+    stageEnteredAt: IsoDateTimeSchema,
   })
   .strict();
 export type OrderResponse = z.infer<typeof OrderResponseSchema>;

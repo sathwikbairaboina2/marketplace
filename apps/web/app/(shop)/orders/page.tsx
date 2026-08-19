@@ -55,6 +55,16 @@ export default function OrdersPage() {
               render: (status: string) => <StatusTag status={status} />,
             },
             {
+              // Resolved from the row's own snapshot, never from a shared
+              // pipeline fetch: an order placed under an older version must show
+              // the name it was placed with, and one fetch would relabel every
+              // historical row the moment the owner renamed a stage.
+              title: 'Stage',
+              key: 'stage',
+              render: (_, row) =>
+                row.stages.find((stage) => stage.id === row.currentStageId)?.name ?? '—',
+            },
+            {
               // What was bought, not how many rows it came to. Two orders
               // placed the same afternoon were otherwise identical at a glance.
               title: 'Items',
