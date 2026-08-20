@@ -31,7 +31,7 @@ const LINKS = [
 
 export function ShopHeader() {
   const { principal, signOut } = useAuth();
-  const { lines } = useCart();
+  const { cart } = useCart();
   const storefront = useStorefrontConfig();
   const pathname = usePathname();
   const screens = Grid.useBreakpoint();
@@ -91,7 +91,7 @@ export function ShopHeader() {
 
       <Space size="small">
         <Link href="/cart" aria-label="Cart">
-          <Badge count={lines.length} size="small" offset={[-2, 2]}>
+          <Badge count={cart.lines.length} size="small" offset={[-2, 2]}>
             <Button icon={<ShoppingCartOutlined />}>{narrow ? null : 'Cart'}</Button>
           </Badge>
         </Link>

@@ -45,6 +45,9 @@ export default function AdminOrderDetailPage() {
   const money = (minor: number) => `${formatMoney(minor, order.currency)} ${order.currency}`;
 
   const advance = async () => {
+    // An awaiting_payment order has no stage to advance from; the button is
+    // not rendered for one, and the service refuses regardless.
+    if (!order.currentStageId) return;
     try {
       // The stage the seller is looking at, so a stale page cannot skip a stage.
       await advanceOrder(order.id, order.currentStageId);
@@ -110,7 +113,9 @@ export default function AdminOrderDetailPage() {
           <h2>Progress</h2>
           <StageTracker
             stages={order.stages}
-            currentStageId={order.currentStageId}
+            // An unpaid order points at no stage; the tracker's own unknown-id
+            // fallback renders it at the first stage until payment lands.
+            currentStageId={order.currentStageId ?? ''}
             cancelled={order.status === 'cancelled'}
             renderStageExtra={(stage, state) => {
               if (!stage.messaging) return null;

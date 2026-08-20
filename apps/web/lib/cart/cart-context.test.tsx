@@ -1,23 +1,46 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { render, screen, act, waitFor } from '@testing-library/react';
+
+const getCart = vi.fn();
+const putCartLine = vi.fn();
+const clearCart = vi.fn();
+vi.mock('../api/cart', () => ({
+  getCart: (...a: unknown[]) => getCart(...a),
+  putCartLine: (...a: unknown[]) => putCartLine(...a),
+  clearCart: (...a: unknown[]) => clearCart(...a),
+}));
+
+const notifyProblem = vi.fn();
+vi.mock('../problem-notify', () => ({ notifyProblem: (e: unknown) => notifyProblem(e) }));
+
+let token: string | null = 'tok-1';
+vi.mock('../auth/auth-context', () => ({ useAuth: () => ({ token }) }));
+
 import { CartProvider, useCart } from './cart-context';
 
+const line = (productId: string, qty: number) => ({
+  productId,
+  qty,
+  name: `n-${productId}`,
+  unitPriceMinor: 100,
+  currency: 'USD',
+  image: null,
+  stock: 5,
+  unavailable: false,
+});
+
 function Probe() {
-  const { lines, add, setQty, remove, clear, idempotencyKey, resetKey } = useCart();
+  const { cart, add, setQty, remove, clear, idempotencyKey, resetKey } = useCart();
   return (
     <div>
-      <span data-testid="count">{lines.length}</span>
-      <span data-testid="qty">{lines[0]?.qty ?? 0}</span>
+      <span data-testid="count">{cart.lines.length}</span>
+      <span data-testid="qty">{cart.lines[0]?.qty ?? 0}</span>
+      <span data-testid="total">{cart.totalMinor}</span>
       <span data-testid="key">{idempotencyKey}</span>
-      <button onClick={() => add({ productId: 'p1', name: 'P1', priceMinor: 100, qty: 1 })}>
-        add
-      </button>
-      <button onClick={() => add({ productId: 'p2', name: 'P2', priceMinor: 200, qty: 3 })}>
-        add2
-      </button>
-      <button onClick={() => setQty('p1', 5)}>qty</button>
-      <button onClick={() => remove('p1')}>remove</button>
-      <button onClick={() => clear()}>clear</button>
+      <button onClick={() => void add('p1', 1)}>add</button>
+      <button onClick={() => void setQty('p1', 5)}>qty</button>
+      <button onClick={() => void remove('p1')}>remove</button>
+      <button onClick={() => void clear()}>clear</button>
       <button onClick={() => resetKey()}>reset</button>
     </div>
   );
@@ -36,40 +59,73 @@ const renderProbe = () =>
   );
 
 describe('CartProvider', () => {
-  beforeEach(() => sessionStorage.clear());
-
-  it('merges quantity when the same product is added twice', async () => {
-    renderProbe();
-    await click('add');
-    await click('add');
-    expect(screen.getByTestId('count')).toHaveTextContent('1');
-    expect(screen.getByTestId('qty')).toHaveTextContent('2');
+  beforeEach(() => {
+    sessionStorage.clear();
+    getCart.mockReset().mockResolvedValue({ lines: [], totalMinor: 0 });
+    putCartLine.mockReset();
+    clearCart.mockReset();
+    notifyProblem.mockReset();
+    token = 'tok-1';
   });
 
-  it('keeps distinct products as separate lines', async () => {
+  it('fetches the cart on mount when signed in', async () => {
+    getCart.mockResolvedValue({ lines: [line('p1', 2)], totalMinor: 200 });
     renderProbe();
-    await click('add');
-    await click('add2');
-    expect(screen.getByTestId('count')).toHaveTextContent('2');
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'));
+    expect(screen.getByTestId('total')).toHaveTextContent('200');
   });
 
-  it('sets and removes quantities', async () => {
+  it('does not fetch without a session', async () => {
+    token = null;
     renderProbe();
-    await click('add');
-    await click('qty');
-    expect(screen.getByTestId('qty')).toHaveTextContent('5');
-    await click('remove');
+    await act(async () => {});
+    expect(getCart).not.toHaveBeenCalled();
     expect(screen.getByTestId('count')).toHaveTextContent('0');
   });
 
-  it('keeps one idempotency key across the life of an intent', async () => {
+  it('adds by sending the combined quantity and adopting the resolved cart', async () => {
+    getCart.mockResolvedValue({ lines: [line('p1', 2)], totalMinor: 200 });
+    putCartLine.mockResolvedValue({ lines: [line('p1', 3)], totalMinor: 300 });
+    renderProbe();
+    await waitFor(() => expect(screen.getByTestId('qty')).toHaveTextContent('2'));
+
+    await click('add');
+    expect(putCartLine).toHaveBeenCalledWith('p1', 3);
+    expect(screen.getByTestId('qty')).toHaveTextContent('3');
+  });
+
+  it('removes by sending qty 0', async () => {
+    getCart.mockResolvedValue({ lines: [line('p1', 2)], totalMinor: 200 });
+    putCartLine.mockResolvedValue({ lines: [], totalMinor: 0 });
+    renderProbe();
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'));
+
+    await click('remove');
+    expect(putCartLine).toHaveBeenCalledWith('p1', 0);
+    expect(screen.getByTestId('count')).toHaveTextContent('0');
+  });
+
+  it('refetches and reports when a write fails', async () => {
+    getCart.mockResolvedValue({ lines: [line('p1', 2)], totalMinor: 200 });
+    putCartLine.mockRejectedValue(new Error('boom'));
+    renderProbe();
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'));
+
+    await click('qty');
+    await waitFor(() => expect(notifyProblem).toHaveBeenCalled());
+    // The recovery refetch restored the server's copy.
+    expect(getCart.mock.calls.length).toBeGreaterThan(1);
+    expect(screen.getByTestId('qty')).toHaveTextContent('2');
+  });
+
+  it('keeps one idempotency key across cart edits, until explicitly reset', async () => {
+    putCartLine.mockResolvedValue({ lines: [line('p1', 1)], totalMinor: 100 });
     renderProbe();
     await act(async () => {});
     const first = screen.getByTestId('key').textContent;
     expect(first).toBeTruthy();
 
     await click('add');
-    await click('qty');
     // Editing the cart must NOT mint a new key: a retry after a network drop
     // has to reuse it, or the engine creates a second order.
     expect(screen.getByTestId('key')).toHaveTextContent(first!);
@@ -78,23 +134,14 @@ describe('CartProvider', () => {
     expect(screen.getByTestId('key').textContent).not.toBe(first);
   });
 
-  it('persists lines across a remount', async () => {
-    const { unmount } = renderProbe();
-    await click('add');
-    unmount();
-
+  it('clears through the API', async () => {
+    getCart.mockResolvedValue({ lines: [line('p1', 2)], totalMinor: 200 });
+    clearCart.mockResolvedValue({ lines: [], totalMinor: 0 });
     renderProbe();
-    await act(async () => {});
-    expect(screen.getByTestId('count')).toHaveTextContent('1');
-  });
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'));
 
-  it('clears the lines but keeps the key until it is explicitly reset', async () => {
-    renderProbe();
-    await act(async () => {});
-    const key = screen.getByTestId('key').textContent;
-    await click('add');
     await click('clear');
+    expect(clearCart).toHaveBeenCalled();
     expect(screen.getByTestId('count')).toHaveTextContent('0');
-    expect(screen.getByTestId('key')).toHaveTextContent(key!);
   });
 });

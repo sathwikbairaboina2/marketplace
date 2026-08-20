@@ -20,7 +20,8 @@ const BACKOFFS_MS = [500, 1000, 2000, 4000, 8000];
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function CartPage() {
-  const { lines, setQty, remove, clear, idempotencyKey, resetKey } = useCart();
+  const { cart, setQty, remove, clear, idempotencyKey, resetKey } = useCart();
+  const { lines } = cart;
   const schema = useSchema('Order');
   const router = useRouter();
   const [form] = Form.useForm();
@@ -36,7 +37,9 @@ export default function CartPage() {
     setBusy(true);
     try {
       const body = {
-        items: lines.map((l) => ({ productId: l.productId, quantity: l.qty })),
+        items: lines
+          .filter((l) => !l.unavailable)
+          .map((l) => ({ productId: l.productId, quantity: l.qty })),
         currency: values.currency as string,
         shippingAddress: {
           line1: values.line1 as string,
@@ -56,7 +59,7 @@ export default function CartPage() {
       for (let attempt = 0; ; attempt++) {
         try {
           const order = await createOrder(body, idempotencyKey);
-          clear();
+          void clear();
           resetKey();
           void message.success('Order placed');
           router.push(`/orders/${order.id}`);
@@ -92,8 +95,9 @@ export default function CartPage() {
     );
   }
 
-  const total = lines.reduce((sum, l) => sum + l.priceMinor * l.qty, 0);
-  const units = lines.reduce((sum, l) => sum + l.qty, 0);
+  // The server computes the total over available lines; the page renders it.
+  const total = cart.totalMinor;
+  const units = lines.filter((l) => !l.unavailable).reduce((sum, l) => sum + l.qty, 0);
 
   return (
     <>
@@ -106,7 +110,11 @@ export default function CartPage() {
         <div className="mp-checkout-main">
           <ul className="mp-lines">
             {lines.map((line) => (
-              <li key={line.productId} className="mp-line">
+              <li
+                key={line.productId}
+                className="mp-line"
+                data-unavailable={line.unavailable || undefined}
+              >
                 {/* A line the buyer can recognise at a glance -- the photo if
                     there is one, the same palette tile as everywhere else if
                     not. */}
@@ -121,27 +129,38 @@ export default function CartPage() {
                   </span>
                 )}
                 <div className="mp-line-info">
-                  <Link href={`/products/${line.productId}`} className="mp-line-name">
+                  {/* A struck-through line stays visible rather than silently
+                      vanishing: the buyer removes it themselves. */}
+                  <Link
+                    href={`/products/${line.productId}`}
+                    className="mp-line-name"
+                    style={line.unavailable ? { textDecoration: 'line-through' } : undefined}
+                  >
                     {line.name}
                   </Link>
                   <span className="mp-line-unit">
-                    {formatMoney(line.priceMinor, currency)} {currency} each
+                    {line.unavailable
+                      ? 'No longer available'
+                      : `${formatMoney(line.unitPriceMinor, currency)} ${currency} each`}
                   </span>
                 </div>
                 <InputNumber
                   min={1}
                   value={line.qty}
+                  disabled={line.unavailable}
                   aria-label={`Quantity for ${line.name}`}
-                  onChange={(v) => setQty(line.productId, v ?? 1)}
+                  onChange={(v) => void setQty(line.productId, v ?? 1)}
                 />
                 <span className="mp-line-total">
-                  {formatMoney(line.priceMinor * line.qty, currency)} {currency}
+                  {line.unavailable
+                    ? '—'
+                    : `${formatMoney(line.unitPriceMinor * line.qty, currency)} ${currency}`}
                 </span>
                 <Button
                   type="text"
                   aria-label={`Remove ${line.name}`}
                   icon={<DeleteOutlined />}
-                  onClick={() => remove(line.productId)}
+                  onClick={() => void remove(line.productId)}
                 >
                   Remove
                 </Button>

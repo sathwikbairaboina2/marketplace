@@ -101,14 +101,11 @@ export default function ProductDetailPage() {
               icon={<ShoppingCartOutlined />}
               disabled={soldOut}
               onClick={() => {
-                add({
-                  productId: product.id,
-                  name: product.name,
-                  priceMinor: product.priceMinor,
-                  qty,
-                  image: product.images[0],
-                });
-                void message.success(`${product.name} added to cart`);
+                // The server resolves name, price and image; the page sends
+                // only identity and quantity.
+                void add(product.id, qty).then(() =>
+                  message.success(`${product.name} added to cart`),
+                );
               }}
             >
               Add to cart

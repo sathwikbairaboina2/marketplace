@@ -158,7 +158,7 @@ export default function OrderDetailPage() {
           <h2>Progress</h2>
           <StageTracker
             stages={order.stages}
-            currentStageId={order.currentStageId}
+            currentStageId={order.currentStageId ?? ''}
             cancelled={order.status === 'cancelled'}
             renderStageExtra={(stage, state) => {
               if (!stage.messaging) return null;
