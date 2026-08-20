@@ -25,7 +25,7 @@ export const MessageResponseSchema = z
     entityType: z.literal('Message'),
     id: UlidSchema,
     orderId: UlidSchema,
-    stageId: z.string(),
+    stageId: z.string().nullable(),
     authorUserId: z.string(),
     // Copied at write time rather than resolved when the thread is read: a role
     // can change later, and a conversation should show who somebody was when

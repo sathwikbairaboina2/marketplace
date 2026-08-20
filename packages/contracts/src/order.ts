@@ -52,6 +52,6 @@ export interface OrderRecord {
   // DEFAULT_PIPELINE rather than a migration backfilling the table.
   pipelineVersion?: number;
   stages?: Stage[];
-  currentStageId?: string;
+  currentStageId?: string | null;
   stageEnteredAt?: string;
 }
