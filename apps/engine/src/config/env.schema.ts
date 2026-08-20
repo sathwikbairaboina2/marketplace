@@ -42,6 +42,10 @@ export const EnvSchema = z.object({
   // COGNITO_ENDPOINT / COGNITO_ENDPOINT_HOST in docker/seed/seed.ts.
   S3_PUBLIC_ENDPOINT: z.string().url().optional(),
   MAX_IMAGE_BYTES: z.coerce.number().int().positive().default(5_242_880),
+  // Optional image renderer (a ComfyUI instance). Unset -- the default -- means
+  // the storefront wizard simply never offers image generation; nothing else
+  // in the system changes. Same posture as S3_BUCKET above.
+  IMAGE_GEN_URL: z.string().url().optional(),
   DEV_TENANT_ID: z.string().min(1).default('tenant-dev'),
   DEV_USERNAME: z.string().min(1).default('dev@marketplace.local'),
   COGNITO_ENDPOINT: z.string().url().optional(),

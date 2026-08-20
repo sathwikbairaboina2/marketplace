@@ -16,6 +16,7 @@ import { OrdersModule } from './orders/orders.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { FlowsModule } from './flows/flows.module';
 import { SettingsModule } from './settings/settings.module';
+import { StorefrontModule } from './storefront/storefront.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { ThreadsModule } from './threads/threads.module';
 import { UploadsModule } from './uploads/uploads.module';
@@ -58,6 +59,7 @@ import { MessagingModule } from './messaging/messaging.module';
     BookingsModule,
     FlowsModule,
     SettingsModule,
+    StorefrontModule,
     PipelineModule,
     ThreadsModule,
     // Read from process.env rather than ENV: `registerIfEnabled` decides

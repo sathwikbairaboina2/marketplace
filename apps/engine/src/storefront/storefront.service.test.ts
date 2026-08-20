@@ -55,6 +55,19 @@ describe('StorefrontService', () => {
     await expect(service.getPublished()).resolves.toEqual(config);
   });
 
+  // The repository returns the raw item, table keys included; the strict
+  // contract schema must never see them. This is exactly the 500 the first
+  // e2e run produced.
+  it('strips the table keys a stored item carries', async () => {
+    repo.get.mockResolvedValue({ ...config, PK: 'TENANT#acme', SK: 'SETTINGS#storefront' });
+    await expect(service.getPublished()).resolves.toEqual(config);
+
+    repo.get.mockResolvedValue({ ...config, PK: 'p', SK: 's' });
+    repo.put.mockResolvedValue(undefined);
+    await expect(service.publish()).resolves.toEqual(config);
+    expect(repo.put).toHaveBeenCalledWith('SETTINGS#storefront', config);
+  });
+
   it('putDraft rejects a non-admin with a 403 problem', async () => {
     asBuyer();
     await expect(service.putDraft(config)).rejects.toMatchObject({ status: 403 });

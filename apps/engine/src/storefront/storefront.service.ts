@@ -14,6 +14,16 @@ const PUBLISHED_SK = settingsSk('storefront');
 const DRAFT_SK = settingsSk('storefront-draft');
 const ONBOARDING_SK = settingsSk('storefront-onboarding');
 
+/**
+ * The repository hands back the raw item, table keys included. The config
+ * schema is strict -- the right call on every write path -- so the keys must
+ * come off before a read is parsed, or every read of a stored config 500s.
+ */
+function stripTableKeys(item: Record<string, unknown>): Record<string, unknown> {
+  const { PK: _pk, SK: _sk, ...rest } = item;
+  return rest;
+}
+
 @Injectable()
 export class StorefrontService {
   constructor(
@@ -30,15 +40,15 @@ export class StorefrontService {
 
   /** Absence is a state: a store that never ran the wizard renders the default theme. */
   async getPublished(): Promise<StorefrontConfig | null> {
-    const found = await this.repo.get<StorefrontConfig>(PUBLISHED_SK);
-    return found ? StorefrontConfigSchema.parse(found) : null;
+    const found = await this.repo.get<Record<string, unknown>>(PUBLISHED_SK);
+    return found ? StorefrontConfigSchema.parse(stripTableKeys(found)) : null;
   }
 
   async getDraft(): Promise<StorefrontDraftResponse> {
     this.assertAdmin('read the storefront draft');
-    const found = await this.repo.get<StorefrontConfig>(DRAFT_SK);
+    const found = await this.repo.get<Record<string, unknown>>(DRAFT_SK);
     return {
-      draft: found ? StorefrontConfigSchema.parse(found) : null,
+      draft: found ? StorefrontConfigSchema.parse(stripTableKeys(found)) : null,
       capabilities: { imageGen: this.imageGenEnabled },
     };
   }
@@ -52,7 +62,7 @@ export class StorefrontService {
 
   async publish(): Promise<StorefrontConfig> {
     this.assertAdmin('publish the storefront');
-    const draft = await this.repo.get<StorefrontConfig>(DRAFT_SK);
+    const draft = await this.repo.get<Record<string, unknown>>(DRAFT_SK);
     if (!draft) {
       throw new ProblemException(
         'storefront-draft-not-found',
@@ -60,7 +70,7 @@ export class StorefrontService {
         'There is no draft to publish',
       );
     }
-    const parsed = StorefrontConfigSchema.parse(draft);
+    const parsed = StorefrontConfigSchema.parse(stripTableKeys(draft));
     await this.repo.put(PUBLISHED_SK, parsed);
     return parsed;
   }
