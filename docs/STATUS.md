@@ -1,5 +1,16 @@
 # Status
 
+## 20 August 2026 — findability: free-text search and event ordering
+
+Free-text product search (#11): a lowercased `search` blob written at product
+create/update, matched with a `contains` filter under the existing ten-page
+budget — case-insensitive because both sides normalise at their own edge;
+products written before the field simply don't match until re-saved (seeds
+recreate every boot). A Search box leads the storefront filter rail. Event
+listings (#16) now sort soonest-first within the page — a shop's event count
+is modest, so no date GSI. Engine 219 unit / e2e extended (text hit+miss,
+sort order), playwright 29 green.
+
 ## 20 August 2026 — server-side cart and checkout with simulated payment
 
 The buyer loop closed on `feat/cart-checkout`: a per-buyer cart in the engine,
