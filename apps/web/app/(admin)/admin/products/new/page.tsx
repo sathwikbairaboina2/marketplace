@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Card, Form, Input, InputNumber, Select, message } from 'antd';
+import { AutoComplete, Button, Card, Form, Input, InputNumber, Select, message } from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
 import { ImageUploader } from '../../../../../components/image-uploader';
 import { createProduct } from '../../../../../lib/api/products';
@@ -10,12 +10,14 @@ import { draftCopy } from '../../../../../lib/api/agents';
 import { toAttributes, toFormItems } from '../../../../../lib/schema-fields';
 import { useSchema } from '../../../../../lib/schemas/schema-cache';
 import { PageHeader } from '../../../../../components/page-header';
+import { useStorefrontCategories } from '../../../../../lib/storefront-categories';
 import { notifyProblem, toFormErrors } from '../../../../../lib/problem-notify';
 
 export default function NewProductPage() {
   const schema = useSchema('Product');
   const router = useRouter();
   const [form] = Form.useForm();
+  const categorySuggestions = useStorefrontCategories();
   // Held outside the Form: each file is uploaded as it is chosen, so by submit
   // time these are already stored objects rather than pending form state. The
   // engine has no update routes, so this is the only moment a product's images
@@ -105,7 +107,16 @@ export default function NewProductPage() {
             <Input.TextArea autoSize={{ minRows: 3, maxRows: 8 }} />
           </Form.Item>
           <Form.Item name="category" label="Category" rules={[{ required: true }]}>
-            <Input />
+            {/* Suggestions, not a closed list: the shop's own categories are
+                offered, and anything else the seller types is still valid. */}
+            <AutoComplete
+              options={categorySuggestions.map((c) => ({ value: c }))}
+              filterOption={(input, option) =>
+                String(option?.value ?? '')
+                  .toLowerCase()
+                  .includes(input.toLowerCase())
+              }
+            />
           </Form.Item>
           {/* Price, currency, stock and status are each a few characters wide.
               One per row turned a seven-field form into a page of scrolling. */}

@@ -22,12 +22,27 @@ import { ThemeToggle } from './theme-toggle';
 // These accessible names are a contract: auth.spec.ts asserts a buyer sees
 // links named exactly `Products` and `Orders`, and none named `Flows` or
 // `Chat`. Renaming any of them breaks the regression net.
+const PRODUCTS_LINK = { href: '/products', label: 'Products', icon: <AppstoreOutlined /> };
+const EVENTS_LINK = { href: '/events', label: 'Events', icon: <CalendarOutlined /> };
 const LINKS = [
-  { href: '/products', label: 'Products', icon: <AppstoreOutlined /> },
-  { href: '/events', label: 'Events', icon: <CalendarOutlined /> },
+  PRODUCTS_LINK,
+  EVENTS_LINK,
   { href: '/orders', label: 'Orders', icon: <ShoppingOutlined /> },
   { href: '/bookings', label: 'Bookings', icon: <ProfileOutlined /> },
 ];
+
+/**
+ * A shop whose customers book a place rather than buy a thing leads with
+ * Events. Every other shop -- including every one published before
+ * `sellsWhat` existed -- keeps Products first.
+ *
+ * Order only: the labels stay exactly as they are, because auth.spec.ts
+ * asserts on them by name.
+ */
+function orderedLinks(sellsWhat: string | undefined) {
+  if (sellsWhat !== 'bookable') return LINKS;
+  return [EVENTS_LINK, PRODUCTS_LINK, ...LINKS.slice(2)];
+}
 
 export function ShopHeader() {
   const { principal, signOut } = useAuth();
@@ -53,7 +68,7 @@ export function ShopHeader() {
       </Link>
 
       <nav className="mp-shop-nav">
-        {LINKS.map((l) => {
+        {orderedLinks(storefront?.sellsWhat).map((l) => {
           const active = pathname.startsWith(l.href);
           return (
             <Link

@@ -200,7 +200,11 @@ export function PreviewPane({
           <div style={{ background: 'var(--mp-surface)', padding: 'var(--mp-space-4)' }}>
             {hero && <StorefrontBanner banner={hero} />}
             {/* Placeholder product cards so the card treatment -- radius,
-                hairline, raised surface, fonts -- previews alongside the hero. */}
+                hairline, raised surface, fonts -- previews alongside the hero.
+                Suppressed for a shop that sells no products: a yoga studio
+                shown three phantom products was the visible half of the bug
+                this whole flow exists to fix. */}
+            {draft.sellsWhat !== 'bookable' && (
             <div className="mp-onboarding-cards">
               {['One', 'Two', 'Three'].map((name) => (
                 <div key={name} className="mp-onboarding-card">
@@ -212,6 +216,7 @@ export function PreviewPane({
                 </div>
               ))}
             </div>
+            )}
           </div>
         )}
 
