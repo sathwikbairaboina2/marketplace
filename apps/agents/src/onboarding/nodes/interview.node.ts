@@ -34,6 +34,65 @@ const InterviewResultSchema = z.object({
   question: z.string(),
 });
 
+type RawRequirements = NonNullable<z.infer<typeof InterviewResultSchema>['requirements']>;
+
+/**
+ * What the owner books a place at, as opposed to buys.
+ *
+ * Matched on whole words, and deliberately not on "book": a secondhand
+ * bookshop sells books and takes no bookings, and reading it as bookable
+ * would hand a shop full of paperbacks an events-first storefront.
+ */
+const BOOKABLE_WORDS = /\b(bookable|booking|bookings|class|classes|course|courses|event|events|session|sessions|appointment|appointments|retreat|retreats|workshop|workshops)\b/;
+const GOODS_WORDS = /\b(good|goods|product|products|item|items|physical|stock|merchandise)\b/;
+
+/**
+ * Absent any bookable signal, a shop sells things.
+ *
+ * Guessing costs the owner one radio click in a Setup tab they confirm before
+ * anything is applied. Refusing to guess costs them the whole plan, which is
+ * how a secondhand bookshop answering "books and stationery" -- a phrase
+ * matching neither list -- ended up with no setup at all.
+ */
+const SELLS_WHAT_FALLBACK = 'goods';
+
+/**
+ * A small model reliably describes the right business in the wrong shape: it
+ * writes "physical goods" where the enum wants "goods", or returns eleven
+ * categories when the contract caps eight.
+ *
+ * Normalising first costs nothing when the model was already right, and is the
+ * difference between a setup plan and no setup plan when it was not. The four
+ * free-text fields are still gated: an empty fulfilment or price band rejects
+ * the requirements outright, so this widens what counts as a valid answer
+ * without inventing an answer that was never given.
+ */
+function coerceRequirements(raw: RawRequirements): unknown {
+  const said = String(raw.sellsWhat ?? '').toLowerCase();
+  const bookable = BOOKABLE_WORDS.test(said);
+  const goods = GOODS_WORDS.test(said);
+  const sellsWhat = said.includes('both') || (bookable && goods)
+    ? 'both'
+    : bookable
+      ? 'bookable'
+      : goods
+        ? 'goods'
+        : SELLS_WHAT_FALLBACK;
+
+  const trimmed = (value: string, max: number) => String(value ?? '').trim().slice(0, max);
+
+  return {
+    sellsWhat,
+    categories: (raw.categories ?? [])
+      .map((category) => trimmed(category, 60))
+      .filter(Boolean)
+      .slice(0, 8),
+    fulfilment: trimmed(raw.fulfilment, 200),
+    priceBand: trimmed(raw.priceBand, 200),
+    differentiator: trimmed(raw.differentiator, 400),
+  };
+}
+
 export function makeInterviewNode(deps: { llm: LlmProvider; askMax: number }) {
   return async (state: OnboardingState): Promise<Partial<OnboardingState>> => {
     // A re-run of the wizard resumes what it learned; the owner is not
@@ -49,7 +108,7 @@ export function makeInterviewNode(deps: { llm: LlmProvider; askMax: number }) {
 
     const profile = result.profile ? BusinessProfileSchema.safeParse(result.profile) : null;
     const requirements = result.requirements
-      ? BusinessRequirementsSchema.safeParse(result.requirements)
+      ? BusinessRequirementsSchema.safeParse(coerceRequirements(result.requirements))
       : null;
 
     // The floor. `satisfied` is worth nothing without a profile that parses:

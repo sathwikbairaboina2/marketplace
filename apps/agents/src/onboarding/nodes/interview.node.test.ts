@@ -119,12 +119,100 @@ describe('interview node', () => {
   it('drops requirements the contracts reject rather than storing them half-parsed', async () => {
     llm.pushStructured({
       ...complete,
-      requirements: { ...requirements, sellsWhat: 'services' },
+      // A missing answer, not a mis-worded one: coercion widens the wording it
+      // accepts, it does not fill in a field the owner never answered.
+      requirements: { ...requirements, priceBand: '' },
     });
 
     const next = await node(state());
 
     expect(next.phase).toBe('generating');
+    expect(next.requirements).toBeNull();
+  });
+});
+
+describe('interview node requirement coercion', () => {
+  let llm: ScriptedLlmProvider;
+  let node: ReturnType<typeof makeInterviewNode>;
+
+  beforeEach(() => {
+    llm = new ScriptedLlmProvider();
+    node = makeInterviewNode({ llm, askMax: ASK_MAX });
+  });
+
+  const withRequirements = (over: Record<string, unknown>) => ({
+    ...complete,
+    requirements: { ...requirements, ...over },
+  });
+
+  it('reads "physical goods" as goods', async () => {
+    llm.pushStructured(withRequirements({ sellsWhat: 'physical goods' }));
+
+    const next = await node(state());
+
+    expect(next.requirements?.sellsWhat).toBe('goods');
+  });
+
+  it('reads "bookable classes" as bookable', async () => {
+    llm.pushStructured(withRequirements({ sellsWhat: 'bookable classes' }));
+
+    const next = await node(state());
+
+    expect(next.requirements?.sellsWhat).toBe('bookable');
+  });
+
+  it('reads a mix of both as both', async () => {
+    llm.pushStructured(withRequirements({ sellsWhat: 'products and classes' }));
+
+    const next = await node(state());
+
+    expect(next.requirements?.sellsWhat).toBe('both');
+  });
+
+  // The regression that matters: a shop selling books takes no bookings.
+  it('does not read a bookshop selling books as bookable', async () => {
+    llm.pushStructured(
+      withRequirements({ sellsWhat: 'books and stationery', categories: ['paperbacks'] }),
+    );
+
+    const next = await node(state());
+
+    expect(next.requirements?.sellsWhat).toBe('goods');
+  });
+
+  it('trims an over-long category list to the cap instead of losing the whole answer', async () => {
+    llm.pushStructured(
+      withRequirements({ categories: Array.from({ length: 11 }, (_, i) => `c${i}`) }),
+    );
+
+    const next = await node(state());
+
+    expect(next.requirements?.categories).toHaveLength(8);
+  });
+
+  it('truncates an over-long differentiator rather than dropping requirements', async () => {
+    llm.pushStructured(withRequirements({ differentiator: 'x'.repeat(900) }));
+
+    const next = await node(state());
+
+    expect(next.requirements?.differentiator).toHaveLength(400);
+  });
+
+  // Guessing wrong costs one radio click in a tab the owner confirms; guessing
+  // nothing costs the whole plan.
+  it('falls back to goods rather than losing the plan to an unreadable answer', async () => {
+    llm.pushStructured(withRequirements({ sellsWhat: 'vibes' }));
+
+    const next = await node(state());
+
+    expect(next.requirements?.sellsWhat).toBe('goods');
+  });
+
+  it('still rejects requirements with an empty fulfilment', async () => {
+    llm.pushStructured(withRequirements({ fulfilment: '   ' }));
+
+    const next = await node(state());
+
     expect(next.requirements).toBeNull();
   });
 });
