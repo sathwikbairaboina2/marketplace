@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { UlidSchema } from './common';
 import { BlueprintDiffSchema } from './flow';
 import { DynamicEntityTypeSchema } from './registry';
-import { StorefrontConfigSchema } from './storefront';
+import { SetupPlanSchema, StorefrontConfigSchema } from './storefront';
 
 export const AgentPhaseSchema = z.enum([
   'gathering',
@@ -82,6 +82,9 @@ export const OnboardingSnapshotSchema = z.object({
   phase: OnboardingPhaseSchema,
   messages: z.array(ChatMessageSchema),
   draft: StorefrontConfigSchema.nullable(),
+  // Defaulted rather than required: a client parsing a snapshot from a server
+  // that predates setup plans reads null instead of failing.
+  setupPlan: SetupPlanSchema.nullable().default(null),
 });
 export type OnboardingSnapshot = z.infer<typeof OnboardingSnapshotSchema>;
 

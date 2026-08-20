@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { AddedFieldSchema, refuseReservedFieldNames } from './flow';
+import { DynamicEntityTypeSchema } from './registry';
 
 export const PRESET_IDS = ['artisan', 'tech', 'editorial', 'market', 'studio'] as const;
 export const PresetIdSchema = z.enum(PRESET_IDS);
@@ -121,6 +123,30 @@ export const AboutPageSchema = z
   .strict();
 export type AboutPage = z.infer<typeof AboutPageSchema>;
 
+export const SellsWhatSchema = z.enum(['goods', 'bookable', 'both']);
+export type SellsWhat = z.infer<typeof SellsWhatSchema>;
+
+const CategorySchema = z.string().trim().min(1).max(60);
+
+/**
+ * The operational half of what the onboarding wizard learns: not who the
+ * business is, but how its shop has to work.
+ *
+ * A sibling of BusinessProfileSchema rather than more keys on it. The profile
+ * is embedded in every stored StorefrontConfig, which is strict, so widening
+ * it would stop every draft written before today from parsing.
+ */
+export const BusinessRequirementsSchema = z
+  .object({
+    sellsWhat: SellsWhatSchema,
+    categories: z.array(CategorySchema).max(8),
+    fulfilment: z.string().trim().min(1).max(200),
+    priceBand: z.string().trim().min(1).max(200),
+    differentiator: z.string().trim().min(1).max(400),
+  })
+  .strict();
+export type BusinessRequirements = z.infer<typeof BusinessRequirementsSchema>;
+
 export const BusinessProfileSchema = z
   .object({
     kind: z.string().trim().min(1).max(200),
@@ -138,6 +164,11 @@ export const StorefrontConfigSchema = z
     about: AboutPageSchema,
     banners: z.array(BannerSchema).max(3),
     businessProfile: BusinessProfileSchema,
+    // Optional so a draft written before these existed still parses against a
+    // strict schema. Written by the setup-plan apply; read by the product
+    // form's category suggestions and by storefront navigation.
+    sellsWhat: SellsWhatSchema.optional(),
+    categories: z.array(CategorySchema).max(8).optional(),
   })
   .strict()
   .superRefine((val, ctx) => {
@@ -183,3 +214,86 @@ export type BannerArtRequest = z.infer<typeof BannerArtRequestSchema>;
 
 export const BannerArtResponseSchema = z.object({ imageUrl: z.string().url() }).strict();
 export type BannerArtResponse = z.infer<typeof BannerArtResponseSchema>;
+
+/**
+ * One extra field the onboarding agent believes this business needs.
+ *
+ * Reusing AddedFieldSchema is load-bearing rather than tidy: add-only comes
+ * with it (BlueprintDiff is strict, so `removedFields` is an unrecognized
+ * key), and so does the per-entity reserved-name refusal. The agent cannot
+ * propose `Product.priceMinor` even when the model tries.
+ */
+export const FieldProposalSchema = z
+  .object({
+    entity: DynamicEntityTypeSchema,
+    field: AddedFieldSchema,
+    rationale: z.string().trim().max(200),
+  })
+  .strict()
+  .superRefine((val, ctx) =>
+    refuseReservedFieldNames(
+      { targetEntity: val.entity, blueprintDiff: { addedFields: [val.field] } },
+      ctx,
+    ),
+  );
+export type FieldProposal = z.infer<typeof FieldProposalSchema>;
+
+/**
+ * What the wizard proposes and the owner confirms. Proposal only: no selection
+ * state on the wire, because the checkboxes are the client's until Apply.
+ *
+ * The caps are deliberate. An open-ended "what does this business need" put to
+ * a small local model otherwise returns twenty of each.
+ */
+export const SetupPlanSchema = z
+  .object({
+    sellsWhat: SellsWhatSchema,
+    categories: z.array(CategorySchema).max(8),
+    fields: z.array(FieldProposalSchema).max(6),
+  })
+  .strict();
+export type SetupPlan = z.infer<typeof SetupPlanSchema>;
+
+/**
+ * POST /setup-plan/apply: the subset the owner actually ticked.
+ *
+ * Validated here rather than trusted against the plan it came from -- a
+ * doctored request must not be able to add a core field name just because the
+ * plan happened not to propose one.
+ */
+export const ApplySetupPlanRequestSchema = z
+  .object({
+    sellsWhat: SellsWhatSchema,
+    categories: z.array(CategorySchema).max(8),
+    fields: z
+      .array(
+        z
+          .object({ entity: DynamicEntityTypeSchema, field: AddedFieldSchema })
+          .strict()
+          .superRefine((val, ctx) =>
+            refuseReservedFieldNames(
+              { targetEntity: val.entity, blueprintDiff: { addedFields: [val.field] } },
+              ctx,
+            ),
+          ),
+      )
+      .max(6),
+  })
+  .strict();
+export type ApplySetupPlanRequest = z.infer<typeof ApplySetupPlanRequestSchema>;
+
+/**
+ * Per-item truth, not one aggregate answer. The storefront half applies
+ * immediately; the field half becomes proposed flows a human still executes,
+ * and either half can fail without the other.
+ */
+export const ApplySetupPlanResponseSchema = z.object({
+  applied: z.object({ sellsWhat: SellsWhatSchema, categories: z.array(CategorySchema) }),
+  queued: z.array(
+    z.object({ entity: DynamicEntityTypeSchema, fieldName: z.string(), messageId: z.string() }),
+  ),
+  failed: z.array(
+    z.object({ entity: DynamicEntityTypeSchema, fieldName: z.string(), reason: z.string() }),
+  ),
+});
+export type ApplySetupPlanResponse = z.infer<typeof ApplySetupPlanResponseSchema>;

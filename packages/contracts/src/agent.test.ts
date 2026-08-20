@@ -120,4 +120,27 @@ describe('OnboardingSnapshotSchema', () => {
     };
     expect(OnboardingSnapshotSchema.safeParse(snap).success).toBe(true);
   });
+
+  it('parses a snapshot from a server that predates setup plans', () => {
+    const parsed = OnboardingSnapshotSchema.parse({
+      threadId: ulid,
+      kind: 'onboarding',
+      phase: 'gathering',
+      messages: [],
+      draft: null,
+    });
+    expect(parsed.setupPlan).toBeNull();
+  });
+
+  it('carries a setup plan when the server sends one', () => {
+    const parsed = OnboardingSnapshotSchema.parse({
+      threadId: ulid,
+      kind: 'onboarding',
+      phase: 'drafted',
+      messages: [],
+      draft: null,
+      setupPlan: { sellsWhat: 'bookable', categories: ['classes'], fields: [] },
+    });
+    expect(parsed.setupPlan?.categories).toEqual(['classes']);
+  });
 });

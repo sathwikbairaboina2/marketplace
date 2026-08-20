@@ -1,6 +1,10 @@
 import {
+  ApplySetupPlanRequestSchema,
   BannerArtRequestSchema,
   BannerSchema,
+  BusinessRequirementsSchema,
+  FieldProposalSchema,
+  SetupPlanSchema,
   contrastRatio,
   PRESET_IDS,
   PRESET_SURFACES,
@@ -113,5 +117,124 @@ describe('StorefrontConfigSchema', () => {
     const s = { heading: 'h', body: 'b' };
     const many = { ...validConfig, about: { title: 't', sections: Array(7).fill(s) } };
     expect(StorefrontConfigSchema.safeParse(many).success).toBe(false);
+  });
+});
+
+const plan = {
+  sellsWhat: 'bookable',
+  categories: ['classes', 'retreats'],
+  fields: [
+    {
+      entity: 'Event',
+      field: { name: 'durationMinutes', type: 'number', required: false, default: null },
+      rationale: 'classes vary in length',
+    },
+  ],
+};
+
+describe('BusinessRequirementsSchema', () => {
+  const requirements = {
+    sellsWhat: 'goods',
+    categories: ['mugs'],
+    fulfilment: 'ship nationwide',
+    priceBand: 'mid',
+    differentiator: 'hand-thrown',
+  };
+
+  it('accepts a complete set', () => {
+    expect(BusinessRequirementsSchema.safeParse(requirements).success).toBe(true);
+  });
+
+  it('rejects more than eight categories', () => {
+    const categories = Array.from({ length: 9 }, (_, i) => `c${i}`);
+    expect(BusinessRequirementsSchema.safeParse({ ...requirements, categories }).success).toBe(
+      false,
+    );
+  });
+
+  it('rejects an unknown sellsWhat', () => {
+    expect(
+      BusinessRequirementsSchema.safeParse({ ...requirements, sellsWhat: 'services' }).success,
+    ).toBe(false);
+  });
+});
+
+describe('FieldProposalSchema', () => {
+  it('rejects a reserved core field name for the entity', () => {
+    const result = FieldProposalSchema.safeParse({
+      entity: 'Product',
+      field: { name: 'priceMinor', type: 'number', required: false, default: null },
+      rationale: 'nope',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts the same name on an entity that does not reserve it', () => {
+    const result = FieldProposalSchema.safeParse({
+      entity: 'Product',
+      field: { name: 'capacity', type: 'number', required: false, default: null },
+      rationale: 'containers have a capacity',
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe('SetupPlanSchema', () => {
+  it('accepts a plan within the caps', () => {
+    expect(SetupPlanSchema.parse(plan).fields).toHaveLength(1);
+  });
+
+  it('rejects more than six field proposals', () => {
+    const fields = Array.from({ length: 7 }, (_, i) => ({
+      entity: 'Product',
+      field: { name: `extra${i}`, type: 'string', required: false, default: null },
+      rationale: 'x',
+    }));
+    expect(SetupPlanSchema.safeParse({ ...plan, fields }).success).toBe(false);
+  });
+});
+
+describe('StorefrontConfigSchema with the new keys', () => {
+  it('parses a draft written before the keys existed', () => {
+    expect(StorefrontConfigSchema.safeParse(validConfig).success).toBe(true);
+  });
+
+  it('parses a draft carrying them', () => {
+    const parsed = StorefrontConfigSchema.parse({
+      ...validConfig,
+      sellsWhat: 'goods',
+      categories: ['mugs'],
+    });
+    expect(parsed.categories).toEqual(['mugs']);
+  });
+});
+
+describe('ApplySetupPlanRequestSchema', () => {
+  it('re-refuses a reserved field name the plan never proposed', () => {
+    const result = ApplySetupPlanRequestSchema.safeParse({
+      sellsWhat: 'goods',
+      categories: [],
+      fields: [
+        {
+          entity: 'Product',
+          field: { name: 'priceMinor', type: 'number', required: false, default: null },
+        },
+      ],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a legitimate subset', () => {
+    const result = ApplySetupPlanRequestSchema.safeParse({
+      sellsWhat: 'bookable',
+      categories: ['classes'],
+      fields: [
+        {
+          entity: 'Event',
+          field: { name: 'durationMinutes', type: 'number', required: false, default: null },
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
   });
 });
