@@ -3,6 +3,7 @@ import { AttributesSchema, CurrencySchema, IsoDateTimeSchema, UlidSchema } from 
 import { ProductStatusSchema } from './product';
 import { OrderStatusSchema } from './order';
 import { BookingStatusSchema } from './booking';
+import { PaymentSchema } from './payment';
 import { BlueprintDiffSchema, FlowStatusSchema } from './flow';
 import { MAX_STAGES, StageSchema } from './pipeline';
 import { DynamicEntityTypeSchema, FieldDefinitionSchema, FieldNameSchema } from './registry';
@@ -82,8 +83,9 @@ export const OrderResponseSchema = z
     // touches this snapshot -- the same argument `unitPriceMinor` makes for price.
     pipelineVersion: z.number().int().nonnegative(),
     stages: z.array(StageSchema).min(1).max(MAX_STAGES),
-    currentStageId: z.string(),
+    currentStageId: z.string().nullable(),
     stageEnteredAt: IsoDateTimeSchema,
+    payment: PaymentSchema.optional(),
   })
   .strict();
 export type OrderResponse = z.infer<typeof OrderResponseSchema>;

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { AttributesSchema, CurrencySchema, QuantitySchema, UlidSchema } from './common';
 import type { Stage } from './pipeline';
 
-export const OrderStatusSchema = z.enum(['pending', 'confirmed', 'cancelled']);
+export const OrderStatusSchema = z.enum(['pending', 'confirmed', 'cancelled', 'awaiting_payment']);
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
 
 export const MAX_ORDER_LINE_ITEMS = 50;
