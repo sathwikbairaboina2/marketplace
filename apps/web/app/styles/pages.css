@@ -674,3 +674,23 @@
     gap: 2px;
   }
 }
+
+/* ------------------------------------------------------------- dashboard */
+
+.mp-stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--mp-space-4);
+  margin-bottom: var(--mp-space-6);
+}
+
+.mp-dashboard-tables {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--mp-space-6);
+  align-items: start;
+}
+
+.mp-dashboard-tables h2 {
+  margin-bottom: var(--mp-space-3);
+}

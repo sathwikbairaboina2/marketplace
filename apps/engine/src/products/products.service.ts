@@ -66,6 +66,44 @@ export class ProductsService {
     return record;
   }
 
+  /**
+   * Everything is validated against the registry before anything is written,
+   * so a bad row rejects the whole batch up front rather than leaving a
+   * half-created catalogue. The writes themselves are independent puts.
+   */
+  async createBatch(inputs: CreateProduct[]): Promise<ProductResponse[]> {
+    const validated = await Promise.all(
+      inputs.map((input) => this.registry.validate('Product', input.attributes)),
+    );
+
+    const now = new Date().toISOString();
+    const records = inputs.map((input, i): ProductResponse => ({
+      entityType: 'Product',
+      id: newId(),
+      status: input.status,
+      name: input.name,
+      description: input.description,
+      priceMinor: input.priceMinor,
+      currency: input.currency,
+      category: input.category,
+      stock: input.stock,
+      images: input.images,
+      createdAt: now,
+      updatedAt: now,
+      attributes: validated[i],
+    }));
+
+    await Promise.all(
+      records.map((record) =>
+        this.repo.put(entitySk('Product', record.id), {
+          ...record,
+          search: productSearchBlob(record),
+        }),
+      ),
+    );
+    return records;
+  }
+
   async get(id: string): Promise<ProductResponse> {
     const found = await this.repo.get<ProductRecord>(entitySk('Product', id));
     if (!found) throw new ProblemException('not-found', 404, 'Product not found');

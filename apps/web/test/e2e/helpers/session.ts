@@ -21,6 +21,23 @@ export async function signOut(page: Page): Promise<void> {
 export const unique = (prefix: string) => `${prefix}-${process.pid}-${Date.now()}`;
 
 /**
+ * The cart lives on the engine now and survives across test runs for a shared
+ * user like acme-admin. A spec that counts order lines must start from an
+ * empty cart rather than inherit whatever the previous session abandoned.
+ */
+export async function clearServerCart(page: Page): Promise<void> {
+  await page.evaluate(async (engine) => {
+    const token = sessionStorage.getItem('marketplace.token');
+    if (token) {
+      await fetch(`${engine}/cart`, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${token}` },
+      });
+    }
+  }, ENGINE_URL);
+}
+
+/**
  * Completes the payment page a successful checkout lands on. `4242…` is the
  * fake provider's success number; the page redirects to the order tracker.
  */

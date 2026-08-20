@@ -16,3 +16,4 @@ export * from './settings';
 export * from './storefront';
 export * from './cart';
 export * from './payment';
+export * from './stats';

@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { createProduct, payWithCard, signIn, unique } from './helpers/session';
+import { clearServerCart, createProduct, payWithCard, signIn, unique } from './helpers/session';
 
 test('an order can be placed for two products found through the catalogue', async ({ page }) => {
   const cheap = unique('cheap-widget');
   const dear = unique('dear-widget');
 
   await signIn(page, 'acme-admin');
+  await clearServerCart(page);
 
   await createProduct(page, cheap, 500);
   await page.getByRole('button', { name: 'Add to cart' }).click();

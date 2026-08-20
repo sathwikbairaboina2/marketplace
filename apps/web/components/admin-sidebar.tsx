@@ -7,6 +7,7 @@ import {
   AppstoreOutlined,
   CalendarOutlined,
   CommentOutlined,
+  DashboardOutlined,
   LogoutOutlined,
   NodeIndexOutlined,
   ProfileOutlined,
@@ -39,6 +40,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
   {
     label: 'Sales',
     items: [
+      { href: '/admin/dashboard', label: 'Dashboard', icon: <DashboardOutlined /> },
       // The shop's queue of work, not the signed-in admin's own purchases.
       { href: '/admin/orders', label: 'Orders', icon: <ShoppingCartOutlined /> },
       { href: '/bookings', label: 'Bookings', icon: <ProfileOutlined /> },

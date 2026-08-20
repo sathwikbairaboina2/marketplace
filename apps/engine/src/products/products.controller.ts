@@ -1,6 +1,8 @@
 import { Controller, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
 import { Roles } from '../auth/roles.decorator';
 import {
+  BatchCreateProducts,
+  BatchCreateProductsSchema,
   CreateProduct,
   CreateProductSchema,
   Page,
@@ -21,6 +23,16 @@ export class ProductsController {
   @Roles('admin')
   create(@ZodBody(CreateProductSchema) body: CreateProduct): Promise<ProductResponse> {
     return this.products.create(body);
+  }
+
+  // Declared before ':id' routes for the same reason as /orders/all: Nest
+  // would otherwise match 'batch' as a product id.
+  @Post('batch')
+  @Roles('admin')
+  createBatch(
+    @ZodBody(BatchCreateProductsSchema) body: BatchCreateProducts,
+  ): Promise<{ items: ProductResponse[] }> {
+    return this.products.createBatch(body.items).then((items) => ({ items }));
   }
 
   @Get()

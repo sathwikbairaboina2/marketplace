@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { createProduct, signIn, unique } from './helpers/session';
+import { clearServerCart, createProduct, signIn, unique } from './helpers/session';
 
 test('a double-submitted checkout creates exactly one order', async ({ page }) => {
   const name = unique('idem-widget');
 
   await signIn(page, 'acme-admin');
+  await clearServerCart(page);
   await createProduct(page, name, 2500, 10);
   await page.getByRole('button', { name: 'Add to cart' }).click();
 

@@ -1,5 +1,18 @@
 # Status
 
+## 21 August 2026 — seller dashboard, low stock, batch listing
+
+`GET /stats/sales` (admin, service-checked): order counts by status, revenue
+per currency (confirmed orders only — nothing sums across currencies), top
+five products by units, active products at or under the low-stock threshold.
+Aggregated on read under a ten-page scan budget; `truncated: true` marks the
+numbers as a floor. Cockpit gains a Dashboard page (Sales group). `POST
+/products/batch` (#18) creates up to 25 products in one call —
+validate-everything-then-write-everything, a bad row rejects the batch whole.
+Also fixed: the server-side cart persists across browser-suite runs for
+shared users, so cart-counting specs now start by clearing it. Engine 226
+unit / stats e2e 5, web 232 unit, playwright 29.
+
 ## 20 August 2026 — findability: free-text search and event ordering
 
 Free-text product search (#11): a lowercased `search` blob written at product
