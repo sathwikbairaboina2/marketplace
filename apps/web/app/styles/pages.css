@@ -475,6 +475,28 @@
   padding: 0 var(--mp-space-3) var(--mp-space-2);
 }
 
+.mp-onboarding-banner-block {
+  margin-bottom: var(--mp-space-4);
+}
+
+/* The edit strip under each banner: draft copy, editable in place. */
+.mp-onboarding-banner-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mp-space-3);
+  padding: var(--mp-space-2) 0 var(--mp-space-4);
+  color: var(--mp-ink-soft);
+  font-size: var(--mp-text-sm);
+}
+
+.mp-onboarding-slot {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--mp-text-xs);
+  color: var(--mp-muted);
+}
+
 @media (max-width: 900px) {
   .mp-onboarding {
     grid-template-columns: 1fr;

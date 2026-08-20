@@ -15,11 +15,14 @@ vi.mock('../../../../lib/chat/use-onboarding-socket', () => ({
 const getStorefrontDraft = vi.fn();
 const publishStorefront = vi.fn();
 const putOnboardingFlag = vi.fn();
+const putStorefrontDraft = vi.fn();
 vi.mock('../../../../lib/api/storefront', () => ({
   getStorefrontDraft: () => getStorefrontDraft(),
   publishStorefront: () => publishStorefront(),
   putOnboardingFlag: (body: unknown) => putOnboardingFlag(body),
+  putStorefrontDraft: (body: unknown) => putStorefrontDraft(body),
 }));
+vi.mock('../../../../lib/api/uploads', () => ({ uploadProductImage: vi.fn() }));
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, replace: vi.fn() }) }));
@@ -79,6 +82,34 @@ describe('the onboarding wizard', () => {
     expect(screen.getByTestId('preview')).toBeInTheDocument();
     expect(screen.getByText('Objects with a thumbprint')).toBeInTheDocument();
     expect(screen.getByTestId('publish-store')).toBeEnabled();
+  });
+
+  it('round-trips an inline headline edit through the draft PUT', async () => {
+    socket.snapshot = draftedSnapshot;
+    getStorefrontDraft.mockResolvedValue({ draft: config, capabilities: { imageGen: false } });
+    const edited = {
+      ...config,
+      banners: [{ ...config.banners[0], headline: 'Handmade, signed, yours' }],
+    };
+    putStorefrontDraft.mockResolvedValue(edited);
+
+    render(<OnboardingPage />);
+    await act(async () => {});
+
+    // The banners tab hosts the editors.
+    fireEvent.click(screen.getByText('Banners'));
+    fireEvent.click(screen.getByTestId('edit-hero-headline'));
+    const input = screen.getByTestId('edit-hero-headline-input');
+    fireEvent.change(input, { target: { value: 'Handmade, signed, yours' } });
+    fireEvent.blur(input);
+
+    await waitFor(() =>
+      expect(putStorefrontDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          banners: [expect.objectContaining({ headline: 'Handmade, signed, yours' })],
+        }),
+      ),
+    );
   });
 
   it('dismisses onboarding through the flag and leaves for the cockpit', async () => {

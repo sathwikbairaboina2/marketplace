@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button, ConfigProvider, Drawer, Grid } from 'antd';
 import { MenuOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth/auth-context';
 import { onUnauthorized } from '../../lib/api/http';
+import { getOnboardingFlag, getPublishedStorefront } from '../../lib/api/storefront';
 import { AdminSidebar } from '../../components/admin-sidebar';
 import { cockpitAntdTheme } from '../../lib/theme/tokens';
 import { useTheme } from '../../lib/theme/theme-context';
@@ -14,7 +15,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const { principal, ready } = useAuth();
   const { mode } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const checkedOnboarding = useRef(false);
   const screens = Grid.useBreakpoint();
   // Undefined on the first render before ANTD measures, so treat only an
   // explicit false as narrow -- otherwise the sidebar flickers into a drawer
@@ -26,6 +29,20 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (ready && !principal) router.push('/login');
   }, [ready, principal, router]);
+
+  // A store that has never been published and never dismissed the wizard opens
+  // on it. Once per mount (the ref), never while already there, and any fetch
+  // failure means "stay put" -- onboarding is an invitation, not a cage.
+  useEffect(() => {
+    if (!ready || principal?.role !== 'admin' || checkedOnboarding.current) return;
+    if (pathname.startsWith('/admin/onboarding')) return;
+    checkedOnboarding.current = true;
+    void Promise.all([getPublishedStorefront(), getOnboardingFlag()])
+      .then(([published, flag]) => {
+        if (published === null && !flag.dismissed) router.replace('/admin/onboarding');
+      })
+      .catch(() => {});
+  }, [ready, principal, pathname, router]);
 
   if (!ready || !principal) return null;
 

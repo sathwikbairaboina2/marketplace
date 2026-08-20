@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { Button, Card, Form, Input, Switch, message } from 'antd';
 import { getAnnouncement, putAnnouncement } from '../../../../lib/api/settings';
 import { PageHeader } from '../../../../components/page-header';
@@ -36,6 +37,14 @@ export default function AdminSettingsPage() {
   return (
     <>
       <PageHeader title="Settings" subtitle="What your shop says for itself." />
+      <Card className="mp-form-card" title="Store design">
+        <p style={{ marginTop: 0, color: 'var(--mp-muted)' }}>
+          Theme, About page and banners — drafted with the assistant, published when you say so.
+        </p>
+        <Link href="/admin/onboarding">
+          <Button>Open store designer</Button>
+        </Link>
+      </Card>
       <StageEditor />
       <Card className="mp-form-card" title="Announcement">
         <Form

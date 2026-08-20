@@ -10,6 +10,7 @@ import {
   getStorefrontDraft,
   publishStorefront,
   putOnboardingFlag,
+  putStorefrontDraft,
 } from '../../../../lib/api/storefront';
 import { notifyProblem } from '../../../../lib/problem-notify';
 import { PageHeader } from '../../../../components/page-header';
@@ -60,6 +61,17 @@ export default function OnboardingPage() {
       notifyProblem(err);
     } finally {
       setPublishing(false);
+    }
+  };
+
+  // Inline edits and uploads are the same whole-document write the agent
+  // makes; the echoed response replaces local state so the preview shows what
+  // the engine actually stored.
+  const applyEdit = async (next: StorefrontConfig) => {
+    try {
+      setConfig(await putStorefrontDraft(next));
+    } catch (err) {
+      notifyProblem(err);
     }
   };
 
@@ -166,7 +178,7 @@ export default function OnboardingPage() {
         </section>
 
         <section className="mp-onboarding-right">
-          <PreviewPane draft={config} />
+          <PreviewPane draft={config} onChange={(next) => void applyEdit(next)} />
         </section>
       </div>
     </>
