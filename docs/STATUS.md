@@ -1,3 +1,16 @@
+# Status
+
+## 20 August 2026 — owner onboarding and storefront theming
+
+Agent-driven owner onboarding shipped on `feat/owner-onboarding`: five preset
+themes with bounded tuning, generated About page and banners, live-preview
+wizard with explicit publish, optional ComfyUI banner art behind
+`IMAGE_GEN_URL`. Full account, verification evidence and the three defects the
+tests caught: `docs/STATUS-onboarding.md`. Suite sizes after: engine e2e 114
+across 14 suites, browser journeys 78, web unit 219, contracts 146.
+
+---
+
 # Status — 17 August 2026
 
 Where the project stands at the end of a session spent testing it hard and
