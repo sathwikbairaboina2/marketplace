@@ -3,9 +3,11 @@ import {
   AboutPage,
   Banner,
   BusinessProfile,
+  BusinessRequirements,
   OnboardingPhase,
   OnboardingSnapshot,
   PresetId,
+  SetupPlan,
   StorefrontConfig,
   ThemeOverrides,
 } from '@marketplace/contracts';
@@ -19,6 +21,11 @@ import { toChatMessages } from '../graph/state';
 export const ONBOARDING_FIELD_DEFAULTS = {
   phase: 'gathering' as OnboardingPhase,
   profile: null as BusinessProfile | null,
+  requirements: null as BusinessRequirements | null,
+  setupPlan: null as SetupPlan | null,
+  // How many questions the interview has already asked. The cap that reads it
+  // is what stops an adaptive interview that never feels satisfied.
+  questionCount: 0,
   presetId: null as PresetId | null,
   overrides: null as ThemeOverrides | null,
   about: null as AboutPage | null,
@@ -33,6 +40,11 @@ export const OnboardingAnnotation = Annotation.Root({
   ...MessagesAnnotation.spec,
   phase: replace<OnboardingPhase>(() => ONBOARDING_FIELD_DEFAULTS.phase),
   profile: replace<BusinessProfile | null>(() => ONBOARDING_FIELD_DEFAULTS.profile),
+  requirements: replace<BusinessRequirements | null>(
+    () => ONBOARDING_FIELD_DEFAULTS.requirements,
+  ),
+  setupPlan: replace<SetupPlan | null>(() => ONBOARDING_FIELD_DEFAULTS.setupPlan),
+  questionCount: replace<number>(() => ONBOARDING_FIELD_DEFAULTS.questionCount),
   presetId: replace<PresetId | null>(() => ONBOARDING_FIELD_DEFAULTS.presetId),
   overrides: replace<ThemeOverrides | null>(() => ONBOARDING_FIELD_DEFAULTS.overrides),
   about: replace<AboutPage | null>(() => ONBOARDING_FIELD_DEFAULTS.about),
@@ -49,8 +61,8 @@ export const defaultOnboardingState: OnboardingState = {
 };
 
 /**
- * The client view. The working slices (profile, presetId, overrides, about,
- * banners) stay internal: the wizard renders the assembled draft or nothing.
+ * The client view. The working slices (profile, requirements, presetId,
+ * overrides, about, banners, questionCount) stay internal: the wizard renders the assembled draft or nothing.
  */
 export function toOnboardingSnapshot(threadId: string, state: OnboardingState): OnboardingSnapshot {
   return {
@@ -59,5 +71,6 @@ export function toOnboardingSnapshot(threadId: string, state: OnboardingState): 
     phase: state.phase,
     messages: toChatMessages(state.messages),
     draft: state.draft,
+    setupPlan: state.setupPlan,
   };
 }

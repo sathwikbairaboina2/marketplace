@@ -46,3 +46,29 @@ describe('ONBOARDING_FIELD_DEFAULTS', () => {
     expect(Object.keys(ONBOARDING_FIELD_DEFAULTS).sort()).toEqual([...channelKeys].sort());
   });
 });
+
+describe('onboarding state additions', () => {
+  it('defaults the new slices', () => {
+    expect(defaultOnboardingState.requirements).toBeNull();
+    expect(defaultOnboardingState.setupPlan).toBeNull();
+    expect(defaultOnboardingState.questionCount).toBe(0);
+  });
+
+  it('puts the setup plan on the snapshot and keeps requirements internal', () => {
+    const plan = { sellsWhat: 'goods' as const, categories: ['mugs'], fields: [] };
+    const snapshot = toOnboardingSnapshot(threadId, {
+      ...defaultOnboardingState,
+      setupPlan: plan,
+      requirements: {
+        sellsWhat: 'goods',
+        categories: ['mugs'],
+        fulfilment: 'ship',
+        priceBand: 'mid',
+        differentiator: 'handmade',
+      },
+    });
+    expect(snapshot.setupPlan).toEqual(plan);
+    expect(snapshot).not.toHaveProperty('requirements');
+    expect(snapshot).not.toHaveProperty('questionCount');
+  });
+});
