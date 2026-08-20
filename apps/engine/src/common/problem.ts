@@ -18,6 +18,8 @@ export type ProblemType =
   | 'order-not-cancellable'
   | 'stage-not-messageable'
   | 'order-not-messageable'
+  // Publish asked for a storefront draft the tenant has never written.
+  | 'storefront-draft-not-found'
   | 'transaction-conflict'
   | 'request-in-progress'
   // Upload rejected on inspection: either the declared type is not accepted, or
