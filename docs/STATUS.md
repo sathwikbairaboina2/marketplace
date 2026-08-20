@@ -1,5 +1,16 @@
 # Status
 
+## 20 August 2026 — server-side cart and checkout with simulated payment
+
+The buyer loop closed on `feat/cart-checkout`: a per-buyer cart in the engine,
+`POST /checkout` into an `awaiting_payment` gate ahead of the owner's stages,
+and a deterministic fake card provider behind a `PAYMENT_PROVIDER` interface
+(Stripe magic numbers, declines render inline, cancel-from-gate restores
+stock). Two defects found on the way — a non-nullable record type and DELETE
+missing from the CORS preflight (the trap's third victim). Full account and
+suite counts: `docs/STATUS-cart-checkout.md`. Suites after: engine 214 unit /
+128 e2e, web 228 unit, playwright 29, journeys 81, campaign 164.
+
 ## 20 August 2026 — owner onboarding and storefront theming
 
 Agent-driven owner onboarding shipped on `feat/owner-onboarding`: five preset
