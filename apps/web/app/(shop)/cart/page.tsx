@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button, Form, Input, InputNumber, Select, message } from 'antd';
+import { Button, Form, Input, InputNumber, Select } from 'antd';
 import { DeleteOutlined, ShoppingOutlined } from '@ant-design/icons';
-import { createOrder } from '../../../lib/api/orders';
+import { checkout } from '../../../lib/api/checkout';
 import { useCart } from '../../../lib/cart/cart-context';
 import { ProblemError } from '../../../lib/api/http';
 import { notifyProblem } from '../../../lib/problem-notify';
@@ -36,10 +36,9 @@ export default function CartPage() {
   const submit = async (values: Record<string, unknown>) => {
     setBusy(true);
     try {
+      // The items come from the server-side cart, not from this page: the
+      // checkout body carries only the facts the cart cannot know.
       const body = {
-        items: lines
-          .filter((l) => !l.unavailable)
-          .map((l) => ({ productId: l.productId, quantity: l.qty })),
         currency: values.currency as string,
         shippingAddress: {
           line1: values.line1 as string,
@@ -58,11 +57,12 @@ export default function CartPage() {
       // rather than creating a second order.
       for (let attempt = 0; ; attempt++) {
         try {
-          const order = await createOrder(body, idempotencyKey);
+          const order = await checkout(body, idempotencyKey);
+          // The engine cleared the cart; refresh the mirror and mint a fresh
+          // key for the next intent. Payment happens on the next screen.
           void clear();
           resetKey();
-          void message.success('Order placed');
-          router.push(`/orders/${order.id}`);
+          router.push(`/orders/${order.id}/pay`);
           return;
         } catch (err) {
           const inProgress = err instanceof ProblemError && err.status === 409;
@@ -231,7 +231,7 @@ export default function CartPage() {
             loading={busy}
             disabled={busy}
           >
-            Place order
+            Checkout
           </Button>
         </aside>
       </div>

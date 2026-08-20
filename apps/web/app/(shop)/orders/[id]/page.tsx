@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Button, Descriptions, Popconfirm, Table } from 'antd';
+import { Alert, Button, Descriptions, Popconfirm, Table } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { MessageResponse, OrderResponse } from '@marketplace/contracts';
 import { cancelOrder, getOrder } from '../../../../lib/api/orders';
@@ -73,8 +73,12 @@ export default function OrderDetailPage() {
   const attributeRows = schema ? toDescriptionRows(schema.fields, order.attributes) : [];
 
   const messages = messagePage?.items ?? [];
+  const awaitingPayment = order.status === 'awaiting_payment';
   const currentStage = order.stages.find((stage) => stage.id === order.currentStageId);
-  const canCancel = order.status === 'confirmed' && currentStage?.cancellable === true;
+  // An order in the payment gate is always cancellable: no money has moved and
+  // no stage has begun.
+  const canCancel =
+    awaitingPayment || (order.status === 'confirmed' && currentStage?.cancellable === true);
 
   const cancel = async () => {
     try {
@@ -156,6 +160,26 @@ export default function OrderDetailPage() {
 
         <aside className="mp-summary">
           <h2>Progress</h2>
+          {/* The payment gate sits before the stage list: until it clears, the
+              tracker would misreport the order as already in stage one. */}
+          {awaitingPayment && (
+            <Alert
+              type="warning"
+              showIcon
+              message="Awaiting payment"
+              description="This order is reserved but unpaid. Fulfilment begins when payment lands."
+              style={{ marginBottom: 12 }}
+              data-testid="awaiting-payment"
+              action={
+                <Link href={`/orders/${order.id}/pay`}>
+                  <Button type="primary" size="small" data-testid="pay-now-link">
+                    Pay now
+                  </Button>
+                </Link>
+              }
+            />
+          )}
+          {!awaitingPayment && (
           <StageTracker
             stages={order.stages}
             currentStageId={order.currentStageId ?? ''}
@@ -175,6 +199,7 @@ export default function OrderDetailPage() {
               );
             }}
           />
+          )}
 
           {canCancel && (
             /* Popconfirm, never window.confirm: a native modal blocks the

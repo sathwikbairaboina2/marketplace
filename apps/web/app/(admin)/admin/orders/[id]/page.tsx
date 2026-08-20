@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Button, Descriptions, Table } from 'antd';
+import { Alert, Button, Descriptions, Popconfirm, Table } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { MessageResponse, OrderResponse } from '@marketplace/contracts';
-import { advanceOrder, getOrder } from '../../../../../lib/api/orders';
+import { advanceOrder, cancelOrder, getOrder } from '../../../../../lib/api/orders';
 import { listWholeThread } from '../../../../../lib/api/messages';
 import { ProblemError } from '../../../../../lib/api/http';
 import { notifyProblem } from '../../../../../lib/problem-notify';
@@ -135,11 +135,45 @@ export default function AdminOrderDetailPage() {
           {/* Rendered only when there is somewhere to go. A shop that has never
               configured its stages has exactly one, so every advance there is a
               legitimate 409 -- the seller should meet that as a missing button,
-              not as an error. */}
+              not as an error. An awaiting_payment order is not 'confirmed', so
+              the button never renders for one; the service refuses regardless. */}
           {next && order.status === 'confirmed' && (
             <Button type="primary" block style={{ marginTop: 12 }} onClick={advance}>
               Advance to {next.name}
             </Button>
+          )}
+
+          {order.status === 'awaiting_payment' && (
+            <>
+              <Alert
+                type="warning"
+                showIcon
+                message="Awaiting payment"
+                description="The stock is reserved but nothing has been charged. Don't dispatch this order."
+                style={{ marginTop: 12 }}
+                data-testid="admin-awaiting-payment"
+              />
+              {/* Cancelling an unpaid order is the seller reclaiming their
+                  stock. Popconfirm, never window.confirm. */}
+              <Popconfirm
+                title="Cancel this unpaid order?"
+                description="The items go back into stock."
+                okText="Cancel order"
+                cancelText="Keep it"
+                onConfirm={async () => {
+                  try {
+                    await cancelOrder(order.id);
+                    retry();
+                  } catch (err) {
+                    notifyProblem(err);
+                  }
+                }}
+              >
+                <Button danger block style={{ marginTop: 12 }} data-testid="admin-cancel-unpaid">
+                  Cancel unpaid order
+                </Button>
+              </Popconfirm>
+            </>
           )}
 
           <div className="mp-summary-row mp-summary-total" style={{ marginTop: 16 }}>

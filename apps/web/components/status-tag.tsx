@@ -17,6 +17,7 @@ const TONES: Record<string, string> = {
   // in flight / awaiting a human
   proposed: 'pending',
   pending: 'pending',
+  awaiting_payment: 'pending',
   // neutral lifecycle states
   draft: 'neutral',
   archived: 'neutral',
