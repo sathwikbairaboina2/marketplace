@@ -70,6 +70,14 @@ export async function seedCatalogue(subs: Record<string, string>): Promise<numbe
   const ddb = new DynamoDBClient({ endpoint: process.env.DYNAMODB_ENDPOINT });
   const records = loadCatalogue();
 
+  // Demo tenants are established shops, not new owners: the cockpit must not
+  // greet them -- or the e2e suites signed in as them -- with the onboarding
+  // wizard. Derived from the fixture's own partition keys rather than a
+  // hand-kept tenant list, so a fifth demo tenant gets the flag for free.
+  for (const pk of new Set(records.map((r) => r.PK))) {
+    records.push({ PK: pk, SK: 'SETTINGS#storefront-onboarding', dismissed: true });
+  }
+
   const items = records.map((record) => ({
     PutRequest: {
       Item: Object.fromEntries(
