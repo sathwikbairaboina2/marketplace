@@ -5,6 +5,8 @@ import {
   CreateOrder,
   CreateOrderSchema,
   Page,
+  PayRequest,
+  PayRequestSchema,
 } from '@marketplace/contracts';
 import { ZodBody, ZodQuery } from '../common/zod-validation.pipe';
 import { ListQuery, ListQuerySchema } from '../common/list-query.schema';
@@ -50,6 +52,16 @@ export class OrdersController {
   @HttpCode(200)
   cancel(@Param('id') id: string): Promise<OrderResponse> {
     return this.orders.cancel(id);
+  }
+
+  // 200, not 201: paying moves an order that already exists. No
+  // IdempotencyInterceptor: the status condition in the service makes pay
+  // single-shot, and a replayed 200 would tell a buyer a second charge
+  // succeeded when nothing happened.
+  @Post(':id/pay')
+  @HttpCode(200)
+  pay(@Param('id') id: string, @ZodBody(PayRequestSchema) body: PayRequest): Promise<OrderResponse> {
+    return this.orders.pay(id, body.card);
   }
 
   @Post(':id/advance')

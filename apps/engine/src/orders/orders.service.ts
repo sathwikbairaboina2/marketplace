@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
+  Card,
   CreateOrder,
   DEFAULT_PIPELINE,
   MAX_ORDER_LINE_ITEMS,
@@ -7,8 +8,10 @@ import {
   OrderRecord,
   OrderResponse,
   Page,
+  Payment,
   ProductRecord,
 } from '@marketplace/contracts';
+import { PAYMENT_PROVIDER, PaymentProvider } from '../payments/payment.provider';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { entitySk, gsi1UserPk, gsi1UserSk, PIPELINE_SK, skPrefix } from '../persistence/keys';
@@ -39,7 +42,11 @@ function toResponse(record: OrderRecord): OrderResponse {
     ...rest,
     pipelineVersion: rest.pipelineVersion ?? DEFAULT_PIPELINE.version,
     stages: rest.stages ?? DEFAULT_PIPELINE.stages,
-    currentStageId: rest.currentStageId ?? DEFAULT_PIPELINE.stages[0].id,
+    // `!== undefined`, not `??`: an awaiting_payment order legitimately stores
+    // `currentStageId: null` and the backfill must not clobber it -- only
+    // orders that predate the field entirely get the default.
+    currentStageId:
+      rest.currentStageId !== undefined ? rest.currentStageId : DEFAULT_PIPELINE.stages[0].id,
     stageEnteredAt: rest.stageEnteredAt ?? rest.createdAt,
   };
 }
@@ -50,6 +57,7 @@ export class OrdersService {
     private readonly repo: DynamoRepository,
     private readonly registry: SchemaRegistryService,
     private readonly pipeline: PipelineService,
+    @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
   ) {}
 
   /**
@@ -60,7 +68,10 @@ export class OrdersService {
     return toResponse(record);
   }
 
-  async create(input: CreateOrder): Promise<OrderResponse> {
+  async create(
+    input: CreateOrder,
+    opts: { awaitPayment?: boolean } = {},
+  ): Promise<OrderResponse> {
     if (input.items.length > MAX_ORDER_LINE_ITEMS) {
       throw new ProblemException(
         'too-many-line-items',
@@ -146,7 +157,7 @@ export class OrdersService {
       entityType: 'Order',
       id,
       userId: principal.userId,
-      status: 'confirmed',
+      status: opts.awaitPayment ? 'awaiting_payment' : 'confirmed',
       totalAmountMinor,
       currency: input.currency,
       items: lineItems,
@@ -155,7 +166,9 @@ export class OrdersService {
       attributes,
       pipelineVersion: pipeline.version,
       stages: pipeline.stages,
-      currentStageId: pipeline.stages[0].id,
+      // The payment gate sits before the copied stage list: an unpaid order
+      // points at no stage until `pay` moves it into the first one.
+      currentStageId: opts.awaitPayment ? null : pipeline.stages[0].id,
       stageEnteredAt: createdAt,
     };
 
@@ -306,6 +319,96 @@ export class OrdersService {
   }
 
   /**
+   * Takes payment for an order sitting in the awaiting_payment gate and moves
+   * it into the first stage of the snapshot it was placed under. Buyer-owned,
+   * same 404-not-403 shape as get/cancel.
+   */
+  async pay(id: string, card: Card): Promise<OrderResponse> {
+    const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
+    if (!found || found.userId !== currentPrincipal().userId) {
+      throw new ProblemException('not-found', 404, 'Order not found');
+    }
+    const current = toResponse(found);
+
+    if (current.status !== 'awaiting_payment') {
+      throw new ProblemException(
+        'order-not-payable',
+        409,
+        'Order is not awaiting payment',
+        `order ${id} is ${current.status}`,
+      );
+    }
+
+    // Amount comes from the order the transaction wrote -- never from the client.
+    const receipt = await this.provider.charge({
+      orderId: id,
+      amountMinor: current.totalAmountMinor,
+      currency: current.currency,
+      card,
+    });
+
+    const now = new Date().toISOString();
+    const payment: Payment = {
+      id: receipt.paymentId,
+      last4: receipt.last4,
+      amountMinor: current.totalAmountMinor,
+      at: now,
+    };
+    const firstStageId = current.stages[0].id;
+
+    // Charge-then-conditional-write is safe ONLY because the fake provider is
+    // deterministic and offline: a lost race after a successful fake charge
+    // costs nothing real. A real provider slotted in behind PAYMENT_PROVIDER
+    // needs an idempotency key on the charge and a reconciliation story first.
+    try {
+      await this.repo.transactWrite([
+        {
+          Update: {
+            TableName: this.repo.tableName,
+            Key: this.repo.key(entitySk('Order', id)),
+            UpdateExpression:
+              'SET #status = :confirmed, #currentStageId = :stage, #stageEnteredAt = :now, #payment = :payment',
+            // The status condition is the double-pay and pay-after-cancel
+            // guard: whichever write lands second fails its condition.
+            ConditionExpression: '#status = :awaiting',
+            ExpressionAttributeNames: {
+              '#status': 'status',
+              '#currentStageId': 'currentStageId',
+              '#stageEnteredAt': 'stageEnteredAt',
+              '#payment': 'payment',
+            },
+            ExpressionAttributeValues: {
+              ':confirmed': 'confirmed',
+              ':stage': firstStageId,
+              ':now': now,
+              ':payment': payment,
+              ':awaiting': 'awaiting_payment',
+            },
+          },
+        },
+      ]);
+    } catch (err) {
+      if (failedTransactionIndexes(err).includes(0)) {
+        throw new ProblemException(
+          'order-not-payable',
+          409,
+          'Order is not awaiting payment',
+          'this order was paid or cancelled by another request; reload it',
+        );
+      }
+      throw err;
+    }
+
+    return {
+      ...current,
+      status: 'confirmed',
+      currentStageId: firstStageId,
+      stageEnteredAt: now,
+      payment,
+    };
+  }
+
+  /**
    * Moves an order to the next stage of the snapshot it was placed under. Admin
    * only: advancing is the seller's account of what they have physically done.
    */
@@ -409,14 +512,24 @@ export class OrdersService {
   async cancel(id: string): Promise<OrderResponse> {
     // Ownership is checked exactly as `get` does, and reported the same way: a
     // 403 here would confirm the order exists to somebody not allowed to see it.
+    // One widening: a tenant admin may cancel an order stuck in the payment
+    // gate -- clearing stale unpaid orders is the seller's stock coming back.
     const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
-    if (!found || found.userId !== currentPrincipal().userId) {
+    const principal = currentPrincipal();
+    if (
+      !found ||
+      (found.userId !== principal.userId &&
+        !(principal.role === 'admin' && found.status === 'awaiting_payment'))
+    ) {
       throw new ProblemException('not-found', 404, 'Order not found');
     }
     const current = toResponse(found);
 
+    // An order in the payment gate is always cancellable: no money has moved,
+    // no stage has begun, and holding the stock helps nobody.
+    const awaiting = current.status === 'awaiting_payment';
     const stage = current.stages.find((s) => s.id === current.currentStageId);
-    if (current.status !== 'confirmed' || !stage?.cancellable) {
+    if (!awaiting && (current.status !== 'confirmed' || !stage?.cancellable)) {
       throw new ProblemException(
         'order-not-cancellable',
         409,
@@ -454,13 +567,22 @@ export class OrdersService {
           // The status condition is what makes a double cancel impossible and the
           // stock restore exactly-once. The stage condition is what stops a buyer
           // cancelling goods the seller dispatched in the gap between their page
-          // rendering and their click.
-          ConditionExpression: '#status = :confirmed AND #currentStageId = :stage',
-          ExpressionAttributeNames: { '#status': 'status', '#currentStageId': 'currentStageId' },
+          // rendering and their click. An awaiting_payment order has no stage, so
+          // its condition is status alone -- conditioned on the status actually
+          // observed, not a hard-coded 'confirmed'.
+          ConditionExpression: awaiting
+            ? '#status = :expected'
+            : '#status = :expected AND #currentStageId = :stage',
+          ExpressionAttributeNames: (awaiting
+            ? { '#status': 'status' }
+            : { '#status': 'status', '#currentStageId': 'currentStageId' }) as Record<
+            string,
+            string
+          >,
           ExpressionAttributeValues: {
             ':cancelled': 'cancelled',
-            ':confirmed': 'confirmed',
-            ':stage': current.currentStageId,
+            ':expected': current.status,
+            ...(awaiting ? {} : { ':stage': current.currentStageId }),
           },
         },
       },

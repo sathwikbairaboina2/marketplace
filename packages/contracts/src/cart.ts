@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CurrencySchema, MAX_QUANTITY, MinorAmountSchema, QuantitySchema, StockSchema, UlidSchema } from './common';
+import { CreateOrderSchema } from './order';
 
 export const MAX_CART_LINES = 50;
 
@@ -36,3 +37,10 @@ export const CartResponseSchema = z.object({
   totalMinor: z.number().int().nonnegative(),
 });
 export type CartResponse = z.infer<typeof CartResponseSchema>;
+
+/**
+ * POST /checkout body: everything CreateOrder needs except items, which come
+ * from the caller's server-side cart.
+ */
+export const CheckoutRequestSchema = CreateOrderSchema.omit({ items: true });
+export type CheckoutRequest = z.infer<typeof CheckoutRequestSchema>;
