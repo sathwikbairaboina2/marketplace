@@ -4,6 +4,7 @@ import {
   EntitySchemaRecord,
   EntitySchemaRecordSchema,
   StorefrontConfig,
+  StorefrontConfigSchema,
 } from '@marketplace/contracts';
 import { ENV, EnvConfig } from '../config/env.schema';
 import { ProblemException } from '../common/problem';
@@ -17,6 +18,18 @@ export class EngineClient {
     // The Engine returns { entityType, version, fields }; the graph only needs
     // the record shape the registry contract already describes.
     return EntitySchemaRecordSchema.parse({ version: body.version, fields: body.fields });
+  }
+
+  /**
+   * The draft the wizard is working on. Read for a read-modify-write: applying
+   * a setup plan merges two keys into it and PUTs the whole document back, the
+   * same whole-document write the graph makes.
+   */
+  async getStorefrontDraft(token: string): Promise<StorefrontConfig | null> {
+    const body = await this.get('/api/v1/storefront/draft', token);
+    return body.draft === null || body.draft === undefined
+      ? null
+      : StorefrontConfigSchema.parse(body.draft);
   }
 
   /** The onboarding graph's one write: the whole draft, with the owner's token. */

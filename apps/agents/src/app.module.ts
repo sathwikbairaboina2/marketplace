@@ -13,6 +13,7 @@ import { GraphModule } from './graph/graph.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { CopywriterModule } from './copywriter/copywriter.module';
 import { SupportModule } from './support/support.module';
+import { SetupPlanModule } from './setup-plan/setup-plan.module';
 import { AuthModule } from './auth/auth.module';
 import { ThreadsModule } from './threads/threads.module';
 import { ChatModule } from './chat/chat.module';
@@ -39,6 +40,7 @@ import { ChatModule } from './chat/chat.module';
     OnboardingModule,
     CopywriterModule,
     SupportModule,
+    SetupPlanModule,
     HealthModule,
     AuthModule,
     ThreadsModule,
