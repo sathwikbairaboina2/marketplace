@@ -30,6 +30,11 @@ export function settingsSk(name: string): string {
   return `SETTINGS#${name}`;
 }
 
+/** One cart per user per tenant. The item holds every line. */
+export function cartSk(userId: string): string {
+  return `CART#${userId}`;
+}
+
 /** The tenant's order-stage pipeline. One record per tenant. */
 export const PIPELINE_SK = settingsSk('pipeline');
 
