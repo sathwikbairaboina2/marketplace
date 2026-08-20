@@ -1227,7 +1227,10 @@ await journey('describing the business produces a previewable draft the engine h
   await owner
     .getByTestId('composer')
     .fill(
-      'I run a small pottery studio called Kiln & Loom. Warm, personal tone. My customers are gift shoppers who like handmade ceramics.',
+      // Answers both halves the interview now asks about: who the business is,
+      // and how its shop has to work. A message covering only the first half
+      // leaves the model rightly still asking questions.
+      'I run a small pottery studio called Kiln & Loom. Warm, personal tone. My customers are gift shoppers who like handmade ceramics. I sell physical goods: mugs, jugs and bowls. I post them out or people collect. Prices are mid-range, 20 to 90 pounds. Every piece is hand-thrown by me.',
     );
   await owner.keyboard.press('Enter');
   try {
@@ -1237,7 +1240,7 @@ await journey('describing the business produces a previewable draft the engine h
     await owner
       .getByTestId('composer')
       .fill(
-        'Kind of business: pottery studio. Name: Kiln & Loom. Tone: warm and personal. Audience: gift shoppers.',
+        'Kind of business: pottery studio. Name: Kiln & Loom. Tone: warm and personal. Audience: gift shoppers. Sells physical goods. Categories: mugs, jugs, bowls. Fulfilment: posted or collected. Price band: 20 to 90 pounds. Different because every piece is hand-thrown by me.',
       );
     await owner.keyboard.press('Enter');
     await owner.getByTestId('preview').waitFor({ timeout: 300_000 });
