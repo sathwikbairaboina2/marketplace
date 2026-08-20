@@ -1,4 +1,4 @@
-import { Inter } from 'next/font/google';
+import { Fraunces, Inter, Nunito, Playfair_Display } from 'next/font/google';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 // ANTD v5 targets React 18's rendering entry points. Next.js ships React 19,
 // and without this patch `message`, `notification` and `Modal` -- the whole
@@ -16,6 +16,12 @@ import { ContractBanner } from '../components/contract-banner';
 // runs, and a webfont request that fails there fails silently into a fallback
 // nobody chose.
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+// The three faces the storefront presets can pick beyond Inter. Loaded here
+// unconditionally: a tenant's theme is data, and a font that only loads for
+// some data value would flash fallback on the first themed paint.
+const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap' });
+const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap' });
+const nunito = Nunito({ subsets: ['latin'], variable: '--font-nunito', display: 'swap' });
 
 export const metadata = { title: 'Marketplace' };
 
@@ -36,7 +42,10 @@ const THEME_BOOTSTRAP = `
 // is what lets a cart survive a walk through the back office.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${fraunces.variable} ${playfair.variable} ${nunito.variable}`}
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
