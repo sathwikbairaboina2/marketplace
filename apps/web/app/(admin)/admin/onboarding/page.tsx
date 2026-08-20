@@ -19,7 +19,7 @@ import { CommentOutlined } from '@ant-design/icons';
 import { PreviewPane } from './preview-pane';
 
 export default function OnboardingPage() {
-  const { snapshot, connected, error, send } = useOnboardingSocket();
+  const { snapshot, connected, error, send, pending } = useOnboardingSocket();
   const router = useRouter();
   const [draft, setDraft] = useState('');
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
@@ -149,6 +149,18 @@ export default function OnboardingPage() {
                 </div>
               ))
             )}
+
+            {pending && (
+              <div className="mp-msg" data-role="assistant">
+                <span className="mp-msg-avatar" aria-hidden="true">
+                  <RobotOutlined />
+                </span>
+                <div className="mp-msg-bubble" data-testid="pending">
+                  Thinking…
+                </div>
+              </div>
+            )}
+
             <div ref={endRef} />
           </div>
 

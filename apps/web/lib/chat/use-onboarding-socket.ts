@@ -21,6 +21,10 @@ const THREAD_KEY = 'marketplace.onboardingThreadId';
  */
 export function useOnboardingSocket() {
   const [snapshot, setSnapshot] = useState<OnboardingSnapshot | null>(null);
+  // The owner's own message, held until the server echoes it back. A turn can
+  // take tens of seconds against a local model, and without this the chat log
+  // sits unchanged after a send -- indistinguishable from a dropped message.
+  const [optimistic, setOptimistic] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -48,6 +52,9 @@ export function useOnboardingSocket() {
       }
       sessionStorage.setItem(THREAD_KEY, parsed.data.threadId);
       setSnapshot(parsed.data);
+      // The server snapshot is authoritative and already contains the message,
+      // so the optimistic copy is dropped wholesale rather than reconciled.
+      setOptimistic(null);
     });
 
     socket.on(AGENT_EVENTS.error, (problem: { title?: string; detail?: string }) => {
@@ -63,10 +70,25 @@ export function useOnboardingSocket() {
 
   const send = useCallback(
     (content: string) => {
-      if (threadId) socketRef.current?.emit(AGENT_EVENTS.message, { threadId, content });
+      if (!threadId) return;
+      setOptimistic(content);
+      socketRef.current?.emit(AGENT_EVENTS.message, { threadId, content });
     },
     [threadId],
   );
 
-  return { snapshot, connected, error, send };
+  const withOptimistic =
+    snapshot && optimistic
+      ? { ...snapshot, messages: [...snapshot.messages, { role: 'user' as const, content: optimistic }] }
+      : snapshot;
+
+  return {
+    snapshot: withOptimistic,
+    connected,
+    error,
+    send,
+    // True while a turn is in flight: the wizard renders a pending bubble so a
+    // slow model reads as thinking rather than as broken.
+    pending: optimistic !== null,
+  };
 }
