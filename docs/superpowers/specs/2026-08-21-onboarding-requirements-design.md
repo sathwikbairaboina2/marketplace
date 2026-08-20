@@ -165,6 +165,31 @@ The model judges its own sufficiency. Three guards bound that judgement:
   exactly today's behaviour — the storefront drafts, `setupPlan` is `null`, the
   wizard shows the preview alone. No dead end.
 
+#### Amendment, 2026-08-21: coercing near-miss requirements
+
+Implementation found the all-or-nothing rule above too brittle against a 7B
+model. A secondhand bookshop answering `sellsWhat: "books and stationery"`
+matched no enum member, so `requirements` went null, `inferNeeds` never ran and
+the owner got no plan at all — the exact failure this spec exists to prevent,
+reached by a wording difference rather than a missing answer.
+
+`interview` now normalises before validating:
+
+- `sellsWhat` is matched on whole words. "physical goods" reads as `goods`,
+  "bookable classes" as `bookable`, a mix as `both`. The bookable list
+  deliberately excludes the bare word "book", because a bookshop sells books
+  and takes no bookings.
+- Anything still unrecognised falls back to `goods` rather than discarding the
+  requirements. Guessing costs one radio click in a tab the owner confirms
+  before anything is applied; refusing to guess costs the whole plan.
+- Over-long categories and free-text answers are trimmed to their caps instead
+  of failing the parse.
+
+The gate survives where it matters: the four free-text fields are still
+required, so an answer the owner never gave (an empty `fulfilment` or
+`priceBand`) still yields `requirements: null` and the documented degradation.
+Coercion widens the wording accepted; it does not invent content.
+
 ### `inferNeeds`
 
 Profile plus requirements to a `SetupPlan` in one structured call, retried to
