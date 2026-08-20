@@ -3,6 +3,7 @@ import {
   DynamicEntityType,
   EntitySchemaRecord,
   EntitySchemaRecordSchema,
+  StorefrontConfig,
 } from '@marketplace/contracts';
 import { ENV, EnvConfig } from '../config/env.schema';
 import { ProblemException } from '../common/problem';
@@ -18,11 +19,31 @@ export class EngineClient {
     return EntitySchemaRecordSchema.parse({ version: body.version, fields: body.fields });
   }
 
-  private async get(path: string, token: string): Promise<Record<string, any>> {
+  /** The onboarding graph's one write: the whole draft, with the owner's token. */
+  async putStorefrontDraft(config: StorefrontConfig, token: string): Promise<void> {
+    await this.send('PUT', '/api/v1/storefront/draft', token, config);
+  }
+
+  private get(path: string, token: string): Promise<Record<string, any>> {
+    return this.send('GET', path, token);
+  }
+
+  private async send(
+    method: string,
+    path: string,
+    token: string,
+    body?: unknown,
+  ): Promise<Record<string, any>> {
     let res: Response;
     try {
       res = await fetch(`${this.env.ENGINE_BASE_URL}${path}`, {
-        headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
+        method,
+        headers: {
+          authorization: `Bearer ${token}`,
+          accept: 'application/json',
+          ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: AbortSignal.timeout(this.env.ENGINE_TIMEOUT_MS),
       });
     } catch (err) {
@@ -39,6 +60,12 @@ export class EngineClient {
     }
     if (res.status === 404) {
       throw new ProblemException('not-found', 404, 'Engine has no such resource', path);
+    }
+    // A 400 is this service sending a payload the Engine's contract rejects --
+    // the caller's payload was already validated, so surface it as our bug,
+    // distinct from the Engine being down.
+    if (res.status === 400) {
+      throw new ProblemException('invalid-request', 400, 'Engine rejected the payload', path);
     }
     if (!res.ok) {
       // 5xx is the Engine failing, not the caller. Same recovery as unreachable.

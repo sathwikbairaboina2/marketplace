@@ -12,11 +12,13 @@ import { ZodType } from 'zod';
 import { AuthError, runWithTenant, TenantPrincipal } from '@marketplace/auth';
 import {
   AGENT_EVENTS,
-  AgentStateSnapshot,
+  AgentSnapshot,
   ConfirmSchema,
   RejectSchema,
   SendMessageSchema,
+  ThreadKind,
   ThreadResumeSchema,
+  ThreadStartSchema,
 } from '@marketplace/contracts';
 import { JwtVerifierService } from '../auth/jwt-verifier.service';
 import { GraphService } from '../graph/graph.service';
@@ -62,10 +64,16 @@ export class ChatGateway implements OnGatewayInit {
   }
 
   @SubscribeMessage(AGENT_EVENTS.threadStart)
-  async onThreadStart(@ConnectedSocket() socket: Socket): Promise<void> {
+  async onThreadStart(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async ({ principal }) => {
-      const threadId = await this.threads.create(principal);
-      return this.graph.snapshot(threadId);
+      // The payload is new and optional: an older client emits the event bare,
+      // and bare must keep meaning a schema thread. The trailing ?? repeats the
+      // schema default only because this gateway's `parse` helper is generic
+      // over ZodType<T>, which lets T bind to the *input* type where a
+      // defaulted key is still optional.
+      const kind = this.parse(ThreadStartSchema, body ?? {}).kind ?? 'schema';
+      const threadId = await this.threads.create(principal, kind);
+      return this.snapshotFor(kind, threadId);
     });
   }
 
@@ -73,8 +81,9 @@ export class ChatGateway implements OnGatewayInit {
   async onThreadResume(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId } = this.parse(ThreadResumeSchema, body);
+      const kind = await this.threads.getKind(threadId, data.principal);
       await this.threads.touch(threadId, data.principal);
-      return this.graph.snapshot(threadId);
+      return this.snapshotFor(kind, threadId);
     });
   }
 
@@ -82,13 +91,19 @@ export class ChatGateway implements OnGatewayInit {
   async onMessage(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId, content } = this.parse(SendMessageSchema, body);
+      const kind = await this.threads.getKind(threadId, data.principal);
       await this.threads.touch(threadId, data.principal);
-      return this.graph.run({
-        threadId,
-        ctx: { principal: data.principal, authToken: data.token },
-        action: 'message',
-        content,
-      });
+      const ctx = { principal: data.principal, authToken: data.token };
+      if (kind === 'onboarding') {
+        // Replaced when the onboarding graph lands (next commits); routing and
+        // registry support ship first so each piece is testable alone.
+        throw new ProblemException(
+          'invalid-event-payload',
+          422,
+          'Onboarding threads are not available yet',
+        );
+      }
+      return this.graph.run({ threadId, ctx, action: 'message', content });
     });
   }
 
@@ -96,6 +111,7 @@ export class ChatGateway implements OnGatewayInit {
   async onConfirm(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId } = this.parse(ConfirmSchema, body);
+      await this.assertSchemaThread(threadId, data);
       await this.threads.touch(threadId, data.principal);
       return this.graph.run({
         threadId,
@@ -109,6 +125,7 @@ export class ChatGateway implements OnGatewayInit {
   async onReject(@ConnectedSocket() socket: Socket, @MessageBody() body: unknown): Promise<void> {
     await this.handle(socket, async (data) => {
       const { threadId, notes } = this.parse(RejectSchema, body);
+      await this.assertSchemaThread(threadId, data);
       await this.threads.touch(threadId, data.principal);
       return this.graph.run({
         threadId,
@@ -119,6 +136,33 @@ export class ChatGateway implements OnGatewayInit {
         content: notes,
       });
     });
+  }
+
+  /**
+   * Onboarding has no confirm/reject: publishing is an HTTP action in the
+   * wizard, deliberately outside the conversation.
+   */
+  private async assertSchemaThread(threadId: string, data: SocketData): Promise<void> {
+    const kind = await this.threads.getKind(threadId, data.principal);
+    if (kind !== 'schema') {
+      throw new ProblemException(
+        'invalid-event-payload',
+        422,
+        'Onboarding threads accept only messages',
+      );
+    }
+  }
+
+  private snapshotFor(kind: ThreadKind, threadId: string): Promise<AgentSnapshot> {
+    if (kind === 'onboarding') {
+      // Replaced when the onboarding graph lands (next commits).
+      throw new ProblemException(
+        'invalid-event-payload',
+        422,
+        'Onboarding threads are not available yet',
+      );
+    }
+    return this.graph.snapshot(threadId);
   }
 
   private parse<T>(schema: ZodType<T>, body: unknown): T {
@@ -136,7 +180,7 @@ export class ChatGateway implements OnGatewayInit {
 
   private async handle(
     socket: Socket,
-    fn: (data: SocketData) => Promise<AgentStateSnapshot>,
+    fn: (data: SocketData) => Promise<AgentSnapshot>,
   ): Promise<void> {
     const data = socket.data as SocketData;
     const traceId = randomUUID();

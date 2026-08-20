@@ -61,4 +61,33 @@ describe('ThreadRegistryService', () => {
       problem: { status: 404 },
     });
   });
+
+  it('records and returns a thread kind', async () => {
+    const threadId = await registry.create(alice, 'onboarding');
+    await expect(registry.getKind(threadId, alice)).resolves.toBe('onboarding');
+  });
+
+  it('defaults an unstated kind to schema', async () => {
+    const threadId = await registry.create(alice);
+    await expect(registry.getKind(threadId, alice)).resolves.toBe('schema');
+  });
+
+  it('reads a pre-kind record as schema', async () => {
+    // A record written before kinds existed: no `kind` key at all.
+    const threadId = ulid();
+    await redis.set(
+      `thread:${threadId}`,
+      JSON.stringify({ tenantId: 'tenant_a', userId: 'user-1', createdAt: new Date().toISOString() }),
+      'EX',
+      60,
+    );
+    await expect(registry.getKind(threadId, alice)).resolves.toBe('schema');
+  });
+
+  it('hides a thread kind from another tenant', async () => {
+    const threadId = await registry.create(alice, 'onboarding');
+    await expect(registry.getKind(threadId, bob)).rejects.toMatchObject({
+      problem: { status: 404 },
+    });
+  });
 });

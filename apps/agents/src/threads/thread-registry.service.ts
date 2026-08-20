@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import Redis from 'ioredis';
 import { ulid } from 'ulid';
 import { TenantPrincipal } from '@marketplace/auth';
+import { ThreadKind } from '@marketplace/contracts';
 import { ENV, EnvConfig } from '../config/env.schema';
 import { REDIS } from '../redis/redis.module';
 import { ProblemException } from '../common/problem';
@@ -10,6 +11,8 @@ export interface ThreadOwner {
   tenantId: string;
   userId: string;
   createdAt: string;
+  /** Absent on records written before kinds existed; those are schema threads. */
+  kind?: ThreadKind;
 }
 
 @Injectable()
@@ -23,12 +26,13 @@ export class ThreadRegistryService {
     return `thread:${threadId}`;
   }
 
-  async create(principal: TenantPrincipal): Promise<string> {
+  async create(principal: TenantPrincipal, kind: ThreadKind = 'schema'): Promise<string> {
     const threadId = ulid();
     const owner: ThreadOwner = {
       tenantId: principal.tenantId,
       userId: principal.userId,
       createdAt: new Date().toISOString(),
+      kind,
     };
     await this.redis.set(
       this.key(threadId),
@@ -40,6 +44,19 @@ export class ThreadRegistryService {
   }
 
   async assertOwned(threadId: string, principal: TenantPrincipal): Promise<void> {
+    await this.ownedRecord(threadId, principal);
+  }
+
+  /**
+   * Ownership-gated like everything else here: which graph a thread runs is
+   * as much a tenant's secret as whether the thread exists.
+   */
+  async getKind(threadId: string, principal: TenantPrincipal): Promise<ThreadKind> {
+    const owner = await this.ownedRecord(threadId, principal);
+    return owner.kind ?? 'schema';
+  }
+
+  private async ownedRecord(threadId: string, principal: TenantPrincipal): Promise<ThreadOwner> {
     const stored = await this.redis.get(this.key(threadId));
     const owner = this.parseOwner(stored);
 
@@ -54,6 +71,7 @@ export class ThreadRegistryService {
     ) {
       throw new ProblemException('thread-not-found', 404, 'No such thread', threadId);
     }
+    return owner;
   }
 
   private parseOwner(stored: string | null): ThreadOwner | null {
