@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Button, Empty, Segmented, Upload } from 'antd';
 import { PictureOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import type { Banner, StorefrontConfig } from '@marketplace/contracts';
+import type { Banner, SetupPlan, StorefrontConfig } from '@marketplace/contracts';
 import { AboutSections } from '../../../../components/about-sections';
 import { StorefrontBanner } from '../../../../components/storefront-banner';
 import { generateBannerArt } from '../../../../lib/api/storefront';
@@ -11,8 +11,9 @@ import { uploadProductImage } from '../../../../lib/api/uploads';
 import { notifyProblem } from '../../../../lib/problem-notify';
 import { resolveTheme } from '../../../../lib/theme/resolve';
 import { useTheme } from '../../../../lib/theme/theme-context';
+import { SetupTab } from './setup-tab';
 
-type Tab = 'storefront' | 'about' | 'banners';
+type Tab = 'storefront' | 'about' | 'banners' | 'setup';
 
 /**
  * One field of the draft, editable in place. A committed edit hands the whole
@@ -82,10 +83,13 @@ function EditableText({
 export function PreviewPane({
   draft,
   onChange,
+  setupPlan = null,
   imageGen = false,
 }: {
   draft: StorefrontConfig | null;
   onChange: (next: StorefrontConfig) => void;
+  /** The agent's proposal, when it made one. Absent until the interview completes. */
+  setupPlan?: SetupPlan | null;
   /** Whether this deployment can render banner art; hides the button, not just disables it. */
   imageGen?: boolean;
 }) {
@@ -185,6 +189,9 @@ export function PreviewPane({
           { label: 'Storefront', value: 'storefront' },
           { label: 'About', value: 'about' },
           { label: 'Banners', value: 'banners' },
+          // Only once there is something to show: an interview that never
+          // completed its requirements produces no plan.
+          ...(setupPlan ? [{ label: 'Setup', value: 'setup' }] : []),
         ]}
       />
 
@@ -224,6 +231,12 @@ export function PreviewPane({
         {tab === 'banners' && (
           <div style={{ background: 'var(--mp-surface)', padding: 'var(--mp-space-4)' }}>
             {draft.banners.map(bannerEditor)}
+          </div>
+        )}
+
+        {tab === 'setup' && setupPlan && (
+          <div style={{ background: 'var(--mp-surface)', padding: 'var(--mp-space-4)' }}>
+            <SetupTab plan={setupPlan} />
           </div>
         )}
       </div>

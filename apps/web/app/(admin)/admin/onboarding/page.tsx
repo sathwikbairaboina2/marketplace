@@ -182,7 +182,12 @@ export default function OnboardingPage() {
         </section>
 
         <section className="mp-onboarding-right">
-          <PreviewPane draft={config} onChange={(next) => void applyEdit(next)} imageGen={imageGen} />
+          <PreviewPane
+            draft={config}
+            setupPlan={snapshot?.setupPlan ?? null}
+            onChange={(next) => void applyEdit(next)}
+            imageGen={imageGen}
+          />
         </section>
       </div>
     </>

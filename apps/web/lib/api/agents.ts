@@ -1,6 +1,8 @@
 import {
+  ApplySetupPlanResponseSchema,
   CopywriterDraftResponseSchema,
   SupportAskResponseSchema,
+  type ApplySetupPlanRequest,
   type CopywriterDraftRequest,
 } from '@marketplace/contracts';
 import { AGENTS_URL } from '../env';
@@ -21,5 +23,17 @@ export const askSupport = (question: string) =>
     method: 'POST',
     body: { question },
     schema: SupportAskResponseSchema,
+    base: AGENTS_URL,
+  });
+
+/**
+ * Applies the subset of the setup plan the owner ticked: the storefront keys
+ * land on the draft immediately, the field additions become proposed flows.
+ */
+export const applySetupPlan = (body: ApplySetupPlanRequest) =>
+  request('/api/v1/setup-plan/apply', {
+    method: 'POST',
+    body,
+    schema: ApplySetupPlanResponseSchema,
     base: AGENTS_URL,
   });
