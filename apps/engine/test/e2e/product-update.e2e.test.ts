@@ -85,13 +85,25 @@ describe('PATCH /products/:id', () => {
     expect(body.status).toBe('active');
   });
 
+  // The media policy (#05) only admits this shop's own bucket slice, so the
+  // fixtures point there; the objects need not exist for a URL to be stored.
+  const OWN = `http://localhost:4566/marketplace-media/${TENANT}/products`;
+
   it('replaces the photographs', async () => {
-    const created = await create({ images: ['https://example.test/old.png'] });
+    const created = await create({ images: [`${OWN}/a/old.png`] });
     const body = (await (
-      await patch(created.id, { images: ['https://example.test/new.png'] })
+      await patch(created.id, { images: [`${OWN}/b/new.png`] })
     ).json()) as { images: string[] };
 
-    expect(body.images).toEqual(['https://example.test/new.png']);
+    expect(body.images).toEqual([`${OWN}/b/new.png`]);
+  });
+
+  it("refuses a patch pointing at media that is not this shop's", async () => {
+    const created = await create();
+    const res = await patch(created.id, {
+      images: ['http://localhost:4566/marketplace-media/tenant_other/products/x/y.png'],
+    });
+    expect(res.status).toBe(422);
   });
 
   it('withdraws a product by archiving it', async () => {
