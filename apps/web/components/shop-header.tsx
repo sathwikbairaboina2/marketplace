@@ -9,12 +9,14 @@ import {
   LogoutOutlined,
   ProfileOutlined,
   SettingOutlined,
+  ShopOutlined,
   ShoppingCartOutlined,
   ShoppingOutlined,
   TagsOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../lib/auth/auth-context';
 import { useCart } from '../lib/cart/cart-context';
+import { useStorefrontConfig } from '../lib/storefront-config';
 import { ThemeToggle } from './theme-toggle';
 
 // These accessible names are a contract: auth.spec.ts asserts a buyer sees
@@ -30,6 +32,7 @@ const LINKS = [
 export function ShopHeader() {
   const { principal, signOut } = useAuth();
   const { lines } = useCart();
+  const storefront = useStorefrontConfig();
   const pathname = usePathname();
   const screens = Grid.useBreakpoint();
   // On a phone the labelled buttons cost the header a whole extra row; the
@@ -64,6 +67,18 @@ export function ShopHeader() {
             </Link>
           );
         })}
+        {/* Only once the owner has published a story: an About link over an
+            empty page reads as a broken shop. */}
+        {storefront && (
+          <Link
+            href="/about"
+            aria-current={pathname.startsWith('/about') ? 'page' : undefined}
+            data-active={pathname.startsWith('/about') || undefined}
+          >
+            <ShopOutlined />
+            About
+          </Link>
+        )}
         {/* Deliberately not named Flows or Chat -- auth.spec asserts a buyer
             sees neither, and this entry is admin-only regardless. */}
         {principal?.role === 'admin' && (

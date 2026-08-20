@@ -11,7 +11,9 @@ import { useAuth } from '../../../lib/auth/auth-context';
 import { notifyProblem } from '../../../lib/problem-notify';
 import { FilterRail, ProductGrid } from '../../../components/filter-rail';
 import { ProductCard } from '../../../components/product-card';
+import { StorefrontBanner } from '../../../components/storefront-banner';
 import { StorefrontHero } from '../../../components/storefront-hero';
+import { useStorefrontConfig } from '../../../lib/storefront-config';
 import { EmptyState } from '../../../components/empty-state';
 import { ErrorPanel } from '../../../components/error-panel';
 import { GridSkeleton } from '../../../components/skeletons';
@@ -40,6 +42,10 @@ const onSale = (products: ProductResponse[]) =>
 export default function ProductsPage() {
   const schema = useSchema('Product');
   const { principal } = useAuth();
+  const storefront = useStorefrontConfig();
+  const hero = storefront?.banners.find((b) => b.slot === 'hero');
+  const mid = storefront?.banners.find((b) => b.slot === 'mid');
+  const footer = storefront?.banners.find((b) => b.slot === 'footer');
 
   const [items, setItems] = useState<ProductResponse[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -99,11 +105,17 @@ export default function ProductsPage() {
 
   return (
     <>
-      <StorefrontHero
-        tenantId={principal?.tenantId ?? ''}
-        products={items}
-        known={!loading && !error}
-      />
+      {/* A published hero banner replaces the stats hero: the owner chose
+          words for this band, and the stats move aside for them. */}
+      {hero ? (
+        <StorefrontBanner banner={hero} />
+      ) : (
+        <StorefrontHero
+          tenantId={principal?.tenantId ?? ''}
+          products={items}
+          known={!loading && !error}
+        />
+      )}
 
       <div className="mp-shop-layout">
         <FilterRail
@@ -172,6 +184,9 @@ export default function ProductsPage() {
           )}
         </div>
       </div>
+
+      {mid && <StorefrontBanner banner={mid} />}
+      {footer && <StorefrontBanner banner={footer} />}
     </>
   );
 }

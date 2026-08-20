@@ -347,6 +347,49 @@
   margin: 0;
 }
 
+/* A tenant banner reuses the hero band; its copy is owner-written, so the
+   subline gets a measure instead of the stats block. */
+.mp-banner p {
+  margin: var(--mp-space-2) 0 var(--mp-space-4);
+  max-width: 52ch;
+  font-size: var(--mp-text-md);
+  font-family: var(--mp-font-body);
+}
+
+.mp-banner[data-slot='mid'],
+.mp-banner[data-slot='footer'] {
+  margin-top: var(--mp-space-8);
+}
+
+/* ==========================================================================
+   Storefront about page
+   ========================================================================== */
+
+.mp-about {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: var(--mp-space-8) 0;
+}
+
+.mp-about h1 {
+  font-size: var(--mp-text-xxl);
+  color: var(--mp-ink);
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--mp-space-6);
+}
+
+.mp-about h2 {
+  font-size: var(--mp-text-lg);
+  color: var(--mp-ink);
+  margin: var(--mp-space-8) 0 var(--mp-space-2);
+}
+
+.mp-about p {
+  color: var(--mp-ink-soft);
+  line-height: 1.7;
+  margin: 0;
+}
+
 .mp-hero-stats {
   display: flex;
   gap: var(--mp-space-8);

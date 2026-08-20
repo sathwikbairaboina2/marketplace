@@ -7,6 +7,7 @@ import type { StorefrontConfig } from '@marketplace/contracts';
 import { useAuth } from '../../lib/auth/auth-context';
 import { onUnauthorized } from '../../lib/api/http';
 import { getPublishedStorefront } from '../../lib/api/storefront';
+import { StorefrontConfigProvider } from '../../lib/storefront-config';
 import { resolveAntdAccent, resolveTheme } from '../../lib/theme/resolve';
 import { useTheme } from '../../lib/theme/theme-context';
 import { ShopHeader } from '../../components/shop-header';
@@ -43,6 +44,7 @@ export default function ShopShell({ children }: { children: React.ReactNode }) {
   const accent = resolveAntdAccent(config, mode);
 
   const shell = (
+    <StorefrontConfigProvider config={config}>
     <div className="mp-shop" style={vars}>
       {/* First thing in the tab order, invisible until focused. Without it a
           keyboard user walks the whole nav on every page before reaching the
@@ -56,6 +58,7 @@ export default function ShopShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
     </div>
+    </StorefrontConfigProvider>
   );
 
   if (!accent || !vars) return shell;
