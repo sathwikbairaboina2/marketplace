@@ -22,12 +22,12 @@ const config: StorefrontConfig = {
 beforeEach(() => request.mockReset());
 
 describe('storefront api client', () => {
-  it('reads the published config, null included', async () => {
-    request.mockResolvedValueOnce(null);
+  it('unwraps the published-config envelope, null included', async () => {
+    request.mockResolvedValueOnce({ config: null });
     await expect(getPublishedStorefront()).resolves.toBeNull();
     expect(request.mock.calls[0][0]).toBe('/storefront');
 
-    request.mockResolvedValueOnce(config);
+    request.mockResolvedValueOnce({ config });
     await expect(getPublishedStorefront()).resolves.toEqual(config);
   });
 

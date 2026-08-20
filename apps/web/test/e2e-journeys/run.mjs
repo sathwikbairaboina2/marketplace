@@ -173,6 +173,13 @@ const tokenAdminA = await mint(A, A_ADMIN, 'admin');
 const tokenBuyerA = await mint(A, A_BUYER, 'buyer');
 const tokenAdminB = await mint(B, B_ADMIN, 'admin');
 
+// A store that has never published a storefront greets its admin with the
+// onboarding wizard. Tenants A and B are here to exercise everything else, so
+// they skip it up front exactly the way a real owner can; the wizard has its
+// own tenants in the onboarding section near the end.
+await api(tokenAdminA, 'PUT', '/storefront/onboarding', { dismissed: true });
+await api(tokenAdminB, 'PUT', '/storefront/onboarding', { dismissed: true });
+
 const browser = await chromium.launch();
 const sellerCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const shopperCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -1165,6 +1172,115 @@ await journey('an order already in flight keeps the stages it was placed under',
   must(
     order.json.stages[0].name === STAGE_ONE,
     `an in-flight order now reads ${order.json.stages[0].name}`,
+  );
+});
+
+// ==================================================== 8. owner onboarding
+section('Owner onboarding and the generated storefront');
+
+const C = `jt-${RUN}-c`;
+const D = `jt-${RUN}-d`;
+const tokenAdminC = await mint(C, `${C}-admin`, 'admin');
+const tokenBuyerC = await mint(C, `${C}-buyer`, 'buyer');
+await mint(D, `${D}-admin`, 'admin');
+
+const ownerCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const owner = await ownerCtx.newPage();
+owner.on('response', (r) => {
+  if (r.status() >= 500) serverErrors.push(`${r.status()} ${r.url()}`);
+});
+
+await journey('a fresh owner opening the cockpit lands in the wizard', async () => {
+  await signIn(owner, `${C}-admin`);
+  await owner.goto(`${WEB}/admin/products`);
+  await owner.waitForURL(/\/admin\/onboarding/, { timeout: 30_000 });
+});
+
+await journey('describing the business produces a previewable draft the engine holds', async () => {
+  await owner.getByTestId('composer').waitFor({ timeout: 30_000 });
+  await owner.waitForFunction(
+    () => !document.querySelector('[data-testid="composer"]')?.disabled,
+    null,
+    { timeout: 60_000 },
+  );
+  await owner
+    .getByTestId('composer')
+    .fill(
+      'I run a small pottery studio called Kiln & Loom. Warm, personal tone. My customers are gift shoppers who like handmade ceramics.',
+    );
+  await owner.keyboard.press('Enter');
+  try {
+    await owner.getByTestId('preview').waitFor({ timeout: 300_000 });
+  } catch {
+    // The model chose to ask instead of drafting. Answer once, plainly.
+    await owner
+      .getByTestId('composer')
+      .fill(
+        'Kind of business: pottery studio. Name: Kiln & Loom. Tone: warm and personal. Audience: gift shoppers.',
+      );
+    await owner.keyboard.press('Enter');
+    await owner.getByTestId('preview').waitFor({ timeout: 300_000 });
+  }
+
+  // Generation is nondeterministic, so the assertions are structural: the
+  // engine holds a draft with a hero banner and a written about page.
+  const draft = await api(tokenAdminC, 'GET', '/storefront/draft');
+  must(draft.json.draft, 'the engine holds no draft');
+  must(
+    draft.json.draft.banners.some((b) => b.slot === 'hero'),
+    'the draft has no hero banner',
+  );
+  must(draft.json.draft.about.sections.length >= 1, 'the about page is empty');
+});
+
+await journey('publishing puts the generated storefront in front of customers', async () => {
+  await owner.getByTestId('publish-store').click();
+  await owner.getByRole('button', { name: 'Publish', exact: true }).click();
+  await owner.waitForURL(/\/admin\/products/, { timeout: 30_000 });
+
+  const published = (await api(tokenBuyerC, 'GET', '/storefront')).json;
+  must(published?.config?.presetId, 'nothing was published');
+
+  const buyerC = await (
+    await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  ).newPage();
+  await signIn(buyerC, `${C}-buyer`);
+  await buyerC.waitForTimeout(1000);
+
+  const hero = buyerC.locator('.mp-banner[data-slot="hero"] h1').first();
+  must(await hero.isVisible(), 'the storefront shows no hero banner');
+  must((await hero.innerText()).trim().length > 0, 'the hero banner has no headline');
+
+  // The preset actually painted: the page surface left the default palette.
+  const surface = await buyerC.evaluate(() =>
+    getComputedStyle(document.querySelector('.mp-shop')).getPropertyValue('--mp-surface').trim(),
+  );
+  must(surface !== '' && surface !== '#f8fafc', `the surface stayed default (${surface})`);
+
+  await buyerC.goto(`${WEB}/about`);
+  await buyerC.waitForTimeout(1200);
+  must((await buyerC.locator('.mp-about h1').count()) > 0, 'the about page did not render');
+  await buyerC.context().close();
+});
+
+await journey('the wizard is re-enterable from settings with the draft intact', async () => {
+  await owner.goto(`${WEB}/admin/settings`);
+  await owner.getByRole('button', { name: 'Open store designer' }).click();
+  await owner.waitForURL(/\/admin\/onboarding/, { timeout: 30_000 });
+  await owner.getByTestId('preview').waitFor({ timeout: 60_000 });
+});
+
+await journey('an owner who skips the wizard is not asked again', async () => {
+  await signIn(owner, `${D}-admin`);
+  await owner.goto(`${WEB}/admin/products`);
+  await owner.waitForURL(/\/admin\/onboarding/, { timeout: 30_000 });
+  await owner.getByTestId('skip-onboarding').click();
+  await owner.waitForURL(/\/admin\/products/, { timeout: 30_000 });
+  await owner.reload();
+  await owner.waitForTimeout(2500);
+  must(
+    !owner.url().includes('/admin/onboarding'),
+    'a dismissed wizard came back on the next visit',
   );
 });
 

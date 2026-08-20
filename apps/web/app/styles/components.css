@@ -45,6 +45,17 @@
   background: linear-gradient(90deg, var(--mp-primary-deep), var(--mp-primary));
 }
 
+/* The storefront wrapper carries the tenant theme's variables inline, so it
+   must also paint the surface itself: the body underneath is painted from the
+   DEFAULT palette, and without this a themed shop sat on default-coloured
+   page margins -- caught in the preset screenshots, invisible to every token
+   test. Identical to the body for an unthemed tenant. */
+.mp-shop {
+  min-height: 100vh;
+  background: var(--mp-surface);
+  color: var(--mp-ink);
+}
+
 .mp-shop-header {
   display: flex;
   align-items: center;

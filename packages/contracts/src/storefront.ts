@@ -152,6 +152,16 @@ export const StorefrontConfigSchema = z
   });
 export type StorefrontConfig = z.infer<typeof StorefrontConfigSchema>;
 
+/**
+ * GET /storefront: the published config, in an envelope. The envelope exists
+ * because "no config" must travel as real JSON -- a bare `null` return
+ * serializes to an empty 200 body, which every JSON parse then rejects.
+ */
+export const StorefrontPublicResponseSchema = z.object({
+  config: StorefrontConfigSchema.nullable(),
+});
+export type StorefrontPublicResponse = z.infer<typeof StorefrontPublicResponseSchema>;
+
 /** GET /storefront/draft: the draft plus what this deployment can do. */
 export const StorefrontDraftResponseSchema = z.object({
   draft: StorefrontConfigSchema.nullable(),

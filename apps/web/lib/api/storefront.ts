@@ -3,14 +3,15 @@ import {
   OnboardingFlagSchema,
   StorefrontConfigSchema,
   StorefrontDraftResponseSchema,
+  StorefrontPublicResponseSchema,
   type BannerSlot,
   type OnboardingFlag,
   type StorefrontConfig,
 } from '@marketplace/contracts';
 import { request } from './http';
 
-export const getPublishedStorefront = () =>
-  request('/storefront', { schema: StorefrontConfigSchema.nullable() });
+export const getPublishedStorefront = (): Promise<StorefrontConfig | null> =>
+  request('/storefront', { schema: StorefrontPublicResponseSchema }).then((res) => res.config);
 
 export const getStorefrontDraft = () =>
   request('/storefront/draft', { schema: StorefrontDraftResponseSchema });

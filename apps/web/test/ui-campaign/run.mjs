@@ -24,6 +24,7 @@ import {
   AdminCreateUserCommand,
   AdminSetUserPasswordCommand,
   AdminUpdateUserAttributesCommand,
+  InitiateAuthCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -138,6 +139,28 @@ const must = (condition, message) => {
 // ------------------------------------------------------------------ browser
 await ensureUser(ADMIN, 'admin');
 await ensureUser(BUYER, 'buyer');
+
+// A tenant that has never published a storefront opens the cockpit on the
+// onboarding wizard. This campaign scripts every other screen in order, so its
+// tenant skips the wizard the way a real owner can; the wizard has its own
+// coverage in the e2e journeys.
+{
+  const auth = await cognito.send(
+    new InitiateAuthCommand({
+      ClientId: env.COGNITO_CLIENT_ID,
+      AuthFlow: 'USER_PASSWORD_AUTH',
+      AuthParameters: { USERNAME: ADMIN, PASSWORD },
+    }),
+  );
+  await fetch('http://127.0.0.1:3000/api/v1/storefront/onboarding', {
+    method: 'PUT',
+    headers: {
+      authorization: `Bearer ${auth.AuthenticationResult.IdToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ dismissed: true }),
+  });
+}
 
 const browser = await chromium.launch();
 const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });

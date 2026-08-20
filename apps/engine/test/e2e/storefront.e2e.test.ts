@@ -98,7 +98,16 @@ describe('storefront configuration', () => {
 
     const read = await fetch(`${baseUrl}/api/v1/storefront`, { headers: buyer });
     expect(read.status).toBe(200);
-    expect(await read.json()).toEqual(config);
+    expect(await read.json()).toEqual({ config });
+  });
+
+  it('answers a fresh tenant with parseable JSON, not an empty body', async () => {
+    const fresh = await authHeaders(`${TENANT}_untouched`, 'storefront-fresh@example.com', 'admin');
+    const read = await fetch(`${baseUrl}/api/v1/storefront`, { headers: fresh });
+    expect(read.status).toBe(200);
+    // The regression this envelope exists for: a bare null serialized as a
+    // zero-byte 200, and every JSON client on the other end threw.
+    expect(await read.json()).toEqual({ config: null });
   });
 
   it('round-trips the onboarding dismissal flag', async () => {

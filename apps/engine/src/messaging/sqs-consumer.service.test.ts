@@ -31,6 +31,8 @@ function makeEnv(overrides: Partial<EnvConfig> = {}): EnvConfig {
     RATE_LIMIT: 600,
     RATE_LIMIT_WINDOW_MS: 60_000,
     MAX_IMAGE_BYTES: 5_242_880,
+    IMAGE_GEN_CHECKPOINT: 'sd_xl_base_1.0.safetensors',
+    IMAGE_GEN_TIMEOUT_MS: 120_000,
     DEV_TENANT_ID: 'tenant-dev',
     DEV_USERNAME: 'dev@marketplace.local',
     ...overrides,

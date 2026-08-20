@@ -8,6 +8,7 @@ import {
   StorefrontConfig,
   StorefrontConfigSchema,
   StorefrontDraftResponse,
+  StorefrontPublicResponse,
 } from '@marketplace/contracts';
 import { ZodBody } from '../common/zod-validation.pipe';
 import { Roles } from '../auth/roles.decorator';
@@ -17,10 +18,14 @@ import { StorefrontService } from './storefront.service';
 export class StorefrontController {
   constructor(private readonly storefront: StorefrontService) {}
 
-  /** Every signed-in user of the tenant may read it -- the storefront renders it. */
+  /**
+   * Every signed-in user of the tenant may read it -- the storefront renders
+   * it. Enveloped: a bare null return would serialize as an empty 200 body,
+   * which no JSON client can parse.
+   */
   @Get()
-  getPublished(): Promise<StorefrontConfig | null> {
-    return this.storefront.getPublished();
+  async getPublished(): Promise<StorefrontPublicResponse> {
+    return { config: await this.storefront.getPublished() };
   }
 
   // Declared here as well as checked in the service, like every admin write:
