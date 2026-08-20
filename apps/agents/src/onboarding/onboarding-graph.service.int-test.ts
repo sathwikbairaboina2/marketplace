@@ -30,6 +30,27 @@ const ctx = {
   authToken: 'owner-token',
 };
 
+const interviewDone = {
+  satisfied: true,
+  profile: { kind: 'ceramics studio', name: 'Kiln & Loom', tone: 'warm', audience: 'gifts' },
+  requirements: {
+    sellsWhat: 'goods',
+    categories: ['mugs', 'jugs'],
+    fulfilment: 'ship nationwide',
+    priceBand: 'mid',
+    differentiator: 'hand-thrown, small batches',
+  },
+  question: '',
+};
+
+const needs = {
+  sellsWhat: 'goods',
+  categories: ['mugs', 'jugs'],
+  fields: [
+    { entity: 'Product', field: { name: 'material', type: 'string' }, rationale: 'clay body' },
+  ],
+};
+
 const themePick = { presetId: 'artisan', accent: '#8a3f1f' };
 const content = (headline: string) => ({
   about: {
@@ -65,12 +86,18 @@ describe('OnboardingGraphService', () => {
 
   it('asks a question while the profile is incomplete, and the question survives the checkpoint', async () => {
     const threadId = ulid();
-    llm.pushStructured({ complete: false, profile: null, question: 'What is your business called?' });
+    llm.pushStructured({
+      satisfied: false,
+      profile: null,
+      requirements: null,
+      question: 'What is your business called?',
+    });
 
     const first = await service.run({ threadId, ctx, content: 'I make pottery' });
     expect(first.kind).toBe('onboarding');
     expect(first.phase).toBe('gathering');
     expect(first.draft).toBeNull();
+    expect(first.setupPlan).toBeNull();
     expect(first.messages[first.messages.length - 1].content).toBe('What is your business called?');
     expect(() => OnboardingSnapshotSchema.parse(first)).not.toThrow();
     expect(putStorefrontDraft).not.toHaveBeenCalled();
@@ -78,11 +105,8 @@ describe('OnboardingGraphService', () => {
 
   it('completes the profile, generates a draft and dispatches it to the engine', async () => {
     const threadId = ulid();
-    llm.pushStructured({
-      complete: true,
-      profile: { kind: 'ceramics studio', name: 'Kiln & Loom', tone: 'warm', audience: 'gifts' },
-      question: '',
-    });
+    llm.pushStructured(interviewDone);
+    llm.pushStructured(needs);
     llm.pushStructured(themePick);
     llm.pushStructured(content('Objects with a thumbprint'));
 
@@ -91,6 +115,8 @@ describe('OnboardingGraphService', () => {
     expect(out.phase).toBe('drafted');
     expect(out.draft?.presetId).toBe('artisan');
     expect(out.draft?.banners[0].headline).toBe('Objects with a thumbprint');
+    expect(out.setupPlan?.fields[0].field.name).toBe('material');
+    expect(out.setupPlan?.sellsWhat).toBe('goods');
     expect(putStorefrontDraft).toHaveBeenCalledWith(
       expect.objectContaining({ presetId: 'artisan' }),
       'owner-token',
@@ -99,23 +125,73 @@ describe('OnboardingGraphService', () => {
 
   it('treats a message on a drafted thread as feedback and re-dispatches a revision', async () => {
     const threadId = ulid();
-    llm.pushStructured({
-      complete: true,
-      profile: { kind: 'ceramics studio', name: 'Kiln & Loom', tone: 'warm', audience: 'gifts' },
-      question: '',
-    });
+    llm.pushStructured(interviewDone);
+    llm.pushStructured(needs);
     llm.pushStructured(themePick);
     llm.pushStructured(content('Poetry about clay'));
     await service.run({ threadId, ctx, content: 'Kiln & Loom, warm, gift shoppers' });
 
-    // Feedback run: no profile call (short-circuits), straight to regenerate.
+    // Feedback run: no interview and no needs inference (both short-circuit),
+    // straight to regenerate. The plan the first run produced survives.
     llm.pushStructured(themePick);
     llm.pushStructured(content('Small-batch ceramics, made to be used'));
     const revised = await service.run({ threadId, ctx, content: 'less poetic headline please' });
 
     expect(revised.phase).toBe('drafted');
     expect(revised.draft?.banners[0].headline).toBe('Small-batch ceramics, made to be used');
+    expect(revised.setupPlan?.fields[0].field.name).toBe('material');
     expect(putStorefrontDraft).toHaveBeenCalledTimes(2);
+  });
+
+  it('interviews across turns, then drafts with a setup plan on the same thread', async () => {
+    const threadId = ulid();
+    llm.pushStructured({
+      satisfied: false,
+      profile: null,
+      requirements: null,
+      question: 'Do you sell items, or run classes?',
+    });
+
+    const asked = await service.run({ threadId, ctx, content: 'I run a yoga studio' });
+    expect(asked.phase).toBe('gathering');
+    expect(asked.setupPlan).toBeNull();
+
+    llm.pushStructured({
+      satisfied: true,
+      profile: { kind: 'yoga studio', name: 'Nimbus', tone: 'calm', audience: 'locals' },
+      requirements: {
+        sellsWhat: 'bookable',
+        categories: ['classes'],
+        fulfilment: 'in person',
+        priceBand: 'mid',
+        differentiator: 'small groups',
+      },
+      question: '',
+    });
+    llm.pushStructured({
+      sellsWhat: 'bookable',
+      categories: ['classes'],
+      fields: [
+        {
+          entity: 'Event',
+          field: { name: 'durationMinutes', type: 'number' },
+          rationale: 'classes vary in length',
+        },
+      ],
+    });
+    llm.pushStructured({ presetId: 'studio' });
+    llm.pushStructured(content('Breathe out'));
+
+    const drafted = await service.run({
+      threadId,
+      ctx,
+      content: 'classes, in person, small groups',
+    });
+
+    expect(drafted.phase).toBe('drafted');
+    expect(drafted.setupPlan?.sellsWhat).toBe('bookable');
+    expect(drafted.setupPlan?.fields[0].field.name).toBe('durationMinutes');
+    expect(() => OnboardingSnapshotSchema.parse(drafted)).not.toThrow();
   });
 
   it('returns a schema-valid snapshot for a thread that was never run', async () => {

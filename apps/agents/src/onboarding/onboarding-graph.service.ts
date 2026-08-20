@@ -14,7 +14,8 @@ import {
   defaultOnboardingState,
   toOnboardingSnapshot,
 } from './state';
-import { makeProfileCheckNode } from './nodes/profile-check.node';
+import { ASK_MAX, makeInterviewNode } from './nodes/interview.node';
+import { makeInferNeedsNode } from './nodes/infer-needs.node';
 import { makeProposeThemeNode } from './nodes/propose-theme.node';
 import { makeDraftContentNode } from './nodes/draft-content.node';
 import { makeAssembleDraftNode } from './nodes/assemble-draft.node';
@@ -42,7 +43,11 @@ export class OnboardingGraphService {
 
   private build(ctx: RunContext) {
     const graph = new StateGraph(OnboardingAnnotation)
-      .addNode('profileCheck', makeProfileCheckNode({ llm: this.llm }))
+      .addNode('interview', makeInterviewNode({ llm: this.llm, askMax: ASK_MAX }))
+      .addNode(
+        'inferNeeds',
+        makeInferNeedsNode({ llm: this.llm, maxAttempts: this.env.DRAFT_MAX_ATTEMPTS }),
+      )
       .addNode(
         'proposeTheme',
         makeProposeThemeNode({ llm: this.llm, maxAttempts: this.env.DRAFT_MAX_ATTEMPTS }),
@@ -54,13 +59,15 @@ export class OnboardingGraphService {
       .addNode('assembleDraft', makeAssembleDraftNode())
       .addNode('dispatchDraft', makeDispatchDraftNode({ engine: this.engine }, ctx))
       // A message to a drafted thread is feedback: regenerate with history,
-      // profile already known. A fresh or gathering thread starts with it.
+      // profile and plan already known. A fresh or gathering thread starts
+      // with the interview.
       .addConditionalEdges(START, (state: OnboardingState) =>
-        state.phase === 'drafted' ? 'proposeTheme' : 'profileCheck',
+        state.phase === 'drafted' ? 'proposeTheme' : 'interview',
       )
-      .addConditionalEdges('profileCheck', (state: OnboardingState) =>
-        state.phase === 'gathering' ? END : 'proposeTheme',
+      .addConditionalEdges('interview', (state: OnboardingState) =>
+        state.phase === 'gathering' ? END : 'inferNeeds',
       )
+      .addEdge('inferNeeds', 'proposeTheme')
       .addEdge('proposeTheme', 'draftContent')
       .addEdge('draftContent', 'assembleDraft')
       .addEdge('assembleDraft', 'dispatchDraft')
