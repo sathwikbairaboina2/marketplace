@@ -1,5 +1,20 @@
 # Status
 
+## 21 August 2026 — agent depth: copywriter and order support
+
+Two one-shot agent tools over the existing LLM provider. `POST
+/copywriter/draft` (agents service, admin service-checked): name + category
+(+ tone/audience) in, 2-4 sentences out, capped at the product contract's
+5000; a "Draft with AI" button fills the product form's editable description
+field — nothing is stored until the seller saves. `POST /support/ask`: a
+buyer's question answered from *their own* orders — the engine client
+forwards the caller's token verbatim, so the engine's per-user scoping is
+the isolation; an empty order book is answered directly without a model
+call. The agents service HTTP routes gained CORS (both loopback spellings,
+same discipline as the engine); a support box sits on the buyer's orders
+page. Agents 116 unit across 29 suites; journeys 83/83 including both new
+paths against the real local model.
+
 ## 21 August 2026 — seller dashboard, low stock, batch listing
 
 `GET /stats/sales` (admin, service-checked): order counts by status, revenue

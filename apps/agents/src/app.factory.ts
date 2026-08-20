@@ -25,5 +25,19 @@ export async function createApp(): Promise<INestApplication> {
     setupOpenApi(app, { title: 'MarketplaceAgents', version: '1.0.0' });
   }
 
+  if (env.CORS_ORIGINS) {
+    app.enableCors({
+      origin: env.CORS_ORIGINS.split(',')
+        .map((o) => o.trim())
+        .filter(Boolean),
+      // The same discipline the engine documents: a method or header a
+      // controller answers has to be named here, or the browser refuses
+      // before it sends anything, and it works from a terminal and only
+      // from a terminal.
+      allowedHeaders: ['Content-Type', 'Authorization'],
+      methods: ['GET', 'POST', 'OPTIONS'],
+    });
+  }
+
   return app;
 }

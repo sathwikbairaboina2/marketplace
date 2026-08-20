@@ -18,6 +18,8 @@ export const EnvSchema = z.object({
   DRAFT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(10).default(3),
   THREAD_TTL_SECONDS: z.coerce.number().int().positive().default(2_592_000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+  /** Comma-separated browser origins for the HTTP routes; unset = no CORS. */
+  CORS_ORIGINS: z.string().optional(),
   DOCS_ENABLED: z
     .enum(['true', 'false'])
     .default('false')

@@ -11,6 +11,7 @@ import { StatusTag } from '../../../components/status-tag';
 import { PageHeader } from '../../../components/page-header';
 import { Ref } from '../../../components/ref';
 import { ProductName } from '../../../components/record-name';
+import { SupportBox } from '../../../components/support-box';
 
 export default function OrdersPage() {
   return (
@@ -89,6 +90,7 @@ export default function OrdersPage() {
             },
           ]}
         />
+        <SupportBox />
       </div>
     </>
   );

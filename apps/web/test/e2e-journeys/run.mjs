@@ -1393,6 +1393,45 @@ await journey('the seller cannot advance an order stuck in the payment gate', as
   );
 });
 
+// ==================================================== 10. the shop's agents
+section('Copywriting and order support');
+
+await journey('the seller drafts a description with the model and edits it like their own', async () => {
+  await seller.goto(`${WEB}/admin/products/new`);
+  await seller.getByLabel('Name').fill('Juniper Incense Bundle');
+  await seller.getByLabel('Category').fill('home fragrance');
+  await seller.getByTestId('draft-description').click();
+  // A local model writes a few sentences; give it room.
+  await seller.waitForFunction(
+    () => {
+      const el = document.querySelector('#description');
+      return ((el && el.value) || '').trim().length > 20;
+    },
+    null,
+    { timeout: 180_000 },
+  );
+  const drafted = await seller.locator('#description').inputValue();
+  must(drafted.length <= 5000, 'the draft exceeded the product contract cap');
+});
+
+await journey("the support agent answers from the buyer's own orders", async () => {
+  await shopper.goto(`${WEB}/orders`);
+  await shopper.getByTestId('support-question').fill('What is the status of my most recent order?');
+  await shopper.getByTestId('support-ask').click();
+  await shopper.getByTestId('support-answer').waitFor({ timeout: 180_000 });
+  const answer = await shopper.getByTestId('support-answer').innerText();
+  must(answer.trim().length > 10, 'the answer is empty');
+
+  // Grounding, not hallucination: the buyer really has orders, so the answer
+  // must engage with at least one of them by reference or by status word.
+  const orders = await api(tokenBuyerA, 'GET', '/orders?limit=25');
+  const refs = orders.json.items.map((o) => o.id.slice(-6));
+  must(
+    refs.some((ref) => answer.includes(ref)) || /paid|packing|stage|awaiting|cancelled/i.test(answer),
+    `the answer names no order and no status: ${answer.slice(0, 120)}`,
+  );
+});
+
 await journey('the whole run produced no server error on any page the browser touched', async () => {
   must(serverErrors.length === 0, `server errors: ${serverErrors.slice(0, 3).join(' | ')}`);
 });

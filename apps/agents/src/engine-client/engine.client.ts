@@ -24,6 +24,16 @@ export class EngineClient {
     await this.send('PUT', '/api/v1/storefront/draft', token, config);
   }
 
+  /**
+   * The caller's own orders, newest first, with the caller's token -- the
+   * engine's per-user scoping does the isolation, and this service never
+   * holds a broader credential than the person asking.
+   */
+  async listOrders(token: string): Promise<Array<Record<string, any>>> {
+    const body = await this.get('/api/v1/orders?limit=25', token);
+    return (body.items ?? []) as Array<Record<string, any>>;
+  }
+
   private get(path: string, token: string): Promise<Record<string, any>> {
     return this.send('GET', path, token);
   }

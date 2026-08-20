@@ -1068,3 +1068,15 @@
   font-size: 12px;
   white-space: nowrap;
 }
+
+/* ------------------------------------------------------------ support box */
+
+.mp-support-box {
+  margin-top: var(--mp-space-6);
+  max-width: 560px;
+}
+
+.mp-support-composer {
+  display: flex;
+  gap: var(--mp-space-2);
+}

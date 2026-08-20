@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Form, Input, InputNumber, Select, message } from 'antd';
+import { ThunderboltOutlined } from '@ant-design/icons';
 import { ImageUploader } from '../../../../../components/image-uploader';
 import { createProduct } from '../../../../../lib/api/products';
+import { draftCopy } from '../../../../../lib/api/agents';
 import { toAttributes, toFormItems } from '../../../../../lib/schema-fields';
 import { useSchema } from '../../../../../lib/schemas/schema-cache';
 import { PageHeader } from '../../../../../components/page-header';
@@ -19,6 +21,27 @@ export default function NewProductPage() {
   // engine has no update routes, so this is the only moment a product's images
   // can be set.
   const [images, setImages] = useState<string[]>([]);
+  const [drafting, setDrafting] = useState(false);
+
+  // One-shot: the model writes into the same editable field the seller types
+  // into, and nothing is saved until they hit Create.
+  const draftDescription = async () => {
+    const name = ((form.getFieldValue('name') as string | undefined) ?? '').trim();
+    const category = ((form.getFieldValue('category') as string | undefined) ?? '').trim();
+    if (!name || !category) {
+      void message.warning('Give the product a name and a category first');
+      return;
+    }
+    setDrafting(true);
+    try {
+      const { description } = await draftCopy({ name, category });
+      form.setFieldValue('description', description);
+    } catch (err) {
+      notifyProblem(err);
+    } finally {
+      setDrafting(false);
+    }
+  };
 
   const submit = async (values: Record<string, unknown>) => {
     try {
@@ -62,8 +85,24 @@ export default function NewProductPage() {
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
-          <Form.Item name="description" label="Description" rules={[{ required: true }]}>
-            <Input.TextArea />
+          <Form.Item
+            name="description"
+            label="Description"
+            rules={[{ required: true }]}
+            extra={
+              <Button
+                size="small"
+                icon={<ThunderboltOutlined />}
+                loading={drafting}
+                onClick={() => void draftDescription()}
+                data-testid="draft-description"
+                style={{ marginTop: 8 }}
+              >
+                Draft with AI
+              </Button>
+            }
+          >
+            <Input.TextArea autoSize={{ minRows: 3, maxRows: 8 }} />
           </Form.Item>
           <Form.Item name="category" label="Category" rules={[{ required: true }]}>
             <Input />

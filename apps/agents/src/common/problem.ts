@@ -15,6 +15,9 @@ export type AgentProblemType =
   | 'dispatch-failed'
   | 'invalid-event-payload'
   | 'invalid-request'
+  // A verified caller whose role does not cover the tool they asked for --
+  // the copywriter is the seller's, not the shopper's.
+  | 'forbidden'
   | 'not-found'
   | 'internal-error';
 

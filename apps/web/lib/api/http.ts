@@ -60,6 +60,8 @@ export interface RequestOptions<S extends z.ZodTypeAny> {
   query?: Record<string, string | number | undefined>;
   schema: S;
   idempotencyKey?: string;
+  /** Service base URL; defaults to the engine. The agents service passes its own. */
+  base?: string;
 }
 
 /**
@@ -78,7 +80,7 @@ export async function request<S extends z.ZodTypeAny>(
   path: string,
   opts: RequestOptions<S>,
 ): Promise<z.output<S>> {
-  const url = new URL(`${ENGINE_URL}${path}`);
+  const url = new URL(`${opts.base ?? ENGINE_URL}${path}`);
   for (const [key, value] of Object.entries(opts.query ?? {})) {
     if (value !== undefined) url.searchParams.set(key, String(value));
   }

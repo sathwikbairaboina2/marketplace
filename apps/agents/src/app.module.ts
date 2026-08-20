@@ -11,6 +11,8 @@ import { EngineClientModule } from './engine-client/engine-client.module';
 import { DispatchModule } from './dispatch/dispatch.module';
 import { GraphModule } from './graph/graph.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { CopywriterModule } from './copywriter/copywriter.module';
+import { SupportModule } from './support/support.module';
 import { AuthModule } from './auth/auth.module';
 import { ThreadsModule } from './threads/threads.module';
 import { ChatModule } from './chat/chat.module';
@@ -35,6 +37,8 @@ import { ChatModule } from './chat/chat.module';
     DispatchModule,
     GraphModule,
     OnboardingModule,
+    CopywriterModule,
+    SupportModule,
     HealthModule,
     AuthModule,
     ThreadsModule,

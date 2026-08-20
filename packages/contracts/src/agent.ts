@@ -96,3 +96,31 @@ export const AGENT_EVENTS = {
   state: 'state',
   error: 'error',
 } as const;
+
+/** POST /copywriter/draft: the seller's one-shot description writer. */
+export const CopywriterDraftRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    category: z.string().trim().min(1).max(100),
+    tone: z.string().trim().max(200).optional(),
+    audience: z.string().trim().max(200).optional(),
+  })
+  .strict();
+export type CopywriterDraftRequest = z.infer<typeof CopywriterDraftRequestSchema>;
+
+export const CopywriterDraftResponseSchema = z.object({
+  /** Bounded by the product contract: what cannot be saved must not be drafted. */
+  description: z.string().min(1).max(5000),
+});
+export type CopywriterDraftResponse = z.infer<typeof CopywriterDraftResponseSchema>;
+
+/** POST /support/ask: a buyer's question answered from their own orders. */
+export const SupportAskRequestSchema = z
+  .object({ question: z.string().trim().min(1).max(1000) })
+  .strict();
+export type SupportAskRequest = z.infer<typeof SupportAskRequestSchema>;
+
+export const SupportAskResponseSchema = z.object({
+  answer: z.string().min(1).max(5000),
+});
+export type SupportAskResponse = z.infer<typeof SupportAskResponseSchema>;
