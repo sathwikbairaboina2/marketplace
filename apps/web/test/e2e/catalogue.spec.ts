@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createProduct, signIn, unique } from './helpers/session';
+import { createProduct, payWithCard, signIn, unique } from './helpers/session';
 
 test('an order can be placed for two products found through the catalogue', async ({ page }) => {
   const cheap = unique('cheap-widget');
@@ -28,9 +28,12 @@ test('an order can be placed for two products found through the catalogue', asyn
   await page.getByLabel('Address').fill('1 Test Street');
   await page.getByLabel('City').fill('Testville');
   await page.getByLabel('Postcode').fill('TE5 7XX');
-  await page.getByRole('button', { name: 'Place order' }).click();
+  // Checkout reserves the order and lands on the payment page; the fake
+  // provider's success card completes it onto the tracker.
+  await page.getByRole('button', { name: 'Checkout' }).click();
+  await payWithCard(page);
 
-  await expect(page).toHaveURL(/\/orders\/[0-9A-Z]{26}/);
+  await expect(page).toHaveURL(/\/orders\/[0-9A-Z]{26}$/);
   // Two line items, each carrying the unit price the engine locked at order
   // time rather than whatever the cart happened to be showing. Scoped to the
   // items table: the page also renders a Descriptions block, whose rows would

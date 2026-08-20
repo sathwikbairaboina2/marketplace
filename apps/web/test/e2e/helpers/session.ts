@@ -21,6 +21,19 @@ export async function signOut(page: Page): Promise<void> {
 export const unique = (prefix: string) => `${prefix}-${process.pid}-${Date.now()}`;
 
 /**
+ * Completes the payment page a successful checkout lands on. `4242…` is the
+ * fake provider's success number; the page redirects to the order tracker.
+ */
+export async function payWithCard(page: Page, number = '4242 4242 4242 4242'): Promise<void> {
+  await expect(page).toHaveURL(/\/orders\/[0-9A-Z]{26}\/pay/);
+  await page.getByTestId('card-number').fill(number);
+  await page.getByTestId('card-month').fill('12');
+  await page.getByTestId('card-year').fill('2030');
+  await page.getByTestId('card-cvc').fill('123');
+  await page.getByTestId('pay-now').click();
+}
+
+/**
  * Fills and submits the admin create-product form, returning the new id.
  * The caller still speaks minor units -- every existing assertion is written
  * against them -- and this converts to the major units the form now asks for.

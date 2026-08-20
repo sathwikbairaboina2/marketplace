@@ -25,11 +25,13 @@ test('a double-submitted checkout creates exactly one order', async ({ page }) =
   // Two clicks in the same tick. The button disables on submit, but the
   // correctness here comes from the idempotency key being minted when the
   // intent formed, not from the disable winning the race.
-  const button = page.getByRole('button', { name: 'Place order' });
+  const button = page.getByRole('button', { name: 'Checkout' });
   await Promise.all([button.click(), button.click().catch(() => undefined)]);
 
-  await expect(page).toHaveURL(/\/orders\/[0-9A-Z]{26}/);
-  const orderId = page.url().split('/').pop()!;
+  // Checkout lands on the payment page; the order exists (awaiting payment)
+  // before any card is entered, so the double-submit is already resolved here.
+  await expect(page).toHaveURL(/\/orders\/[0-9A-Z]{26}\/pay/);
+  const orderId = page.url().split('/').slice(-2)[0]!;
 
   await page.goto('/orders');
   await page.waitForLoadState('networkidle');

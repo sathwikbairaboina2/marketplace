@@ -68,7 +68,7 @@ describe('CORS', () => {
   // happened twice here -- once for PUT on the announcement, once for PATCH on
   // a product -- so it is asserted per method rather than described in a
   // comment.
-  it.each(['GET', 'POST', 'PUT', 'PATCH'])('allows %s through the preflight', async (method) => {
+  it.each(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])('allows %s through the preflight', async (method) => {
     const res = await fetch(`${baseUrl}/api/v1/products`, {
       method: 'OPTIONS',
       headers: {

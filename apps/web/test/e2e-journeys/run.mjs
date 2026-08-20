@@ -249,6 +249,15 @@ async function createProduct(over = {}) {
   return { ...p, id: seller.url().split('/').pop() };
 }
 
+/** Fills the payment page a successful checkout lands on. 4242… succeeds. */
+async function payOnPayPage(page, number = '4242 4242 4242 4242') {
+  await page.getByTestId('card-number').fill(number);
+  await page.getByTestId('card-month').fill('12');
+  await page.getByTestId('card-year').fill('2030');
+  await page.getByTestId('card-cvc').fill('123');
+  await page.getByTestId('pay-now').click();
+}
+
 async function addToCartAndOrder(page, productId, { qty = 1, city = 'Bristol' } = {}) {
   await page.goto(`${WEB}/products/${productId}`);
   await page.waitForTimeout(800);
@@ -258,13 +267,20 @@ async function addToCartAndOrder(page, productId, { qty = 1, city = 'Bristol' } 
     await q.blur();
   }
   await page.getByRole('button', { name: 'Add to cart' }).click();
+  await page.waitForTimeout(600);
   await page.goto(`${WEB}/cart`);
   await page.getByLabel('Address').fill('42 Harbour Road');
   await page.getByLabel('City').fill(city);
   await page.getByLabel('Postcode').fill('BS1 4TR');
-  await page.getByRole('button', { name: 'Place order' }).click();
-  await page.waitForURL(/\/orders\/[0-9A-Z]{26}/, { timeout: 60_000 });
-  return page.url().split('/').pop();
+  // Checkout reserves the order into the payment gate, then the fake
+  // provider's success card confirms it into stage 1 -- the state every
+  // downstream journey expects.
+  await page.getByRole('button', { name: 'Checkout' }).click();
+  await page.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
+  const orderId = page.url().split('/').slice(-2)[0];
+  await payOnPayPage(page);
+  await page.waitForURL(new RegExp(`/orders/${orderId}$`), { timeout: 60_000 });
+  return orderId;
 }
 
 await signIn(seller, A_ADMIN);
@@ -498,9 +514,11 @@ await journey('checkout writes an order the engine reports with the same lines',
   await shopper.getByLabel('Address').fill('42 Harbour Road');
   await shopper.getByLabel('City').fill('Bristol');
   await shopper.getByLabel('Postcode').fill('BS1 4TR');
-  await shopper.getByRole('button', { name: 'Place order' }).click();
-  await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}/, { timeout: 60_000 });
-  const orderId = shopper.url().split('/').pop();
+  await shopper.getByRole('button', { name: 'Checkout' }).click();
+  await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
+  const orderId = shopper.url().split('/').slice(-2)[0];
+  await payOnPayPage(shopper);
+  await shopper.waitForURL(new RegExp(`/orders/${orderId}$`), { timeout: 60_000 });
   const got = await api(tokenBuyerA, 'GET', `/orders/${orderId}`);
   must(got.status === 200, `engine answered ${got.status}`);
   must(got.json.items.length === 1, `${got.json.items.length} lines`);
@@ -536,9 +554,12 @@ await journey('an order with two different products keeps both lines', async () 
   await shopper.getByLabel('Address').fill('42 Harbour Road');
   await shopper.getByLabel('City').fill('Bristol');
   await shopper.getByLabel('Postcode').fill('BS1 4TR');
-  await shopper.getByRole('button', { name: 'Place order' }).click();
-  await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}/, { timeout: 60_000 });
-  const got = await api(tokenBuyerA, 'GET', `/orders/${shopper.url().split('/').pop()}`);
+  await shopper.getByRole('button', { name: 'Checkout' }).click();
+  await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
+  const twoLineOrderId = shopper.url().split('/').slice(-2)[0];
+  await payOnPayPage(shopper);
+  await shopper.waitForURL(new RegExp(`/orders/${twoLineOrderId}$`), { timeout: 60_000 });
+  const got = await api(tokenBuyerA, 'GET', `/orders/${twoLineOrderId}`);
   must(got.json.items.length === 2, `${got.json.items.length} lines, expected 2`);
 });
 
@@ -1281,6 +1302,94 @@ await journey('an owner who skips the wizard is not asked again', async () => {
   must(
     !owner.url().includes('/admin/onboarding'),
     'a dismissed wizard came back on the next visit',
+  );
+});
+
+// ==================================================== 9. cart and payment
+section('The server-side cart and the payment gate');
+
+let gateProduct;
+await journey("a buyer's cart survives a full reload", async () => {
+  gateProduct = await createProduct({ price: '6.00', stock: '6' });
+  await shopper.goto(`${WEB}/products/${gateProduct.id}`);
+  await shopper.getByRole('button', { name: 'Add to cart' }).click();
+  await shopper.waitForTimeout(800);
+  await shopper.reload();
+  await shopper.goto(`${WEB}/cart`);
+  await shopper.waitForTimeout(1500);
+  must(
+    (await shopper.locator('body').innerText()).includes(gateProduct.name),
+    'the cart forgot its line on reload',
+  );
+  const held = await api(tokenBuyerA, 'GET', '/cart');
+  must(
+    held.json.lines.some((l) => l.productId === gateProduct.id),
+    'the engine does not hold the line',
+  );
+});
+
+let gateOrder;
+await journey('a declined card leaves the order awaiting payment, a retry completes it', async () => {
+  await shopper.getByLabel('Address').fill('42 Harbour Road');
+  await shopper.getByLabel('City').fill('Bristol');
+  await shopper.getByLabel('Postcode').fill('BS1 4TR');
+  await shopper.getByRole('button', { name: 'Checkout' }).click();
+  await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
+  gateOrder = shopper.url().split('/').slice(-2)[0];
+
+  await payOnPayPage(shopper, '4000 0000 0000 0002');
+  await shopper.waitForTimeout(1500);
+  must(
+    (await shopper.locator('body').innerText()).includes('Card declined'),
+    'the decline did not render',
+  );
+  const unpaid = await api(tokenBuyerA, 'GET', `/orders/${gateOrder}`);
+  must(unpaid.json.status === 'awaiting_payment', `order is ${unpaid.json.status}`);
+
+  await payOnPayPage(shopper);
+  await shopper.waitForURL(new RegExp(`/orders/${gateOrder}$`), { timeout: 60_000 });
+  const paid = await api(tokenBuyerA, 'GET', `/orders/${gateOrder}`);
+  must(paid.json.status === 'confirmed', `order is ${paid.json.status}`);
+  must(paid.json.payment?.last4 === '4242', 'the payment record is missing');
+  must(paid.json.currentStageId === paid.json.stages[0].id, 'the order is not in stage 1');
+});
+
+await journey('the seller cannot advance an order stuck in the payment gate', async () => {
+  await shopper.goto(`${WEB}/products/${gateProduct.id}`);
+  await shopper.getByRole('button', { name: 'Add to cart' }).click();
+  await shopper.waitForTimeout(600);
+  await shopper.goto(`${WEB}/cart`);
+  await shopper.getByLabel('Address').fill('42 Harbour Road');
+  await shopper.getByLabel('City').fill('Bristol');
+  await shopper.getByLabel('Postcode').fill('BS1 4TR');
+  await shopper.getByRole('button', { name: 'Checkout' }).click();
+  await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
+  const unpaidOrder = shopper.url().split('/').slice(-2)[0];
+
+  await seller.goto(`${WEB}/admin/orders/${unpaidOrder}`);
+  await seller.waitForTimeout(2000);
+  const body = await seller.locator('body').innerText();
+  must(/awaiting payment/i.test(body), 'the cockpit does not say awaiting payment');
+  must(
+    (await seller.getByRole('button', { name: /Advance to/ }).count()) === 0,
+    'an advance button rendered for an unpaid order',
+  );
+  const got = await api(tokenBuyerA, 'GET', `/orders/${unpaidOrder}`);
+  const refused = await api(tokenAdminA, 'POST', `/orders/${unpaidOrder}/advance`, {
+    currentStageId: got.json.stages[0].id,
+  });
+  must(refused.status === 409, `advance answered ${refused.status}`);
+
+  // Abandoning it from the buyer's tracker restores the stock it reserved.
+  const before = await api(tokenAdminA, 'GET', `/products/${gateProduct.id}`);
+  await shopper.goto(`${WEB}/orders/${unpaidOrder}`);
+  await shopper.getByRole('button', { name: 'Cancel order' }).click();
+  await shopper.getByRole('button', { name: 'Cancel order', exact: true }).last().click();
+  await shopper.waitForTimeout(1800);
+  const after = await api(tokenAdminA, 'GET', `/products/${gateProduct.id}`);
+  must(
+    after.json.stock === before.json.stock + 1,
+    `stock went ${before.json.stock} -> ${after.json.stock}, expected +1`,
   );
 });
 

@@ -61,7 +61,9 @@ export async function createApp(): Promise<INestApplication> {
       // because the preflight for a method missing from this list fails before
       // the request is ever made. A method added to a controller has to be
       // added here too, or it works from a terminal and only from a terminal.
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
+      // DELETE: the third time this list has bitten. Clearing the cart worked
+      // from a terminal and only from a terminal until DELETE was named here.
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     });
   }
 

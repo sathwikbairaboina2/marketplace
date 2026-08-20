@@ -687,7 +687,7 @@ await check('a line can be removed', async () => {
 });
 
 await check('checkout refuses an empty address', async () => {
-  await page.getByRole('button', { name: 'Place order' }).click();
+  await page.getByRole('button', { name: 'Checkout' }).click();
   await page.waitForTimeout(1500);
   must(page.url().includes('/cart'), 'an order was placed with no address');
 });
@@ -699,7 +699,7 @@ await check('checkout marks the missing fields', async () => {
 
 await check('checkout refuses when only the address is filled', async () => {
   await page.getByLabel('Address').fill('42 Harbour Road');
-  await page.getByRole('button', { name: 'Place order' }).click();
+  await page.getByRole('button', { name: 'Checkout' }).click();
   await page.waitForTimeout(1200);
   must(page.url().includes('/cart'), 'an order went through without a city');
 });
@@ -713,14 +713,39 @@ await check('the currency can be changed', async () => {
   must(text.includes('EUR'), 'the summary did not follow the currency');
 });
 
-await check('a complete checkout places the order', async () => {
+await check('a complete checkout reserves the order and lands on the payment page', async () => {
   await page.locator('.ant-form-item', { hasText: 'Currency' }).locator('.ant-select').click();
   await page.waitForTimeout(300);
   await page.getByTitle('USD').click();
   await page.getByLabel('City').fill('Bristol');
   await page.getByLabel('Postcode').fill('BS1 4TR');
-  await page.getByRole('button', { name: 'Place order' }).click();
-  await page.waitForURL(/\/orders\/[0-9A-Z]{26}/, { timeout: 60_000 });
+  await page.getByRole('button', { name: 'Checkout' }).click();
+  await page.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
+});
+
+await check('the payment page shows the amount and the simulation notice', async () => {
+  await page.waitForTimeout(1500);
+  const text = await page.locator('body').innerText();
+  must(/pay/i.test(text) && /simulated/i.test(text), 'no amount or simulation notice');
+  must((await page.getByTestId('card-number').count()) === 1, 'no card form');
+});
+
+await check('a declined card renders inline and keeps the form', async () => {
+  await page.getByTestId('card-number').fill('4000 0000 0000 0002');
+  await page.getByTestId('card-month').fill('12');
+  await page.getByTestId('card-year').fill('2030');
+  await page.getByTestId('card-cvc').fill('123');
+  await page.getByTestId('pay-now').click();
+  await page.waitForTimeout(1500);
+  const text = await page.locator('body').innerText();
+  must(/declined/i.test(text), 'the decline did not render');
+  must((await page.getByTestId('card-number').count()) === 1, 'the form vanished on decline');
+});
+
+await check('the success card completes payment onto the tracker', async () => {
+  await page.getByTestId('card-number').fill('4242 4242 4242 4242');
+  await page.getByTestId('pay-now').click();
+  await page.waitForURL(/\/orders\/[0-9A-Z]{26}$/, { timeout: 60_000 });
 });
 
 await check('the cart is empty after ordering', async () => {
@@ -1232,13 +1257,19 @@ await check('a buyer can still add to the cart', async () => {
   await page.waitForTimeout(900);
 });
 
-await check('a buyer can complete a checkout', async () => {
+await check('a buyer can complete a checkout and pay', async () => {
   await page.goto(`${WEB}/cart`);
   await page.getByLabel('Address').fill('9 Buyer Lane');
   await page.getByLabel('City').fill('Bristol');
   await page.getByLabel('Postcode').fill('BS1 4TR');
-  await page.getByRole('button', { name: 'Place order' }).click();
-  await page.waitForURL(/\/orders\/[0-9A-Z]{26}/, { timeout: 60_000 });
+  await page.getByRole('button', { name: 'Checkout' }).click();
+  await page.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
+  await page.getByTestId('card-number').fill('4242 4242 4242 4242');
+  await page.getByTestId('card-month').fill('12');
+  await page.getByTestId('card-year').fill('2030');
+  await page.getByTestId('card-cvc').fill('123');
+  await page.getByTestId('pay-now').click();
+  await page.waitForURL(/\/orders\/[0-9A-Z]{26}$/, { timeout: 60_000 });
 });
 
 await check('a buyer sees their own order', async () => {
