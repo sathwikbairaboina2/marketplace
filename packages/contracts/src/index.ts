@@ -13,3 +13,4 @@ export * from './agent';
 export * from './responses';
 export * from './upload';
 export * from './settings';
+export * from './storefront';
