@@ -24,6 +24,12 @@ export type ProblemType =
   // failed or timed out. One code for all three: the wizard's recovery is the
   // same -- fall back to CSS art.
   | 'image-gen-unavailable'
+  // The card was refused by the provider. Retry with another card.
+  | 'payment-declined'
+  // The card was accepted but the account cannot cover the amount.
+  | 'insufficient-funds'
+  // Pay was called on an order that is not awaiting payment.
+  | 'order-not-payable'
   | 'transaction-conflict'
   | 'request-in-progress'
   // Upload rejected on inspection: either the declared type is not accepted, or
