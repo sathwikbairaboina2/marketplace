@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { UlidSchema } from './common';
 import { BlueprintDiffSchema } from './flow';
 import { DynamicEntityTypeSchema } from './registry';
+import { StorefrontConfigSchema } from './storefront';
 
 export const AgentPhaseSchema = z.enum([
   'gathering',
@@ -58,6 +59,33 @@ export const RejectSchema = z
   })
   .strict();
 export type Reject = z.infer<typeof RejectSchema>;
+
+export const ThreadKindSchema = z.enum(['schema', 'onboarding']);
+export type ThreadKind = z.infer<typeof ThreadKindSchema>;
+
+/** thread.start payload. Optional on the wire: the gateway parses `body ?? {}`. */
+export const ThreadStartSchema = z
+  .object({ kind: ThreadKindSchema.default('schema') })
+  .strict();
+export type ThreadStart = z.infer<typeof ThreadStartSchema>;
+
+export const OnboardingPhaseSchema = z.enum(['gathering', 'generating', 'drafted']);
+export type OnboardingPhase = z.infer<typeof OnboardingPhaseSchema>;
+
+/**
+ * Non-strict like AgentStateSnapshotSchema, and carries `kind` so a client can
+ * discriminate the union (the schema snapshot predates kinds and has none).
+ */
+export const OnboardingSnapshotSchema = z.object({
+  threadId: UlidSchema,
+  kind: z.literal('onboarding'),
+  phase: OnboardingPhaseSchema,
+  messages: z.array(ChatMessageSchema),
+  draft: StorefrontConfigSchema.nullable(),
+});
+export type OnboardingSnapshot = z.infer<typeof OnboardingSnapshotSchema>;
+
+export type AgentSnapshot = AgentStateSnapshot | OnboardingSnapshot;
 
 export const AGENT_EVENTS = {
   threadStart: 'thread.start',

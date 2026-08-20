@@ -2,9 +2,11 @@ import {
   AgentStateSnapshotSchema,
   AGENT_EVENTS,
   ConfirmSchema,
+  OnboardingSnapshotSchema,
   RejectSchema,
   SendMessageSchema,
   ThreadResumeSchema,
+  ThreadStartSchema,
 } from './agent';
 
 const ulid = '01J8Z5X9T7QK4W2M6N3P8R5V1C';
@@ -90,5 +92,32 @@ describe('event payloads', () => {
 
   it('rejects a reject payload with an unknown key', () => {
     expect(() => RejectSchema.parse({ threadId: ulid, notes: 'no', extra: 'x' })).toThrow();
+  });
+});
+
+describe('ThreadStartSchema', () => {
+  it('defaults kind to schema for an empty payload', () => {
+    expect(ThreadStartSchema.parse({})).toEqual({ kind: 'schema' });
+  });
+
+  it('accepts onboarding', () => {
+    expect(ThreadStartSchema.parse({ kind: 'onboarding' })).toEqual({ kind: 'onboarding' });
+  });
+
+  it('rejects unknown keys', () => {
+    expect(ThreadStartSchema.safeParse({ kind: 'schema', x: 1 }).success).toBe(false);
+  });
+});
+
+describe('OnboardingSnapshotSchema', () => {
+  it('accepts a drafted snapshot', () => {
+    const snap = {
+      threadId: ulid,
+      kind: 'onboarding',
+      phase: 'drafted',
+      messages: [{ role: 'assistant', content: 'done' }],
+      draft: null,
+    };
+    expect(OnboardingSnapshotSchema.safeParse(snap).success).toBe(true);
   });
 });
