@@ -48,8 +48,23 @@ export const UpdateProductSchema = CreateProductSchema
   });
 export type UpdateProduct = z.infer<typeof UpdateProductSchema>;
 
+/**
+ * The one lowercased blob free-text search matches against. Written onto the
+ * stored record at create/update time -- DynamoDB `contains` is
+ * case-sensitive, so the normalisation has to happen at write time, not query
+ * time. Products written before this field existed simply do not match text
+ * search until their next edit; local seeds are recreated every boot.
+ */
+export const productSearchBlob = (p: {
+  name: string;
+  description: string;
+  category: string;
+}): string => `${p.name} ${p.description} ${p.category}`.toLowerCase();
+
 export const SearchProductsSchema = z
   .object({
+    /** Free text, matched case-insensitively against name, description and category. */
+    text: z.string().trim().min(1).max(200).optional(),
     category: z.string().optional(),
     status: ProductStatusSchema.optional(),
     priceMinorMin: MinorAmountSchema.optional(),
@@ -79,4 +94,6 @@ export interface ProductRecord {
   createdAt: string;
   updatedAt: string;
   attributes: Record<string, unknown>;
+  /** Persistence-only: the lowercased text-search blob. Never on the wire. */
+  search?: string;
 }

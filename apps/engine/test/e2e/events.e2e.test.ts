@@ -51,6 +51,31 @@ describe('events', () => {
     expect(Array.isArray(body.items)).toBe(true);
   });
 
+  it('lists events soonest-first regardless of creation order', async () => {
+    // Its own tenant, so the fixed set of dates is the whole listing.
+    const own = await authHeaders(`tenant_events_sort_${Date.now()}`, 'sorter@example.com');
+    const dates = ['2026-12-01', '2026-09-15', '2026-10-20'];
+    for (const day of dates) {
+      const res = await fetch(`${baseUrl}/api/v1/events`, {
+        method: 'POST',
+        headers: own,
+        body: JSON.stringify({
+          ...event,
+          title: `on ${day}`,
+          startDate: `${day}T09:00:00.000Z`,
+          endDate: `${day}T17:00:00.000Z`,
+        }),
+      });
+      expect(res.status).toBe(201);
+    }
+
+    const list = await fetch(`${baseUrl}/api/v1/events?limit=25`, { headers: own });
+    const body = (await list.json()) as { items: Array<{ startDate: string }> };
+    const starts = body.items.map((e) => e.startDate);
+    expect(starts).toEqual([...starts].sort());
+    expect(starts[0]).toContain('2026-09-15');
+  });
+
   it('does not expose one tenant event to another', async () => {
     const headersB = await authHeaders('tenant_b', 'bob-events@example.com');
 

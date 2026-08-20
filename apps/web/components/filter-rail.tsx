@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { Button, Drawer, Form, Grid, InputNumber } from 'antd';
+import { Button, Drawer, Form, Grid, Input, InputNumber } from 'antd';
 import { FilterOutlined } from '@ant-design/icons';
 import type { FieldDefinition } from '@marketplace/contracts';
 import { toFilterItems } from '../lib/schema-fields';
@@ -63,6 +63,12 @@ function RailForm({ fields, onApply, onClear }: Props) {
       }
       className="mp-rail-form"
     >
+      {/* Free text first: it is the broadest question a shopper asks. Matched
+          case-insensitively against name, description and category. */}
+      <Form.Item name="text" label="Search">
+        <Input allowClear placeholder="mugs, walnut, gifts…" maxLength={200} />
+      </Form.Item>
+
       {/* Labels are a contract -- catalogue.spec fills 'Min price'. */}
       <Form.Item name="priceMin" label="Min price">
         <InputNumber min={0} style={{ width: '100%' }} placeholder="0" />

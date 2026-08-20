@@ -63,6 +63,13 @@ export class EventsService {
 
   async list(limit: number, cursor: string | null): Promise<Page<EventResponse>> {
     const page = await this.repo.queryPrefix<EventRecord>(skPrefix('Event'), { limit, cursor });
-    return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
+    // ULID order is creation order; a listing of events reads soonest-first.
+    // Sorted within the page rather than via a date-keyed index -- a shop's
+    // event count is modest and pages rarely split, and a GSI migration is
+    // not worth that tail. ISO-8601 strings compare lexicographically.
+    const items = page.items
+      .map(toResponse)
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
+    return { items, nextCursor: page.nextCursor };
   }
 }

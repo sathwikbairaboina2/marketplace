@@ -68,6 +68,32 @@ describe('products', () => {
     expect(body.type).toContain('schema-validation-failed');
   });
 
+  it('finds a product by free text, case-insensitively', async () => {
+    const created = await fetch(`${baseUrl}/api/v1/products`, {
+      method: 'POST',
+      headers: headersA,
+      body: JSON.stringify({ ...product, name: 'Walnut Serving Board', category: 'boards' }),
+    });
+    expect(created.status).toBe(201);
+
+    const hit = await fetch(`${baseUrl}/api/v1/products/search`, {
+      method: 'POST',
+      headers: headersA,
+      body: JSON.stringify({ text: 'WALNUT serving' }),
+    });
+    expect(hit.status).toBe(200);
+    const found = (await hit.json()) as { items: Array<{ name: string }> };
+    expect(found.items.some((p) => p.name === 'Walnut Serving Board')).toBe(true);
+
+    const miss = await fetch(`${baseUrl}/api/v1/products/search`, {
+      method: 'POST',
+      headers: headersA,
+      body: JSON.stringify({ text: 'zzz-no-such-thing' }),
+    });
+    const nothing = (await miss.json()) as { items: unknown[] };
+    expect(nothing.items).toHaveLength(0);
+  });
+
   it('searches on a core field', async () => {
     await fetch(`${baseUrl}/api/v1/products`, {
       method: 'POST',

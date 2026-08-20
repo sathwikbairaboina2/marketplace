@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+﻿import { describe, expect, it, vi } from 'vitest';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { FilterRail } from './filter-rail';
 
@@ -27,7 +27,7 @@ describe('FilterRail', () => {
       fireEvent.change(min, { target: { value: '899' } });
     });
     await act(async () => {
-      fireEvent.click(screen.getByText('Search').closest('button')!);
+      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     });
 
     // 899 means 899 pounds, not 899 pence. The old control meant the second.
@@ -46,7 +46,7 @@ describe('FilterRail', () => {
       fireEvent.change(max, { target: { value: '12.5' } });
     });
     await act(async () => {
-      fireEvent.click(screen.getByText('Search').closest('button')!);
+      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     });
 
     expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ priceMinorMax: 1250 }));
@@ -58,7 +58,7 @@ describe('FilterRail', () => {
     await openRail();
 
     await act(async () => {
-      fireEvent.click(screen.getByText('Search').closest('button')!);
+      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     });
 
     expect(onApply).toHaveBeenCalledWith(
@@ -66,3 +66,4 @@ describe('FilterRail', () => {
     );
   });
 });
+

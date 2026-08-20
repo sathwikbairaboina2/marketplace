@@ -22,6 +22,23 @@ describe('buildProductFilter', () => {
     expect(filter.values).toEqual({ ':v0': 'vegan' });
   });
 
+  it('matches free text against the lowercased search blob', () => {
+    const filter = buildProductFilter(SearchProductsSchema.parse({ text: '  Stoneware MUG ' }))!;
+    expect(filter.expression).toBe('contains(#f0, :v0)');
+    expect(filter.names).toEqual({ '#f0': 'search' });
+    // Lowercased at query time to meet the blob lowercased at write time --
+    // DynamoDB contains() is case-sensitive.
+    expect(filter.values).toEqual({ ':v0': 'stoneware mug' });
+  });
+
+  it('combines text with other clauses using AND', () => {
+    const filter = buildProductFilter(
+      SearchProductsSchema.parse({ text: 'mug', category: 'ceramics' }),
+    )!;
+    expect(filter.expression.split(' AND ')).toHaveLength(2);
+    expect(filter.expression).toContain('contains(');
+  });
+
   it('combines core, range and attribute filters with AND', () => {
     const filter = buildProductFilter(
       SearchProductsSchema.parse({

@@ -10,6 +10,16 @@ export function buildProductFilter(criteria: SearchProducts): FilterSpec | undef
   const values: Record<string, unknown> = {};
   let n = 0;
 
+  // Free text matches the lowercased `search` blob written at create/update
+  // time -- contains() is case-sensitive, so both sides are normalised to
+  // lower case. First, so the clause order in tests reads query-then-filters.
+  if (criteria.text !== undefined) {
+    names[`#f${n}`] = 'search';
+    values[`:v${n}`] = criteria.text.toLowerCase();
+    clauses.push(`contains(#f${n}, :v${n})`);
+    n++;
+  }
+
   const core: Array<[string, unknown, string]> = [];
   if (criteria.category !== undefined) core.push(['category', criteria.category, '=']);
   if (criteria.status !== undefined) core.push(['status', criteria.status, '=']);

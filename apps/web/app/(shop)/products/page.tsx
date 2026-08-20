@@ -18,7 +18,7 @@ import { EmptyState } from '../../../components/empty-state';
 import { ErrorPanel } from '../../../components/error-panel';
 import { GridSkeleton } from '../../../components/skeletons';
 
-type Filters = Pick<SearchProducts, 'priceMinorMin' | 'priceMinorMax' | 'attributes'>;
+type Filters = Pick<SearchProducts, 'text' | 'priceMinorMin' | 'priceMinorMax' | 'attributes'>;
 
 const PAGE = 25;
 
@@ -96,7 +96,11 @@ export default function ProductsPage() {
     const attributes = schema
       ? toAttributes(schema.fields, (values.attributes ?? {}) as Record<string, unknown>)
       : {};
+    // An empty search box means "no text filter", not "match the empty string"
+    // -- the schema's min(1) would refuse it.
+    const text = typeof values.text === 'string' ? values.text.trim() : '';
     setFilters({
+      text: text.length > 0 ? text : undefined,
       priceMinorMin: values.priceMinorMin as number | undefined,
       priceMinorMax: values.priceMinorMax as number | undefined,
       attributes: attributes as SearchProducts['attributes'],

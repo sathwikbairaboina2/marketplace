@@ -4,6 +4,7 @@ import {
   Page,
   ProductRecord,
   ProductResponse,
+  productSearchBlob,
   SearchProducts,
   UpdateProduct,
 } from '@marketplace/contracts';
@@ -26,7 +27,7 @@ import { SEARCH_PROVIDER, SearchProvider } from './search-provider';
 export type { ProductResponse };
 
 function toResponse(record: ProductRecord): ProductResponse {
-  const { PK: _pk, SK: _sk, ...rest } = record;
+  const { PK: _pk, SK: _sk, search: _search, ...rest } = record;
   return rest;
 }
 
@@ -59,7 +60,9 @@ export class ProductsService {
       attributes,
     };
 
-    await this.repo.put(entitySk('Product', id), record);
+    // The search blob is persistence-only: stored beside the record, stripped
+    // by toResponse, never on the wire.
+    await this.repo.put(entitySk('Product', id), { ...record, search: productSearchBlob(record) });
     return record;
   }
 
@@ -103,7 +106,10 @@ export class ProductsService {
       updatedAt: new Date().toISOString(),
     };
 
-    await this.repo.put(entitySk('Product', id), updated);
+    await this.repo.put(entitySk('Product', id), {
+      ...updated,
+      search: productSearchBlob(updated),
+    });
     return updated;
   }
 
