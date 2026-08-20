@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module';
 import { EngineClientModule } from './engine-client/engine-client.module';
 import { DispatchModule } from './dispatch/dispatch.module';
 import { GraphModule } from './graph/graph.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { AuthModule } from './auth/auth.module';
 import { ThreadsModule } from './threads/threads.module';
 import { ChatModule } from './chat/chat.module';
@@ -33,6 +34,7 @@ import { ChatModule } from './chat/chat.module';
     EngineClientModule,
     DispatchModule,
     GraphModule,
+    OnboardingModule,
     HealthModule,
     AuthModule,
     ThreadsModule,

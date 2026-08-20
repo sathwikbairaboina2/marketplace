@@ -8,6 +8,8 @@ import { GraphService } from './graph.service';
     GraphService,
     { provide: CHECKPOINTER, inject: [ENV], useFactory: (env: EnvConfig) => createCheckpointer(env) },
   ],
-  exports: [GraphService],
+  // CHECKPOINTER is exported so OnboardingModule's graph shares this Redis
+  // saver instead of opening a second connection.
+  exports: [GraphService, CHECKPOINTER],
 })
 export class GraphModule {}

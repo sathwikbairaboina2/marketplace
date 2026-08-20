@@ -22,6 +22,7 @@ import {
 } from '@marketplace/contracts';
 import { JwtVerifierService } from '../auth/jwt-verifier.service';
 import { GraphService } from '../graph/graph.service';
+import { OnboardingGraphService } from '../onboarding/onboarding-graph.service';
 import { ThreadRegistryService } from '../threads/thread-registry.service';
 import { ProblemException } from '../common/problem';
 import { toProblem } from '../common/problem.filter';
@@ -39,6 +40,7 @@ export class ChatGateway implements OnGatewayInit {
     private readonly verifier: JwtVerifierService,
     private readonly threads: ThreadRegistryService,
     private readonly graph: GraphService,
+    private readonly onboarding: OnboardingGraphService,
   ) {}
 
   /**
@@ -95,13 +97,7 @@ export class ChatGateway implements OnGatewayInit {
       await this.threads.touch(threadId, data.principal);
       const ctx = { principal: data.principal, authToken: data.token };
       if (kind === 'onboarding') {
-        // Replaced when the onboarding graph lands (next commits); routing and
-        // registry support ship first so each piece is testable alone.
-        throw new ProblemException(
-          'invalid-event-payload',
-          422,
-          'Onboarding threads are not available yet',
-        );
+        return this.onboarding.run({ threadId, ctx, content });
       }
       return this.graph.run({ threadId, ctx, action: 'message', content });
     });
@@ -154,15 +150,9 @@ export class ChatGateway implements OnGatewayInit {
   }
 
   private snapshotFor(kind: ThreadKind, threadId: string): Promise<AgentSnapshot> {
-    if (kind === 'onboarding') {
-      // Replaced when the onboarding graph lands (next commits).
-      throw new ProblemException(
-        'invalid-event-payload',
-        422,
-        'Onboarding threads are not available yet',
-      );
-    }
-    return this.graph.snapshot(threadId);
+    return kind === 'onboarding'
+      ? this.onboarding.snapshot(threadId)
+      : this.graph.snapshot(threadId);
   }
 
   private parse<T>(schema: ZodType<T>, body: unknown): T {
