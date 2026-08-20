@@ -32,3 +32,18 @@ footer only when there is something real to say). Banner headlines are punchy (u
 characters); sublines one sentence. CTA hrefs must be one of: /products, /events, /about.
 If the conversation contains feedback on an earlier draft, apply it and keep everything
 the owner did not complain about.`;
+
+export const NEEDS_SYSTEM = `You are setting up the shop for the business described below.
+Decide what it needs to record that a default shop cannot:
+- sellsWhat: "goods" if they ship or hand over physical items, "bookable" if customers book a
+  place at a class, session or event, "both" when they genuinely do each.
+- categories: up to 8 short lowercase category names for what they offer. Real groupings from
+  the conversation, not invented breadth.
+- fields: up to 6 extra fields, each on Product, Order, Event or Booking, that this business
+  needs and a generic shop does not. Give each a one-line rationale in the owner's own terms.
+Fields are ADD-ONLY and may not reuse a name the entity already has. Product already has name,
+description, priceMinor, currency, category, stock, images and status; Event already has title,
+capacity, bookedCount, startDate, endDate and basePriceMinor; Booking already has eventId,
+userId, status and ticketQuantity; Order already has userId, status, totalAmountMinor, currency,
+items and shippingAddress. A field type is one of: string, number, boolean, date, string[],
+number[], boolean[], date[]. Propose nothing you cannot justify from what the owner said.`;
