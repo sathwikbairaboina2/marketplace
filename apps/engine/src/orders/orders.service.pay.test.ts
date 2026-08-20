@@ -154,6 +154,23 @@ describe('OrdersService.cancel from the payment gate', () => {
     await expect(service.cancel('o1')).resolves.toMatchObject({ status: 'cancelled' });
   });
 
+  it('says "paid", not "stage moved", when a cancel from the gate loses to a pay', async () => {
+    repo.get
+      .mockResolvedValueOnce(awaitingOrder())
+      .mockResolvedValueOnce(awaitingOrder({ status: 'confirmed', currentStageId: 's1' }));
+    repo.transactWrite.mockRejectedValue({
+      // Index 1 = the order update (one line item ahead of it).
+      CancellationReasons: [{ Code: 'None' }, { Code: 'ConditionalCheckFailed' }],
+    });
+
+    await expect(service.cancel('o1')).rejects.toMatchObject({
+      problem: expect.objectContaining({
+        type: expect.stringContaining('order-not-cancellable'),
+        detail: expect.stringContaining('paid'),
+      }),
+    });
+  });
+
   it('still 404s an admin cancelling another user’s confirmed order', async () => {
     (currentPrincipal as jest.Mock).mockReturnValue({
       tenantId: 'acme',

@@ -5,9 +5,10 @@ import {
 } from '@marketplace/contracts';
 import { request } from './http';
 
-// `idempotencyKey` required, exactly as `createOrder`: POST /checkout rejects
-// a request without the header, and the key is what makes a retried checkout
-// replay the first order instead of creating a second one.
+// `idempotencyKey` required at compile time, exactly as `createOrder`: the
+// key is what makes a retried checkout replay the first order instead of
+// creating a second one, and a required parameter keeps a caller from
+// forgetting it.
 export const checkout = (body: CheckoutRequest, idempotencyKey: string) =>
   request('/checkout', { method: 'POST', body, schema: OrderResponseSchema, idempotencyKey });
 

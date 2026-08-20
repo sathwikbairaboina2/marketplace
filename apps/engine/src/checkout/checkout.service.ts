@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CheckoutRequest, OrderResponse } from '@marketplace/contracts';
 import { CartService } from '../cart/cart.service';
 import { OrdersService } from '../orders/orders.service';
@@ -6,6 +6,8 @@ import { ProblemException } from '../common/problem';
 
 @Injectable()
 export class CheckoutService {
+  private readonly logger = new Logger(CheckoutService.name);
+
   constructor(
     private readonly cart: CartService,
     private readonly orders: OrdersService,
@@ -42,7 +44,17 @@ export class CheckoutService {
       },
       { awaitPayment: true },
     );
-    await this.cart.clear();
+
+    // Best-effort once the order exists. If this throw propagated, the
+    // idempotency interceptor would release the claim and a retry with the
+    // same key would re-run checkout against a still-populated cart --
+    // creating a second order and reserving stock twice. A stale cart is
+    // recoverable; a duplicate reservation is not.
+    try {
+      await this.cart.clear();
+    } catch (err) {
+      this.logger.warn({ orderId: order.id, err }, 'order created but the cart failed to clear');
+    }
     return order;
   }
 }

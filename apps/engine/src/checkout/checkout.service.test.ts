@@ -55,6 +55,16 @@ describe('CheckoutService', () => {
     expect(cart.clear).toHaveBeenCalled();
   });
 
+  it('still returns the order when the post-create clear fails', async () => {
+    // If this throw propagated, the idempotency interceptor would release the
+    // claim and a retry would double-order against the still-populated cart.
+    cart.get.mockResolvedValue({ lines: [line()], totalMinor: 2400 });
+    orders.create.mockResolvedValue({ id: 'o1', status: 'awaiting_payment' });
+    cart.clear.mockRejectedValue(new Error('dynamo hiccup'));
+
+    await expect(service.checkout(input)).resolves.toMatchObject({ id: 'o1' });
+  });
+
   it('leaves the cart intact when order creation fails', async () => {
     cart.get.mockResolvedValue({ lines: [line()], totalMinor: 2400 });
     orders.create.mockRejectedValue(Object.assign(new Error('Insufficient stock'), { status: 409 }));

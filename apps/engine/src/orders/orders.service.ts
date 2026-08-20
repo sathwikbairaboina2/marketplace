@@ -625,6 +625,16 @@ export class OrdersService {
       // cancelled is not.
       const now = await this.repo.get<OrderRecord>(entitySk('Order', order.id));
       if (now && now.status === 'confirmed') {
+        // A cancel racing from the payment gate loses to a concurrent pay, not
+        // to a stage move -- say what actually happened.
+        if (order.status === 'awaiting_payment') {
+          throw new ProblemException(
+            'order-not-cancellable',
+            409,
+            'Order cannot be cancelled',
+            'this order was paid before your cancellation was applied; reload it',
+          );
+        }
         throw new ProblemException(
           'stage-moved',
           409,
