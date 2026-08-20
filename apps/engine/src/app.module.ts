@@ -22,6 +22,7 @@ import { ThreadsModule } from './threads/threads.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { IdempotencyModule } from './idempotency/idempotency.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { CartModule } from './cart/cart.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { MessagingModule } from './messaging/messaging.module';
     StorefrontModule,
     PipelineModule,
     ThreadsModule,
+    CartModule,
     // Read from process.env rather than ENV: `registerIfEnabled` decides
     // whether a controller exists while @Module's metadata is evaluated, long
     // before ConfigModule instantiates ENV. Same reasoning as DevTokenModule
