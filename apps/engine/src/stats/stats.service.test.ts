@@ -83,6 +83,27 @@ describe('StatsService.sales', () => {
     expect(stats.topProducts[1]).toMatchObject({ productId: 'p1', units: 1 });
   });
 
+  it('splits one product sold in two currencies into two rows, never one sum', async () => {
+    stock(
+      [
+        order({ items: [{ productId: 'p1', quantity: 2, unitPriceMinor: 500 }] }),
+        order({
+          id: 'o2',
+          currency: 'JPY',
+          totalAmountMinor: 700,
+          items: [{ productId: 'p1', quantity: 1, unitPriceMinor: 700 }],
+        }),
+      ],
+      [product()],
+    );
+    const stats = await service.sales();
+    const p1Rows = stats.topProducts.filter((p) => p.productId === 'p1');
+    expect(p1Rows).toHaveLength(2);
+    expect(p1Rows.map((r) => r.currency).sort()).toEqual(['INR', 'JPY']);
+    expect(p1Rows.find((r) => r.currency === 'INR')).toMatchObject({ revenueMinor: 1000 });
+    expect(p1Rows.find((r) => r.currency === 'JPY')).toMatchObject({ revenueMinor: 700 });
+  });
+
   it('names a product that left the catalogue as no longer listed', async () => {
     stock([order({ items: [{ productId: 'gone', quantity: 1, unitPriceMinor: 100 }] })], []);
     const stats = await service.sales();

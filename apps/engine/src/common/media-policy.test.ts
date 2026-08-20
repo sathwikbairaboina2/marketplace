@@ -38,6 +38,37 @@ describe('foreignMediaUrl', () => {
     expect(foreignMediaUrl([url], 'acme')).toBe(url);
   });
 
+  it('is not fooled by dot-segment traversal out of the tenant prefix', () => {
+    configure();
+    // Browsers normalise this to .../globex/... before requesting it.
+    const url = 'http://localhost:4566/marketplace-media/acme/../globex/products/x/y.png';
+    expect(foreignMediaUrl([url], 'acme')).toBe(url);
+  });
+
+  it('is not fooled by backslash separators in an http URL', () => {
+    configure();
+    // WHATWG URL parsing turns http(s) backslashes into slashes.
+    const url = 'http://localhost:4566/marketplace-media/acme\\..\\globex/products/x/y.png';
+    expect(foreignMediaUrl([url], 'acme')).toBe(url);
+  });
+
+  it('refuses an encoded dot-segment rather than serving a key that cannot exist', () => {
+    configure();
+    const url = 'http://localhost:4566/marketplace-media/acme/%2e%2e/globex/products/x.png';
+    expect(foreignMediaUrl([url], 'acme')).toBe(url);
+  });
+
+  it('refuses an unparseable URL as foreign', () => {
+    configure();
+    expect(foreignMediaUrl(['not a url'], 'acme')).toBe('not a url');
+  });
+
+  it('compares the origin exactly, not as a string prefix', () => {
+    configure();
+    const url = 'http://localhost:45660/marketplace-media/acme/products/x.png';
+    expect(foreignMediaUrl([url], 'acme')).toBe(url);
+  });
+
   it('passes everything through when S3 is not configured', () => {
     delete process.env.S3_PUBLIC_ENDPOINT;
     delete process.env.S3_BUCKET;
