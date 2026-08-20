@@ -94,6 +94,22 @@ describe('products', () => {
     expect(nothing.items).toHaveLength(0);
   });
 
+  it("refuses an image that is not this shop's media", async () => {
+    // Another tenant's slice of the same bucket: the exact hotlink #05 exists
+    // to stop. External hosts are refused by the same check.
+    const res = await fetch(`${baseUrl}/api/v1/products`, {
+      method: 'POST',
+      headers: headersA,
+      body: JSON.stringify({
+        ...product,
+        images: ['http://localhost:4566/marketplace-media/tenant_b/products/x/y.png'],
+      }),
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { title: string };
+    expect(body.title).toContain('media');
+  });
+
   it('searches on a core field', async () => {
     await fetch(`${baseUrl}/api/v1/products`, {
       method: 'POST',

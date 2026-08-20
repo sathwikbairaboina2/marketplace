@@ -10,6 +10,7 @@ import {
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { settingsSk } from '../persistence/keys';
 import { ProblemException } from '../common/problem';
+import { foreignMediaUrl } from '../common/media-policy';
 import { currentPrincipal } from '../common/tenant-context';
 import { UploadsService } from '../uploads/uploads.service';
 import { ImageGenClient } from './image-gen.client';
@@ -69,6 +70,23 @@ export class StorefrontService {
   async putDraft(config: StorefrontConfig): Promise<StorefrontConfig> {
     this.assertAdmin('edit the storefront draft');
     const parsed = StorefrontConfigSchema.parse(config);
+
+    // Public media isolation (#05): banner art must be this shop's own media,
+    // exactly as product images are.
+    const artUrls = parsed.banners
+      .map((b) => ('imageUrl' in b.art ? b.art.imageUrl : undefined))
+      .filter((url): url is string => typeof url === 'string');
+    const foreign = foreignMediaUrl(artUrls, currentPrincipal().tenantId);
+    if (foreign !== null) {
+      throw new ProblemException(
+        'invalid-request',
+        422,
+        'Banner art is not this shop’s media',
+        `upload banner art through this shop; ${foreign} points elsewhere`,
+        { url: foreign },
+      );
+    }
+
     await this.repo.put(DRAFT_SK, parsed);
     return parsed;
   }

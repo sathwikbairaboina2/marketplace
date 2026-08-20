@@ -9,6 +9,9 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './test/e2e',
+  // Mints this run's own tenants (#19) so the specs stop littering the
+  // seeded demo shop; helpers/session.ts remaps the persona names.
+  globalSetup: './test/e2e/global-setup.ts',
   // No `webServer`: scripts/e2e.mjs runs `docker:up` first, so the whole stack
   // is already listening. The LLM path is genuinely slow, hence the budget.
   timeout: 120_000,

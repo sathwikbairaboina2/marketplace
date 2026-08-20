@@ -1,5 +1,21 @@
 # Status
 
+## 21 August 2026 — hygiene: run-scoped browser tenants, media isolation
+
+Three backlog closers. **#19**: the playwright specs minted their litter into
+the seeded demo shop; a `globalSetup` now mints two run-scoped tenants
+(onboarding pre-dismissed) and `helpers/session.ts` remaps the old persona
+names — spec files unchanged, demo shop untouched (one spec deliberately
+keeps the real demo login to assert the token's tenant reaches the chrome).
+**#05**: object keys were tenant-prefixed at upload but nothing checked the
+other direction — a product or banner could carry any image URL. A stored
+image must now point into the calling tenant's own bucket slice (enforced on
+product create/update/batch and storefront drafts; pass-through when S3 is
+unconfigured). **#09**: closed as a documented decision — the pino request
+logs already carry ids and timings; metrics/tracing land with the deploy
+path (#08), not before. Engine 231 unit, playwright 29 in run-scoped
+tenants.
+
 ## 21 August 2026 — agent depth: copywriter and order support
 
 Two one-shot agent tools over the existing LLM provider. `POST

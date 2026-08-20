@@ -13,7 +13,23 @@ import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { entitySk, skPrefix } from '../persistence/keys';
 import { newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
+import { foreignMediaUrl } from '../common/media-policy';
+import { currentPrincipal } from '../common/tenant-context';
 import { SEARCH_PROVIDER, SearchProvider } from './search-provider';
+
+/** Public media isolation (#05): a stored image must be this shop's own. */
+function assertOwnMedia(images: readonly string[]): void {
+  const foreign = foreignMediaUrl(images, currentPrincipal().tenantId);
+  if (foreign !== null) {
+    throw new ProblemException(
+      'invalid-request',
+      422,
+      'Image is not this shop’s media',
+      `upload images through this shop; ${foreign} points elsewhere`,
+      { url: foreign },
+    );
+  }
+}
 
 // The HTTP-facing shape of a product. `ProductRecord` (from @marketplace/contracts) mirrors
 // exactly what is stored in DynamoDB, including the single-table `PK`/`SK` attributes. Those
@@ -40,6 +56,7 @@ export class ProductsService {
   ) {}
 
   async create(input: CreateProduct): Promise<ProductResponse> {
+    assertOwnMedia(input.images);
     const attributes = await this.registry.validate('Product', input.attributes);
     const now = new Date().toISOString();
     const id = newId();
@@ -72,6 +89,7 @@ export class ProductsService {
    * half-created catalogue. The writes themselves are independent puts.
    */
   async createBatch(inputs: CreateProduct[]): Promise<ProductResponse[]> {
+    for (const input of inputs) assertOwnMedia(input.images);
     const validated = await Promise.all(
       inputs.map((input) => this.registry.validate('Product', input.attributes)),
     );
@@ -125,6 +143,7 @@ export class ProductsService {
    * unit price it locked at the time, and nothing here reaches into one.
    */
   async update(id: string, patch: UpdateProduct): Promise<ProductResponse> {
+    if (patch.images !== undefined) assertOwnMedia(patch.images);
     const existing = await this.repo.get<ProductRecord>(entitySk('Product', id));
     if (!existing) throw new ProblemException('not-found', 404, 'Product not found');
 

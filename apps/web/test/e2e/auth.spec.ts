@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { signIn, signOut } from './helpers/session';
+import { signIn, signInDemo, signOut } from './helpers/session';
 
 test('signs in and shows the tenant and role from the token', async ({ page }) => {
-  await signIn(page, 'acme-admin');
+  // The real demo persona, deliberately: this asserts the token's own tenant
+  // name reaches the chrome, and it only reads.
+  await signInDemo(page, 'acme-admin');
   await expect(page.getByText('acme', { exact: true })).toBeVisible();
   await expect(page.getByText('admin', { exact: true })).toBeVisible();
 });

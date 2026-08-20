@@ -1,10 +1,43 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { expect, type Page } from '@playwright/test';
 
 export const PASSWORD = 'Passw0rd!';
 export const ENGINE_URL = 'http://127.0.0.1:3000/api/v1';
 export const WEB_URL = 'http://localhost:3002';
 
+/**
+ * Written by global-setup: this run's own tenants (#19). The specs keep the
+ * old persona names; the fixture points them at users whose litter lands in
+ * a run-scoped tenant instead of the seeded demo shop.
+ */
+// __dirname, not import.meta: Playwright transpiles this file as CommonJS.
+const USERS_FILE = path.resolve(__dirname, '../../../test-results/pw-users.json');
+let personas: Record<string, string> | null = null;
+export function resolveUser(persona: string): string {
+  if (personas === null) {
+    try {
+      personas = JSON.parse(readFileSync(USERS_FILE, 'utf8')) as Record<string, string>;
+    } catch {
+      personas = {};
+    }
+  }
+  return personas[persona] ?? persona;
+}
+
 export async function signIn(page: Page, username: string): Promise<void> {
+  await page.goto('/login');
+  await page.getByLabel('Username').fill(resolveUser(username));
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/\/products/);
+}
+
+/**
+ * The seeded demo user, unmapped. For the one spec that asserts the token's
+ * own tenant name reaches the chrome -- it reads, never writes.
+ */
+export async function signInDemo(page: Page, username: string): Promise<void> {
   await page.goto('/login');
   await page.getByLabel('Username').fill(username);
   await page.getByLabel('Password').fill(PASSWORD);

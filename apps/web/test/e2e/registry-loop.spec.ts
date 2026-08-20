@@ -1,5 +1,5 @@
 import { expect, test, request as playwrightRequest } from '@playwright/test';
-import { ENGINE_URL, PASSWORD, WEB_URL, signIn } from './helpers/session';
+import { ENGINE_URL, PASSWORD, WEB_URL, resolveUser, signIn } from './helpers/session';
 
 /**
  * The assertion that proves the registry-driven field engine, and the one that
@@ -21,7 +21,9 @@ test('executing a flow makes its new field appear in the product form', async ({
 
   const api = await playwrightRequest.newContext();
   const login = await api.post(`${WEB_URL}/api/login`, {
-    data: { username: 'acme-admin', password: PASSWORD },
+    // The same run-scoped user the browser signs in as below -- a flow
+    // proposed in one tenant is invisible from another, by design.
+    data: { username: resolveUser('acme-admin'), password: PASSWORD },
   });
   expect(login.ok()).toBeTruthy();
   const { token } = (await login.json()) as { token: string };
