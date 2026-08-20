@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
+  BannerArtResponse,
+  BannerSlot,
   OnboardingFlag,
   StorefrontConfig,
   StorefrontConfigSchema,
@@ -9,6 +11,8 @@ import { DynamoRepository } from '../persistence/dynamo.repository';
 import { settingsSk } from '../persistence/keys';
 import { ProblemException } from '../common/problem';
 import { currentPrincipal } from '../common/tenant-context';
+import { UploadsService } from '../uploads/uploads.service';
+import { ImageGenClient } from './image-gen.client';
 
 const PUBLISHED_SK = settingsSk('storefront');
 const DRAFT_SK = settingsSk('storefront-draft');
@@ -28,9 +32,18 @@ function stripTableKeys(item: Record<string, unknown>): Record<string, unknown> 
 export class StorefrontService {
   constructor(
     private readonly repo: DynamoRepository,
-    /** Wired from env in the module; the service itself stays env-free. */
-    private readonly imageGenEnabled: boolean,
+    /**
+     * Both null on a deployment without a renderer or without object storage;
+     * the capability flag and the 503 below are how that absence surfaces.
+     * Wired from env in the module; the service itself stays env-free.
+     */
+    private readonly imageGen: ImageGenClient | null = null,
+    private readonly uploads: UploadsService | null = null,
   ) {}
+
+  private get imageGenEnabled(): boolean {
+    return this.imageGen !== null && this.uploads !== null;
+  }
 
   private assertAdmin(action: string): void {
     if (currentPrincipal().role !== 'admin') {
@@ -73,6 +86,47 @@ export class StorefrontService {
     const parsed = StorefrontConfigSchema.parse(stripTableKeys(draft));
     await this.repo.put(PUBLISHED_SK, parsed);
     return parsed;
+  }
+
+  /**
+   * Render art for one slot of the draft. The prompt is built here from the
+   * draft's own profile and copy -- the caller names a slot, nothing more, so
+   * there is no free-text prompt surface on this route.
+   */
+  async generateBannerArt(slot: BannerSlot): Promise<BannerArtResponse> {
+    this.assertAdmin('generate banner art');
+    if (!this.imageGen || !this.uploads) {
+      throw new ProblemException(
+        'image-gen-unavailable',
+        503,
+        'Image generation is unavailable',
+        'no image renderer is configured for this deployment',
+      );
+    }
+
+    const stored = await this.repo.get<Record<string, unknown>>(DRAFT_SK);
+    if (!stored) {
+      throw new ProblemException('storefront-draft-not-found', 404, 'There is no draft yet');
+    }
+    const draft = StorefrontConfigSchema.parse(stripTableKeys(stored));
+    const banner = draft.banners.find((b) => b.slot === slot);
+    if (!banner) {
+      throw new ProblemException('not-found', 404, `The draft has no ${slot} banner`);
+    }
+
+    const profile = draft.businessProfile;
+    const prompt =
+      `wide storefront banner photograph for a ${profile.kind} named ${profile.name}, ` +
+      `${profile.tone} mood, for ${profile.audience}, no text, evoking: ${banner.headline}`;
+
+    const bytes = await this.imageGen.generate(prompt);
+    const uploaded = await this.uploads.store({
+      buffer: bytes,
+      originalname: `banner-${slot}.png`,
+      mimetype: 'image/png',
+      size: bytes.length,
+    });
+    return { imageUrl: uploaded.objectUrl };
   }
 
   async getOnboardingFlag(): Promise<OnboardingFlag> {

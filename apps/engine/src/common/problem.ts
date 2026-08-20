@@ -20,6 +20,10 @@ export type ProblemType =
   | 'order-not-messageable'
   // Publish asked for a storefront draft the tenant has never written.
   | 'storefront-draft-not-found'
+  // Banner art was requested but no renderer is configured, or the render
+  // failed or timed out. One code for all three: the wizard's recovery is the
+  // same -- fall back to CSS art.
+  | 'image-gen-unavailable'
   | 'transaction-conflict'
   | 'request-in-progress'
   // Upload rejected on inspection: either the declared type is not accepted, or

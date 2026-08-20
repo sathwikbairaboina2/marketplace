@@ -1,7 +1,9 @@
 import {
+  BannerArtResponseSchema,
   OnboardingFlagSchema,
   StorefrontConfigSchema,
   StorefrontDraftResponseSchema,
+  type BannerSlot,
   type OnboardingFlag,
   type StorefrontConfig,
 } from '@marketplace/contracts';
@@ -18,6 +20,9 @@ export const putStorefrontDraft = (body: StorefrontConfig) =>
 
 export const publishStorefront = () =>
   request('/storefront/publish', { method: 'POST', schema: StorefrontConfigSchema });
+
+export const generateBannerArt = (slot: BannerSlot) =>
+  request('/storefront/banner-art', { method: 'POST', body: { slot }, schema: BannerArtResponseSchema });
 
 export const getOnboardingFlag = () =>
   request('/storefront/onboarding', { schema: OnboardingFlagSchema });

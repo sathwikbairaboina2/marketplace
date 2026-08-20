@@ -41,7 +41,7 @@ const asBuyer = () =>
   });
 
 describe('StorefrontService', () => {
-  const service = new StorefrontService(repo as never, false);
+  const service = new StorefrontService(repo as never);
   beforeEach(() => jest.clearAllMocks());
 
   it('getPublished returns null when the tenant has no config', async () => {
@@ -99,17 +99,60 @@ describe('StorefrontService', () => {
     expect(repo.put).not.toHaveBeenCalled();
   });
 
-  it('getDraft reports imageGen capability from its constructor flag', async () => {
+  it('getDraft reports imageGen capability from what is wired in', async () => {
     repo.get.mockResolvedValue(null);
     await expect(service.getDraft()).resolves.toEqual({
       draft: null,
       capabilities: { imageGen: false },
     });
-    const enabled = new StorefrontService(repo as never, true);
+    const enabled = new StorefrontService(
+      repo as never,
+      { generate: jest.fn() } as never,
+      { store: jest.fn() } as never,
+    );
     await expect(enabled.getDraft()).resolves.toEqual({
       draft: null,
       capabilities: { imageGen: true },
     });
+  });
+
+  it('generateBannerArt 503s when no renderer is wired', async () => {
+    await expect(service.generateBannerArt('hero')).rejects.toMatchObject({
+      status: 503,
+      problem: expect.objectContaining({
+        type: 'https://marketplace.local/problems/image-gen-unavailable',
+      }),
+    });
+  });
+
+  it('generateBannerArt renders from the draft profile and stores the result', async () => {
+    const generate = jest.fn().mockResolvedValue(Buffer.from([1, 2, 3]));
+    const store = jest.fn().mockResolvedValue({ objectUrl: 'http://media.local/banner.png' });
+    const enabled = new StorefrontService(
+      repo as never,
+      { generate } as never,
+      { store } as never,
+    );
+    repo.get.mockResolvedValue(config);
+
+    await expect(enabled.generateBannerArt('hero')).resolves.toEqual({
+      imageUrl: 'http://media.local/banner.png',
+    });
+    expect(generate).toHaveBeenCalledWith(expect.stringContaining('ceramics studio'));
+    expect(generate).toHaveBeenCalledWith(expect.stringContaining('Objects with a thumbprint'));
+    expect(store).toHaveBeenCalledWith(
+      expect.objectContaining({ mimetype: 'image/png', originalname: 'banner-hero.png' }),
+    );
+  });
+
+  it('generateBannerArt 404s when the draft has no banner in that slot', async () => {
+    const enabled = new StorefrontService(
+      repo as never,
+      { generate: jest.fn() } as never,
+      { store: jest.fn() } as never,
+    );
+    repo.get.mockResolvedValue(config);
+    await expect(enabled.generateBannerArt('footer')).rejects.toMatchObject({ status: 404 });
   });
 
   it('getDraft rejects a non-admin with a 403 problem', async () => {

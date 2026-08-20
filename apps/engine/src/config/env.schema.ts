@@ -46,6 +46,10 @@ export const EnvSchema = z.object({
   // the storefront wizard simply never offers image generation; nothing else
   // in the system changes. Same posture as S3_BUCKET above.
   IMAGE_GEN_URL: z.string().url().optional(),
+  // The ComfyUI checkpoint the banner workflow loads. Deployment-specific by
+  // nature: whatever model the instance at IMAGE_GEN_URL actually has.
+  IMAGE_GEN_CHECKPOINT: z.string().min(1).default('sd_xl_base_1.0.safetensors'),
+  IMAGE_GEN_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
   DEV_TENANT_ID: z.string().min(1).default('tenant-dev'),
   DEV_USERNAME: z.string().min(1).default('dev@marketplace.local'),
   COGNITO_ENDPOINT: z.string().url().optional(),

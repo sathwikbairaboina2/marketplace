@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { Button, Empty, Segmented, Upload } from 'antd';
-import { PictureOutlined } from '@ant-design/icons';
+import { PictureOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { Banner, StorefrontConfig } from '@marketplace/contracts';
 import { AboutSections } from '../../../../components/about-sections';
 import { StorefrontBanner } from '../../../../components/storefront-banner';
+import { generateBannerArt } from '../../../../lib/api/storefront';
 import { uploadProductImage } from '../../../../lib/api/uploads';
 import { notifyProblem } from '../../../../lib/problem-notify';
 import { resolveTheme } from '../../../../lib/theme/resolve';
@@ -81,12 +82,16 @@ function EditableText({
 export function PreviewPane({
   draft,
   onChange,
+  imageGen = false,
 }: {
   draft: StorefrontConfig | null;
   onChange: (next: StorefrontConfig) => void;
+  /** Whether this deployment can render banner art; hides the button, not just disables it. */
+  imageGen?: boolean;
 }) {
   const { mode } = useTheme();
   const [tab, setTab] = useState<Tab>('storefront');
+  const [generating, setGenerating] = useState<string | null>(null);
 
   if (!draft) {
     return (
@@ -145,6 +150,28 @@ export function PreviewPane({
             {banner.art.kind === 'css' ? 'Add photo' : 'Replace photo'}
           </Button>
         </Upload>
+        {imageGen && (
+          <Button
+            size="small"
+            icon={<ThunderboltOutlined />}
+            loading={generating === banner.id}
+            data-testid={`generate-${banner.slot}-art`}
+            onClick={async () => {
+              setGenerating(banner.id);
+              try {
+                const { imageUrl } = await generateBannerArt(banner.slot);
+                patchBanner(banner.id, { art: { kind: 'generated', imageUrl } });
+              } catch (err) {
+                // The slot keeps whatever art it had; CSS art always works.
+                notifyProblem(err);
+              } finally {
+                setGenerating(null);
+              }
+            }}
+          >
+            Generate image
+          </Button>
+        )}
       </div>
     </div>
   );

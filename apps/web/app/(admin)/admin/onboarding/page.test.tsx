@@ -16,11 +16,13 @@ const getStorefrontDraft = vi.fn();
 const publishStorefront = vi.fn();
 const putOnboardingFlag = vi.fn();
 const putStorefrontDraft = vi.fn();
+const generateBannerArt = vi.fn();
 vi.mock('../../../../lib/api/storefront', () => ({
   getStorefrontDraft: () => getStorefrontDraft(),
   publishStorefront: () => publishStorefront(),
   putOnboardingFlag: (body: unknown) => putOnboardingFlag(body),
   putStorefrontDraft: (body: unknown) => putStorefrontDraft(body),
+  generateBannerArt: (slot: unknown) => generateBannerArt(slot),
 }));
 vi.mock('../../../../lib/api/uploads', () => ({ uploadProductImage: vi.fn() }));
 
@@ -110,6 +112,43 @@ describe('the onboarding wizard', () => {
         }),
       ),
     );
+  });
+
+  it('offers Generate image only when the engine reports the capability, and stores the result', async () => {
+    socket.snapshot = draftedSnapshot;
+    getStorefrontDraft.mockResolvedValue({ draft: config, capabilities: { imageGen: true } });
+    generateBannerArt.mockResolvedValue({ imageUrl: 'http://media.local/hero.png' });
+    putStorefrontDraft.mockImplementation((body) => Promise.resolve(body));
+
+    render(<OnboardingPage />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByText('Banners'));
+    fireEvent.click(screen.getByTestId('generate-hero-art'));
+
+    await waitFor(() => expect(generateBannerArt).toHaveBeenCalledWith('hero'));
+    await waitFor(() =>
+      expect(putStorefrontDraft).toHaveBeenCalledWith(
+        expect.objectContaining({
+          banners: [
+            expect.objectContaining({
+              art: { kind: 'generated', imageUrl: 'http://media.local/hero.png' },
+            }),
+          ],
+        }),
+      ),
+    );
+  });
+
+  it('hides Generate image when the deployment has no renderer', async () => {
+    socket.snapshot = draftedSnapshot;
+    getStorefrontDraft.mockResolvedValue({ draft: config, capabilities: { imageGen: false } });
+
+    render(<OnboardingPage />);
+    await act(async () => {});
+
+    fireEvent.click(screen.getByText('Banners'));
+    expect(screen.queryByTestId('generate-hero-art')).toBeNull();
   });
 
   it('dismisses onboarding through the flag and leaves for the cockpit', async () => {

@@ -1,4 +1,5 @@
 import {
+  BannerArtRequestSchema,
   BannerSchema,
   contrastRatio,
   PRESET_IDS,
@@ -72,6 +73,14 @@ describe('BannerSchema', () => {
   it('rejects a generated banner without an imageUrl', () => {
     const banner = { ...validConfig.banners[0], art: { kind: 'generated' } };
     expect(BannerSchema.safeParse(banner).success).toBe(false);
+  });
+});
+
+describe('BannerArtRequestSchema', () => {
+  it('accepts a known slot and nothing else', () => {
+    expect(BannerArtRequestSchema.safeParse({ slot: 'hero' }).success).toBe(true);
+    expect(BannerArtRequestSchema.safeParse({ slot: 'sidebar' }).success).toBe(false);
+    expect(BannerArtRequestSchema.safeParse({ slot: 'hero', prompt: 'x' }).success).toBe(false);
   });
 });
 

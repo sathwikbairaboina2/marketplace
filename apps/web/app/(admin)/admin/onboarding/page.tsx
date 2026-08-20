@@ -23,6 +23,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [draft, setDraft] = useState('');
   const [config, setConfig] = useState<StorefrontConfig | null>(null);
+  const [imageGen, setImageGen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +36,10 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!drafted) return;
     getStorefrontDraft()
-      .then((res) => setConfig(res.draft))
+      .then((res) => {
+        setConfig(res.draft);
+        setImageGen(res.capabilities.imageGen);
+      })
       .catch(notifyProblem);
   }, [drafted, messages.length]);
 
@@ -178,7 +182,7 @@ export default function OnboardingPage() {
         </section>
 
         <section className="mp-onboarding-right">
-          <PreviewPane draft={config} onChange={(next) => void applyEdit(next)} />
+          <PreviewPane draft={config} onChange={(next) => void applyEdit(next)} imageGen={imageGen} />
         </section>
       </div>
     </>

@@ -162,3 +162,14 @@ export type StorefrontDraftResponse = z.infer<typeof StorefrontDraftResponseSche
 /** The owner's "don't show me the wizard again" flag. */
 export const OnboardingFlagSchema = z.object({ dismissed: z.boolean() }).strict();
 export type OnboardingFlag = z.infer<typeof OnboardingFlagSchema>;
+
+/**
+ * POST /storefront/banner-art: generate art for one slot of the draft. The
+ * prompt is built server-side from the draft's business profile and that
+ * slot's copy -- the client names the slot and nothing else.
+ */
+export const BannerArtRequestSchema = z.object({ slot: BannerSlotSchema }).strict();
+export type BannerArtRequest = z.infer<typeof BannerArtRequestSchema>;
+
+export const BannerArtResponseSchema = z.object({ imageUrl: z.string().url() }).strict();
+export type BannerArtResponse = z.infer<typeof BannerArtResponseSchema>;

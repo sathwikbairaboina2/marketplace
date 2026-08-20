@@ -1,5 +1,8 @@
 import { Controller, Get, Post, Put } from '@nestjs/common';
 import {
+  BannerArtRequest,
+  BannerArtRequestSchema,
+  BannerArtResponse,
   OnboardingFlag,
   OnboardingFlagSchema,
   StorefrontConfig,
@@ -39,6 +42,14 @@ export class StorefrontController {
   @Roles('admin')
   publish(): Promise<StorefrontConfig> {
     return this.storefront.publish();
+  }
+
+  @Post('banner-art')
+  @Roles('admin')
+  generateBannerArt(
+    @ZodBody(BannerArtRequestSchema) body: BannerArtRequest,
+  ): Promise<BannerArtResponse> {
+    return this.storefront.generateBannerArt(body.slot);
   }
 
   @Get('onboarding')
