@@ -114,10 +114,18 @@ export function makeInterviewNode(deps: { llm: LlmProvider; askMax: number }) {
     // The floor. `satisfied` is worth nothing without a profile that parses:
     // a model that declares victory on "hi" does not get to.
     const grounded = profile?.success === true;
+    // Nor is it worth anything without the requirements half. The model
+    // routinely claims satisfaction on the owner's first sentence, and taking
+    // it at its word there ends the interview with `requirements` null, which
+    // costs the owner the entire setup plan -- for good, because once the
+    // draft exists the graph routes later turns straight to `proposeTheme`
+    // and never comes back through this node. Another question is cheap; the
+    // cap below is what guarantees the interview still ends.
+    const complete = requirements?.success === true;
     // The cap, counting the question this turn would ask.
     const atCap = state.questionCount + 1 >= deps.askMax;
 
-    if (grounded && (result.satisfied || atCap)) {
+    if (grounded && ((result.satisfied && complete) || atCap)) {
       return {
         phase: 'generating',
         profile: profile.data,
@@ -127,7 +135,15 @@ export function makeInterviewNode(deps: { llm: LlmProvider; askMax: number }) {
       };
     }
 
-    const question = result.question.trim() || 'What kind of business are you setting up?';
+    // A model that claimed satisfaction offers no question to go with it, and
+    // the generic fallback would ask an owner who has just described their
+    // shop what kind of shop it is. When the profile is the half already in
+    // hand, ask after the other one.
+    const fallback =
+      grounded && !complete
+        ? 'How do people buy from you — do they order goods, book a time with you, or both?'
+        : 'What kind of business are you setting up?';
+    const question = result.question.trim() || fallback;
     return {
       phase: 'gathering',
       questionCount: state.questionCount + 1,

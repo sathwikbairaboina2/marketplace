@@ -69,10 +69,36 @@ describe('interview node', () => {
     expect(next.requirements?.sellsWhat).toBe('goods');
   });
 
-  it('keeps a complete profile when requirements are still partial', async () => {
-    llm.pushStructured({ ...complete, requirements: null });
+  it('keeps asking when the model declares satisfied without usable requirements', async () => {
+    // Measured against the local model: it routinely returns satisfied on the
+    // owner's first sentence with a profile that parses and requirements that
+    // do not. Accepting that costs the owner their whole setup plan, silently
+    // and irrecoverably -- the draft nodes never route back through here.
+    llm.pushStructured({ ...complete, requirements: null, question: 'What do you sell?' });
 
     const next = await node(state());
+
+    expect(next.phase).toBe('gathering');
+    expect(next.questionCount).toBe(1);
+  });
+
+  it('asks about how the shop works, not who it is, when only requirements are missing', async () => {
+    // The model that claims satisfaction returns no question with it, and the
+    // generic fallback ("What kind of business are you setting up?") asks the
+    // owner what they have just finished saying. What is missing is the other
+    // half: how the shop works.
+    llm.pushStructured({ ...complete, requirements: null, question: '' });
+
+    const next = await node(state());
+
+    expect(next.phase).toBe('gathering');
+    expect(String(next.messages?.[0]?.content)).toMatch(/buy|book|order/i);
+  });
+
+  it('accepts a profile without requirements once the cap leaves no more turns', async () => {
+    llm.pushStructured({ ...complete, requirements: null });
+
+    const next = await node(state({ questionCount: ASK_MAX - 1 }));
 
     expect(next.phase).toBe('generating');
     expect(next.requirements).toBeNull();
@@ -124,7 +150,7 @@ describe('interview node', () => {
       requirements: { ...requirements, priceBand: '' },
     });
 
-    const next = await node(state());
+    const next = await node(state({ questionCount: ASK_MAX - 1 }));
 
     expect(next.phase).toBe('generating');
     expect(next.requirements).toBeNull();
@@ -209,10 +235,13 @@ describe('interview node requirement coercion', () => {
   });
 
   it('still rejects requirements with an empty fulfilment', async () => {
+    // Coercion widens wording, it does not invent an answer. An unparseable
+    // slice keeps the interview open rather than advancing half-known.
     llm.pushStructured(withRequirements({ fulfilment: '   ' }));
 
     const next = await node(state());
 
-    expect(next.requirements).toBeNull();
+    expect(next.phase).toBe('gathering');
+    expect(next.requirements).toBeUndefined();
   });
 });
