@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { PrincipalSchema, type Principal } from '@marketplace/contracts';
 import { ENGINE_URL } from '../env';
+import { clearThreadIds } from '../chat/thread-storage';
 
 const STORAGE_KEY = 'marketplace.token';
 
@@ -31,6 +32,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(() => {
     currentToken = null;
     sessionStorage.removeItem(STORAGE_KEY);
+    // The chat threads belong to the session, not to the tab. Left behind,
+    // they are resumed by whoever signs in next -- another tenant, whose
+    // wizard then answers thread-not-found and drops what they type.
+    clearThreadIds();
     setToken(null);
     setPrincipal(null);
   }, []);

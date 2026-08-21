@@ -9,10 +9,9 @@ import {
 } from '@marketplace/contracts';
 import { AGENTS_URL } from '../env';
 import { getToken } from '../auth/auth-context';
-
 // Its own key, not the schema assistant's: the two conversations are different
 // threads on different graphs, and resuming one as the other 422s.
-const THREAD_KEY = 'marketplace.onboardingThreadId';
+import { ONBOARDING_THREAD_KEY as THREAD_KEY, isThreadNotFound } from './thread-storage';
 
 /**
  * use-agent-socket's shape, for onboarding threads: thread.start declares the
@@ -57,7 +56,16 @@ export function useOnboardingSocket() {
       setOptimistic(null);
     });
 
-    socket.on(AGENT_EVENTS.error, (problem: { title?: string; detail?: string }) => {
+    socket.on(AGENT_EVENTS.error, (problem: { type?: string; title?: string; detail?: string }) => {
+      // A thread the server has never heard of is not the owner's problem to
+      // read about: it is a leftover id, usually from the session before this
+      // one. Drop it and open a fresh thread, or the wizard has nothing to
+      // send on and swallows everything typed into it.
+      if (isThreadNotFound(problem)) {
+        sessionStorage.removeItem(THREAD_KEY);
+        socket.emit(AGENT_EVENTS.threadStart, { kind: 'onboarding' });
+        return;
+      }
       setError([problem.title, problem.detail].filter(Boolean).join(': ') || 'agent error');
     });
 

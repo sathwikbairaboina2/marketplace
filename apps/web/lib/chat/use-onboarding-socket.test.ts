@@ -73,6 +73,43 @@ describe('useOnboardingSocket', () => {
     expect(result.current.snapshot?.messages).toHaveLength(2);
   });
 
+  it('opens a fresh thread when the stored one is gone, instead of dead-ending', async () => {
+    // A thread id outlives the session that made it: signing out and back in
+    // as another tenant leaves the previous tenant's id in sessionStorage.
+    // Resuming it answers thread-not-found, and without this the wizard has no
+    // thread, so every message the owner types is dropped in silence.
+    sessionStorage.setItem('marketplace.onboardingThreadId', 'someone-elses-thread');
+    const { result } = renderHook(() => useOnboardingSocket());
+
+    await act(async () => {
+      handlers.connect?.(undefined);
+      handlers.error?.({
+        type: 'https://marketplace.local/problems/thread-not-found',
+        title: 'No such thread',
+        detail: 'someone-elses-thread',
+      });
+    });
+
+    expect(sessionStorage.getItem('marketplace.onboardingThreadId')).toBeNull();
+    expect(emit).toHaveBeenCalledWith('thread.start', { kind: 'onboarding' });
+    // Nothing here is the owner's to act on, so nothing is shown to them.
+    expect(result.current.error).toBeNull();
+  });
+
+  it('still surfaces an agent error that is not a missing thread', async () => {
+    const { result } = renderHook(() => useOnboardingSocket());
+    await connectAndSnapshot();
+
+    await act(async () => {
+      handlers.error?.({
+        type: 'https://marketplace.local/problems/agent-unavailable',
+        title: 'Agent unavailable',
+      });
+    });
+
+    expect(result.current.error).toBe('Agent unavailable');
+  });
+
   it('does not echo a message it never sent, when there is no thread yet', async () => {
     const { result } = renderHook(() => useOnboardingSocket());
     await act(async () => {

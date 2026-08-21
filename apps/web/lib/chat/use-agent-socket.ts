@@ -9,8 +9,8 @@ import {
 } from '@marketplace/contracts';
 import { AGENTS_URL } from '../env';
 import { getToken } from '../auth/auth-context';
+import { AGENT_THREAD_KEY as THREAD_KEY, isThreadNotFound } from './thread-storage';
 
-const THREAD_KEY = 'marketplace.threadId';
 
 export function useAgentSocket() {
   const [snapshot, setSnapshot] = useState<AgentStateSnapshot | null>(null);
@@ -50,7 +50,14 @@ export function useAgentSocket() {
       setSnapshot(parsed.data);
     });
 
-    socket.on(AGENT_EVENTS.error, (problem: { title?: string; detail?: string }) => {
+    socket.on(AGENT_EVENTS.error, (problem: { type?: string; title?: string; detail?: string }) => {
+      // A leftover thread id, same as the onboarding socket next door: open a
+      // fresh thread rather than stranding the assistant with nothing to send on.
+      if (isThreadNotFound(problem)) {
+        sessionStorage.removeItem(THREAD_KEY);
+        socket.emit(AGENT_EVENTS.threadStart);
+        return;
+      }
       setError([problem.title, problem.detail].filter(Boolean).join(': ') || 'agent error');
     });
 

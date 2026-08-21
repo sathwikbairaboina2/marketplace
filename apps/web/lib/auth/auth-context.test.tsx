@@ -3,12 +3,13 @@ import { render, screen, act } from '@testing-library/react';
 import { AuthProvider, useAuth, getToken } from './auth-context';
 
 function Probe() {
-  const { principal, signIn, ready } = useAuth();
+  const { principal, signIn, signOut, ready } = useAuth();
   return (
     <div>
       <span data-testid="ready">{String(ready)}</span>
       <span data-testid="tenant">{principal?.tenantId ?? 'none'}</span>
       <button onClick={() => void signIn('acme-admin', 'Passw0rd!')}>in</button>
+      <button onClick={signOut}>out</button>
     </div>
   );
 }
@@ -129,5 +130,28 @@ describe('AuthProvider', () => {
 
     expect(captured).not.toBeNull();
     expect((captured as unknown as Error).message).toBe('invalid credentials');
+  });
+
+  it('leaves no chat threads behind for whoever signs in next', async () => {
+    // Both sockets key their thread off sessionStorage, which outlives the
+    // session that filled it. A thread left behind belongs to the previous
+    // tenant: resuming it answers thread-not-found and the wizard silently
+    // stops sending anything the new owner types.
+    sessionStorage.setItem('marketplace.token', 'tok-existing');
+    sessionStorage.setItem('marketplace.onboardingThreadId', 'onboarding-thread');
+    sessionStorage.setItem('marketplace.threadId', 'schema-thread');
+    vi.stubGlobal('fetch', vi.fn(async () => principalResponse('nimbus')));
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await act(async () => {
+      screen.getByText('out').click();
+    });
+
+    expect(sessionStorage.getItem('marketplace.onboardingThreadId')).toBeNull();
+    expect(sessionStorage.getItem('marketplace.threadId')).toBeNull();
   });
 });
