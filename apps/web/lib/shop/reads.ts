@@ -35,16 +35,19 @@ export interface ShopReads {
  * it always was. Pages call the object and never learn which.
  */
 export function readsFor(shop: Shop | null): ShopReads {
+  // Wrapped rather than passed through, so a wrapper is only resolved when
+  // it is called: a unit test that mocks one wrapper of a module is not made
+  // to mock every other export the module happens to have.
   if (!shop) {
     return {
-      listProducts,
-      searchProducts,
-      getProduct,
-      listEvents,
-      getEvent,
-      getStorefront: getPublishedStorefront,
-      getAnnouncement,
-      listSchemas,
+      listProducts: (limit, cursor) => listProducts(limit, cursor),
+      searchProducts: (body) => searchProducts(body),
+      getProduct: (id) => getProduct(id),
+      listEvents: (limit, cursor) => listEvents(limit, cursor),
+      getEvent: (id) => getEvent(id),
+      getStorefront: () => getPublishedStorefront(),
+      getAnnouncement: () => getAnnouncement(),
+      listSchemas: () => listSchemas(),
     };
   }
   const t = shop.tenantId;

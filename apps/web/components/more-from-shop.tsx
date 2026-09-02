@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ProductResponse } from '@marketplace/contracts';
-import { listProducts } from '../lib/api/products';
+import { useShopReads } from '../lib/shop/reads';
 import { ProductCard } from './product-card';
 
 /**
@@ -12,11 +12,13 @@ import { ProductCard } from './product-card';
  * reads as a failed one.
  */
 export function MoreFromShop({ excludeId }: { excludeId: string }) {
+  const reads = useShopReads();
   const [items, setItems] = useState<ProductResponse[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    listProducts(8, null)
+    reads
+      .listProducts(8, null)
       .then((page) => {
         if (!cancelled) setItems(page.items.filter((p) => p.id !== excludeId).slice(0, 4));
       })
@@ -26,7 +28,7 @@ export function MoreFromShop({ excludeId }: { excludeId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [excludeId]);
+  }, [excludeId, reads]);
 
   if (items.length === 0) return null;
 

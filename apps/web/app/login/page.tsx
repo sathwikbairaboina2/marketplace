@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, Button, Card, Form, Input, Select } from 'antd';
 import { TagsOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth/auth-context';
@@ -11,9 +11,19 @@ interface Persona {
   password: string;
 }
 
-export default function LoginPage() {
+/**
+ * Where to go once signed in. A same-origin path only: `next` arrives in the
+ * URL and an absolute one would make this page an open redirect.
+ */
+function landingFrom(next: string | null): string {
+  return next && next.startsWith('/') && !next.startsWith('//') ? next : '/products';
+}
+
+function LoginForm() {
   const { signIn } = useAuth();
   const router = useRouter();
+  const params = useSearchParams();
+  const landing = landingFrom(params.get('next'));
   const [form] = Form.useForm();
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +41,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await signIn(values.username, values.password);
-      router.push('/products');
+      router.push(landing);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -78,5 +88,15 @@ export default function LoginPage() {
         </Form>
       </Card>
     </div>
+  );
+}
+
+// useSearchParams needs a Suspense boundary above it or `next build` refuses
+// to prerender the page.
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { Button } from 'antd';
 import type { EventResponse } from '@marketplace/contracts';
-import { listEvents } from '../../../lib/api/events';
+import { useShopReads } from '../../../lib/shop/reads';
 import { formatDateTime, formatMoney } from '../../../lib/format';
 import { CursorTable } from '../../../components/cursor-table';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
 
 export default function EventsPage() {
+  const reads = useShopReads();
   return (
     <>
       <PageHeader title="Events" subtitle="Sessions you can book a place at." />
@@ -18,7 +19,7 @@ export default function EventsPage() {
           rowKey="id"
           caption="Scheduled events"
           noun={{ one: 'event', many: 'events' }}
-          load={(cursor) => listEvents(25, cursor)}
+          load={(cursor) => reads.listEvents(25, cursor)}
           empty={
             <EmptyState
               title="Nothing scheduled"

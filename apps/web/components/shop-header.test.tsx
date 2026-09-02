@@ -3,9 +3,12 @@ import { render, screen } from '@testing-library/react';
 import type { StorefrontConfig } from '@marketplace/contracts';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/products' }));
-vi.mock('../lib/auth/auth-context', () => ({
-  useAuth: () => ({ principal: { tenantId: 'acme', role: 'buyer' }, signOut: vi.fn() }),
-}));
+// A cell, not a literal: the stranger cases below swap it and put it back.
+let auth: { principal: { tenantId: string; role: string } | null; signOut: () => void } = {
+  principal: { tenantId: 'acme', role: 'buyer' },
+  signOut: vi.fn(),
+};
+vi.mock('../lib/auth/auth-context', () => ({ useAuth: () => auth }));
 vi.mock('../lib/cart/cart-context', () => ({ useCart: () => ({ cart: { lines: [] } }) }));
 vi.mock('./theme-toggle', () => ({ ThemeToggle: () => null }));
 
@@ -64,5 +67,36 @@ describe('ShopHeader nav order', () => {
 
     expect(screen.getByRole('link', { name: /Products/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Events/ })).toBeInTheDocument();
+  });
+});
+
+// Regexes for the nav links: each carries an icon whose aria-label joins the
+// accessible name, so `Products` is really `appstore Products`.
+describe('ShopHeader for a stranger', () => {
+  const buyer = { principal: { tenantId: 'acme', role: 'buyer' }, signOut: vi.fn() };
+
+  it('offers Sign in pointing back at the page, and hides what needs a session', () => {
+    auth = { principal: null, signOut: vi.fn() };
+    try {
+      renderWith(null);
+      expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+        'href',
+        '/login?next=%2Fproducts',
+      );
+      expect(screen.queryByRole('link', { name: /Orders/ })).toBeNull();
+      expect(screen.queryByRole('link', { name: /Bookings/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+      expect(screen.getByRole('link', { name: /Products/ })).toBeInTheDocument();
+    } finally {
+      auth = buyer;
+    }
+  });
+
+  it('keeps Orders and Sign out for a signed-in buyer', () => {
+    auth = buyer;
+    renderWith(null);
+    expect(screen.getByRole('link', { name: /Orders/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Sign in' })).toBeNull();
   });
 });

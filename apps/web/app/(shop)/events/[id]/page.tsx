@@ -6,8 +6,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button, Descriptions, Form, InputNumber, Progress, message } from 'antd';
 import { ArrowLeftOutlined, CalendarOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import type { EventResponse } from '@marketplace/contracts';
-import { getEvent } from '../../../../lib/api/events';
 import { createBooking } from '../../../../lib/api/bookings';
+import { useAuth } from '../../../../lib/auth/auth-context';
+import { useShopReads } from '../../../../lib/shop/reads';
 import { toAttributes, toDescriptionRows, toFormItems } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { ProblemError } from '../../../../lib/api/http';
@@ -26,6 +27,8 @@ export default function EventDetailPage() {
   const router = useRouter();
   const eventSchema = useSchema('Event');
   const bookingSchema = useSchema('Booking');
+  const { principal } = useAuth();
+  const reads = useShopReads();
   const [busy, setBusy] = useState(false);
 
   // Minted when the intent forms -- on mount -- not on click, so every retry
@@ -33,7 +36,7 @@ export default function EventDetailPage() {
   const idempotencyKey = useRef<string>('');
   if (!idempotencyKey.current) idempotencyKey.current = crypto.randomUUID();
 
-  const { data: event, error, loading, retry } = useResource<EventResponse>(() => getEvent(id), [id]);
+  const { data: event, error, loading, retry } = useResource<EventResponse>(() => reads.getEvent(id), [id, reads]);
 
   if (loading) return <DetailSkeleton />;
   if (error) return <ErrorPanel error={error} onRetry={retry} />;
@@ -105,6 +108,15 @@ export default function EventDetailPage() {
             </span>
           </div>
 
+          {/* A stranger sees the price and the places left, and one button
+              that takes them to sign in and straight back here. */}
+          {!principal ? (
+            <Link href={`/login?next=${encodeURIComponent(`/events/${event.id}`)}`}>
+              <Button type="primary" size="large" block disabled={soldOut}>
+                {soldOut ? 'Sold out' : 'Sign in to book'}
+              </Button>
+            </Link>
+          ) : (
           <Form layout="vertical" onFinish={submit} initialValues={{ ticketQuantity: 1 }}>
             {/* CreateBookingSchema caps ticketQuantity at 100; capacity is
                 enforced transactionally server-side, so this bound is a
@@ -129,6 +141,7 @@ export default function EventDetailPage() {
               {soldOut ? 'Sold out' : 'Book'}
             </Button>
           </Form>
+          )}
         </div>
 
         {/* Not `mp-detail-media`: that carries a 5:4 aspect ratio for a

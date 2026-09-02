@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Button, Descriptions, InputNumber, message } from 'antd';
 import { ArrowLeftOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import type { ProductResponse } from '@marketplace/contracts';
-import { getProduct } from '../../../../lib/api/products';
 import { toDescriptionRows } from '../../../../lib/schema-fields';
+import { useAuth } from '../../../../lib/auth/auth-context';
+import { useShopReads } from '../../../../lib/shop/reads';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { useCart } from '../../../../lib/cart/cart-context';
 import { useResource } from '../../../../lib/use-resource';
@@ -22,8 +23,11 @@ const LOW_STOCK = 5;
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const schema = useSchema('Product');
+  const { principal } = useAuth();
   const { add } = useCart();
+  const reads = useShopReads();
   const [qty, setQty] = useState(1);
 
   const {
@@ -31,7 +35,7 @@ export default function ProductDetailPage() {
     error,
     loading,
     retry,
-  } = useResource<ProductResponse>(() => getProduct(id), [id]);
+  } = useResource<ProductResponse>(() => reads.getProduct(id), [id, reads]);
 
   // A missing product and a broken engine are different facts and the reader
   // needs to be told which one happened. This previously rendered a skeleton
@@ -101,6 +105,12 @@ export default function ProductDetailPage() {
               icon={<ShoppingCartOutlined />}
               disabled={soldOut}
               onClick={() => {
+                // A stranger is sent to sign in and brought straight back:
+                // the cart is the buyer's, and there is no buyer yet.
+                if (!principal) {
+                  router.push(`/login?next=${encodeURIComponent(`/products/${product.id}`)}`);
+                  return;
+                }
                 // The server resolves name, price and image; the page sends
                 // only identity and quantity.
                 void add(product.id, qty).then(() =>

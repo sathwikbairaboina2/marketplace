@@ -6,6 +6,7 @@ import { Badge, Button, Grid, Space } from 'antd';
 import {
   AppstoreOutlined,
   CalendarOutlined,
+  LoginOutlined,
   LogoutOutlined,
   ProfileOutlined,
   SettingOutlined,
@@ -24,9 +25,9 @@ import { ThemeToggle } from './theme-toggle';
 // `Chat`. Renaming any of them breaks the regression net.
 const PRODUCTS_LINK = { href: '/products', label: 'Products', icon: <AppstoreOutlined /> };
 const EVENTS_LINK = { href: '/events', label: 'Events', icon: <CalendarOutlined /> };
-const LINKS = [
-  PRODUCTS_LINK,
-  EVENTS_LINK,
+// What anyone may browse, and what only a signed-in buyer has.
+const BROWSE = [PRODUCTS_LINK, EVENTS_LINK];
+const SESSION = [
   { href: '/orders', label: 'Orders', icon: <ShoppingOutlined /> },
   { href: '/bookings', label: 'Bookings', icon: <ProfileOutlined /> },
 ];
@@ -37,11 +38,12 @@ const LINKS = [
  * `sellsWhat` existed -- keeps Products first.
  *
  * Order only: the labels stay exactly as they are, because auth.spec.ts
- * asserts on them by name.
+ * asserts on them by name. A stranger sees the browse links and nothing that
+ * would only ever show them a login page.
  */
-function orderedLinks(sellsWhat: string | undefined) {
-  if (sellsWhat !== 'bookable') return LINKS;
-  return [EVENTS_LINK, PRODUCTS_LINK, ...LINKS.slice(2)];
+function orderedLinks(sellsWhat: string | undefined, signedIn: boolean) {
+  const browse = sellsWhat === 'bookable' ? [EVENTS_LINK, PRODUCTS_LINK] : BROWSE;
+  return signedIn ? [...browse, ...SESSION] : browse;
 }
 
 export function ShopHeader() {
@@ -68,7 +70,7 @@ export function ShopHeader() {
       </Link>
 
       <nav className="mp-shop-nav">
-        {orderedLinks(storefront?.sellsWhat).map((l) => {
+        {orderedLinks(storefront?.sellsWhat, Boolean(principal)).map((l) => {
           const active = pathname.startsWith(l.href);
           return (
             <Link
@@ -110,16 +112,31 @@ export function ShopHeader() {
             <Button icon={<ShoppingCartOutlined />}>{narrow ? null : 'Cart'}</Button>
           </Badge>
         </Link>
-        <span className="mp-role">{principal?.role ?? 'no role'}</span>
-        <ThemeToggle />
-        <Button
-          size="small"
-          icon={<LogoutOutlined />}
-          onClick={signOut}
-          aria-label="Sign out"
-        >
-          {narrow ? null : 'Sign out'}
-        </Button>
+        {principal ? (
+          <>
+            <span className="mp-role">{principal.role ?? 'no role'}</span>
+            <ThemeToggle />
+            <Button
+              size="small"
+              icon={<LogoutOutlined />}
+              onClick={signOut}
+              aria-label="Sign out"
+            >
+              {narrow ? null : 'Sign out'}
+            </Button>
+          </>
+        ) : (
+          <>
+            <ThemeToggle />
+            {/* Straight back to where they were: a stranger who signs in from
+                a product page should land on that product, not the grid. */}
+            <Link href={`/login?next=${encodeURIComponent(pathname)}`} aria-label="Sign in">
+              <Button type="primary" icon={<LoginOutlined />}>
+                {narrow ? null : 'Sign in'}
+              </Button>
+            </Link>
+          </>
+        )}
       </Space>
     </header>
   );

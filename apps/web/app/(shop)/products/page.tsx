@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from 'antd';
 import type { ProductResponse, SearchProducts } from '@marketplace/contracts';
-import { listProducts, searchProducts } from '../../../lib/api/products';
 import { toAttributes } from '../../../lib/schema-fields';
 import { useSchema } from '../../../lib/schemas/schema-cache';
 import { useAuth } from '../../../lib/auth/auth-context';
+import { useShop } from '../../../lib/shop/shop-context';
+import { useShopReads } from '../../../lib/shop/reads';
 import { notifyProblem } from '../../../lib/problem-notify';
 import { FilterRail, ProductGrid } from '../../../components/filter-rail';
 import { ProductCard } from '../../../components/product-card';
@@ -23,17 +24,13 @@ type Filters = Pick<SearchProducts, 'text' | 'priceMinorMin' | 'priceMinorMax' |
 const PAGE = 25;
 
 /**
- * What a shopper is allowed to see.
+ * What a shopper is allowed to see, on the platform host.
  *
- * `GET /products` returns every status, because the same route serves the
- * seller's own cockpit — so a draft (a half-written listing) and an archived
- * product (one deliberately withdrawn) were both being rendered in the shop
- * window, priced and clickable.
- *
- * Filtered here rather than in the query: `SearchProducts` can express one
- * status, not "any of these", and its filter is applied by DynamoDB *after* the
- * page is read, so asking the engine would trade a leak for short pages. When
- * the catalogue is indexed by status, this belongs in the query instead.
+ * The token route `GET /products` returns every status, because the same
+ * route serves the seller's own cockpit — so a draft (a half-written listing)
+ * and an archived product (one deliberately withdrawn) were both being
+ * rendered in the shop window, priced and clickable. The public shop route
+ * filters in the query and needs none of this.
  */
 const SHOPPER_VISIBLE: ReadonlySet<string> = new Set(['active', 'out_of_stock']);
 const onSale = (products: ProductResponse[]) =>
@@ -42,6 +39,8 @@ const onSale = (products: ProductResponse[]) =>
 export default function ProductsPage() {
   const schema = useSchema('Product');
   const { principal } = useAuth();
+  const shop = useShop();
+  const reads = useShopReads();
   const storefront = useStorefrontConfig();
   const hero = storefront?.banners.find((b) => b.slot === 'hero');
   const mid = storefront?.banners.find((b) => b.slot === 'mid');
@@ -62,15 +61,15 @@ export default function ProductsPage() {
       setLoading(true);
       try {
         const page = active
-          ? await searchProducts({
+          ? await reads.searchProducts({
               ...active,
               attributes: active.attributes ?? {},
               limit: PAGE,
               cursor: from,
             })
-          : await listProducts(PAGE, from);
+          : await reads.listProducts(PAGE, from);
 
-        const visible = onSale(page.items);
+        const visible = shop ? page.items : onSale(page.items);
         setItems((prev) => (append ? [...prev, ...visible] : visible));
         setCursor(page.nextCursor);
         setDone(page.nextCursor === null);
@@ -82,7 +81,7 @@ export default function ProductsPage() {
         setLoading(false);
       }
     },
-    [],
+    [reads, shop],
   );
 
   useEffect(() => {
@@ -115,7 +114,7 @@ export default function ProductsPage() {
         <StorefrontBanner banner={hero} />
       ) : (
         <StorefrontHero
-          tenantId={principal?.tenantId ?? ''}
+          tenantId={shop?.tenantId ?? principal?.tenantId ?? ''}
           products={items}
           known={!loading && !error}
         />
