@@ -3,7 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { DynamicEntityType, SchemaView } from '@marketplace/contracts';
 import { listSchemas } from '../api/schemas';
+import { publicListSchemas } from '../api/shop';
 import { useAuth } from '../auth/auth-context';
+import { useShop } from '../shop/shop-context';
 
 type SchemaMap = Partial<Record<DynamicEntityType, SchemaView>>;
 
@@ -17,6 +19,7 @@ const SchemaContext = createContext<SchemaValue | null>(null);
 
 export function SchemaProvider({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();
+  const shop = useShop();
   const [schemas, setSchemas] = useState<SchemaMap | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,19 +35,22 @@ export function SchemaProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const { items } = await listSchemas();
+      const { items } = shop ? await publicListSchemas(shop.tenantId) : await listSchemas();
       setSchemas(Object.fromEntries(items.map((item) => [item.entityType, item])) as SchemaMap);
     } catch {
       // Left as-is: a stale cache is more useful than an empty one.
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [shop]);
 
   useEffect(() => {
-    if (token) void refresh();
+    // A shop host needs no session to know its own fields; the platform host
+    // still waits for one, because there the token is what names the tenant.
+    if (shop === undefined) return;
+    if (shop || token) void refresh();
     else setSchemas(null);
-  }, [token, refresh]);
+  }, [shop, token, refresh]);
 
   return (
     <SchemaContext.Provider value={{ schemas, loading, refresh }}>{children}</SchemaContext.Provider>
