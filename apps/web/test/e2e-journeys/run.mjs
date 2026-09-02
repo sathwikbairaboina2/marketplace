@@ -1287,6 +1287,21 @@ await journey('publishing puts the generated storefront in front of customers', 
   await buyerC.context().close();
 });
 
+await journey('the published storefront is on the shop host for a stranger with no session', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  await page.goto(`http://${C}.localhost:3002/products`);
+  await page.locator('.mp-banner[data-slot="hero"] h1').first().waitFor({ timeout: 30_000 });
+  must(!page.url().includes('/login'), 'a stranger was sent to sign in to see a published shop');
+  const surface = await page.evaluate(() =>
+    getComputedStyle(document.querySelector('.mp-shop')).getPropertyValue('--mp-surface').trim(),
+  );
+  must(surface !== '' && surface !== '#f8fafc', `the preset did not paint for a stranger (${surface})`);
+  await page.goto(`http://${C}.localhost:3002/about`);
+  await page.locator('.mp-about h1').first().waitFor({ timeout: 30_000 });
+  await ctx.close();
+});
+
 await journey('the wizard is re-enterable from settings with the draft intact', async () => {
   await owner.goto(`${WEB}/admin/settings`);
   await owner.getByRole('button', { name: 'Open store designer' }).click();
@@ -1307,6 +1322,92 @@ await journey('an owner who skips the wizard is not asked again', async () => {
     'a dismissed wizard came back on the next visit',
   );
 });
+
+// ================================================ 8b. the public storefront
+section('A stranger at the door');
+
+const SHOP_A = `http://${A}.localhost:3002`;
+const SHOP_B = `http://${B}.localhost:3002`;
+// A context of its own with no session in it: that is the whole point.
+const strangerCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const stranger = await strangerCtx.newPage();
+stranger.on('response', (r) => {
+  if (r.status() >= 500) serverErrors.push(`${r.status()} ${r.url()}`);
+});
+let openMug;
+let hiddenDraft;
+
+await journey('the shop host shows the active product and not the draft, with no session', async () => {
+  openMug = await createProduct({ name: `open-${RUN}`, status: 'active' });
+  hiddenDraft = await createProduct({ name: `hidden-${RUN}`, status: 'draft' });
+  await stranger.goto(`${SHOP_A}/products`);
+  await stranger.getByText(openMug.name).first().waitFor({ timeout: 30_000 });
+  const text = await stranger.locator('body').innerText();
+  must(!text.includes(hiddenDraft.name), 'a draft is on the public shop');
+  must(!stranger.url().includes('/login'), 'a stranger was sent to sign in just to look');
+  must(await stranger.getByRole('link', { name: 'Sign in' }).count(), 'no Sign in offered');
+  must((await stranger.getByRole('link', { name: /Orders/ }).count()) === 0, 'Orders shown to a stranger');
+});
+
+await journey('a stranger opening a product is sent to sign in only when they try to buy', async () => {
+  await stranger.goto(`${SHOP_A}/products/${openMug.id}`);
+  await stranger.getByRole('heading', { name: openMug.name }).waitFor({ timeout: 30_000 });
+  await stranger.getByRole('button', { name: 'Add to cart' }).click();
+  await stranger.waitForURL(/\/login\?next=/, { timeout: 30_000 });
+  must(decodeURIComponent(stranger.url()).includes(`/products/${openMug.id}`), 'next does not point back');
+});
+
+await journey('the events list opens to a stranger', async () => {
+  await stranger.goto(`${SHOP_A}/events`);
+  await stranger.getByRole('heading', { name: 'Events' }).waitFor({ timeout: 30_000 });
+  must(!stranger.url().includes('/login'), 'events sent a stranger to sign in');
+});
+
+await journey("the other shop's host shows none of this shop's products", async () => {
+  await stranger.goto(`${SHOP_B}/products`);
+  await stranger.waitForTimeout(2500);
+  const text = await stranger.locator('body').innerText();
+  must(!text.includes(openMug.name), "tenant A's product is on tenant B's host");
+});
+
+await journey("a buyer from another shop is signed out on this shop's host", async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(`${SHOP_A}/login`);
+  await page.getByLabel('Username').fill(B_ADMIN);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL(/\/products/, { timeout: 30_000 });
+  await page.waitForTimeout(1500);
+  must(await page.getByRole('link', { name: 'Sign in' }).count(), 'a foreign session survived on the shop host');
+  await ctx.close();
+});
+
+await journey("a buyer of this shop keeps their session on its host", async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(`${SHOP_A}/login`);
+  await page.getByLabel('Username').fill(A_BUYER);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL(/\/products/, { timeout: 30_000 });
+  await page.waitForTimeout(1500);
+  must(await page.getByRole('link', { name: /Orders/ }).count(), 'the buyer lost their session on the shop host');
+  await ctx.close();
+});
+
+await journey('the public API answers without a token and hides the draft', async () => {
+  const list = await fetch(`${ENGINE}/shops/${A}/products?limit=100`);
+  must(list.status === 200, `public list answered ${list.status}`);
+  const names = (await list.json()).items.map((p) => p.name);
+  must(names.includes(openMug.name) && !names.includes(hiddenDraft.name), 'public list is wrong');
+  const draft = await fetch(`${ENGINE}/shops/${A}/products/${hiddenDraft.id}`);
+  must(draft.status === 404, `public draft read answered ${draft.status}`);
+  const nope = await fetch(`${ENGINE}/shops/${A}/storefront/draft`);
+  must(nope.status === 404, `storefront draft is public: ${nope.status}`);
+});
+
+await strangerCtx.close();
 
 // ==================================================== 9. cart and payment
 section('The server-side cart and the payment gate');
