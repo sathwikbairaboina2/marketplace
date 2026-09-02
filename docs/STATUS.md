@@ -1,5 +1,18 @@
 # Status
 
+## 3 September 2026 — roadmap, and a shop a stranger can visit
+
+`docs/ROADMAP.md` sets the direction: compete with Shopify on the
+product-and-service long tail, eight themes A–H, six phases, agents staying
+on local Ollama (`qwen3.8:27b`). Theme A's first slice landed on
+`feat/public-storefront`: `<tenant>.localhost:3002` names a shop, a public
+`/shops/:tenantId` read surface serves what a shopper may see with the status
+filter in the query, and the storefront opens to strangers and asks for a
+session only to buy. Engine unit and web unit + build green; **the e2e
+suites, journeys (91) and screenshots have not run** because other projects'
+containers held the stack's ports. Full account and the exact commands to
+finish verification: `docs/STATUS-public-storefront.md`.
+
 ## 21 August 2026 — hygiene: run-scoped browser tenants, media isolation
 
 Three backlog closers. **#19**: the playwright specs minted their litter into
