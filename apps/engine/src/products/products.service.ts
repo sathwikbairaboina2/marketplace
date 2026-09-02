@@ -4,11 +4,13 @@ import {
   Page,
   ProductRecord,
   ProductResponse,
+  ProductStatus,
   productSearchBlob,
   SearchProducts,
+  SearchProductsSchema,
   UpdateProduct,
 } from '@marketplace/contracts';
-import { DynamoRepository } from '../persistence/dynamo.repository';
+import { DynamoRepository, FilterSpec } from '../persistence/dynamo.repository';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { entitySk, skPrefix } from '../persistence/keys';
 import { newId } from '../common/ids';
@@ -16,6 +18,7 @@ import { ProblemException } from '../common/problem';
 import { foreignMediaUrl } from '../common/media-policy';
 import { currentPrincipal } from '../common/tenant-context';
 import { SEARCH_PROVIDER, SearchProvider } from './search-provider';
+import { buildProductFilter } from './dynamo-search.provider';
 
 /** Public media isolation (#05): a stored image must be this shop's own. */
 function assertOwnMedia(images: readonly string[]): void {
@@ -30,6 +33,15 @@ function assertOwnMedia(images: readonly string[]): void {
     );
   }
 }
+
+/**
+ * What a stranger may see. A draft is a half-written listing and an archived
+ * product a withdrawn one; neither exists as far as the public surface is
+ * concerned, so asking for one answers the 404 a made-up id would.
+ */
+export const VISIBLE_TO_SHOPPERS: readonly ProductStatus[] = ['active', 'out_of_stock'];
+const EMPTY_CRITERIA = SearchProductsSchema.parse({});
+const visibleFilter = (): FilterSpec => buildProductFilter(EMPTY_CRITERIA, VISIBLE_TO_SHOPPERS)!;
 
 // The HTTP-facing shape of a product. `ProductRecord` (from @marketplace/contracts) mirrors
 // exactly what is stored in DynamoDB, including the single-table `PK`/`SK` attributes. Those
@@ -177,6 +189,31 @@ export class ProductsService {
 
   async search(criteria: SearchProducts): Promise<Page<ProductResponse>> {
     const page = await this.searchProvider.search(criteria);
+    return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
+  }
+
+  // The public surface. Filtered in the query, not after it, so a stranger's
+  // page is a full page rather than one with holes where the drafts were.
+
+  async getVisible(id: string): Promise<ProductResponse> {
+    const found = await this.repo.get<ProductRecord>(entitySk('Product', id));
+    if (!found || !VISIBLE_TO_SHOPPERS.includes(found.status)) {
+      throw new ProblemException('not-found', 404, 'Product not found');
+    }
+    return toResponse(found);
+  }
+
+  async listVisible(limit: number, cursor: string | null): Promise<Page<ProductResponse>> {
+    const page = await this.repo.queryPrefix<ProductRecord>(skPrefix('Product'), {
+      limit,
+      cursor,
+      filter: visibleFilter(),
+    });
+    return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
+  }
+
+  async searchVisible(criteria: SearchProducts): Promise<Page<ProductResponse>> {
+    const page = await this.searchProvider.search(criteria, { statuses: VISIBLE_TO_SHOPPERS });
     return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
   }
 }

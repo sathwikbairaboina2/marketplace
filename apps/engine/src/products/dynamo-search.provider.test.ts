@@ -51,4 +51,19 @@ describe('buildProductFilter', () => {
     expect(filter.expression.split(' AND ')).toHaveLength(4);
     expect(Object.keys(filter.values)).toHaveLength(4);
   });
+  it('forces the visible statuses and ignores a status in the criteria', () => {
+    const filter = buildProductFilter(SearchProductsSchema.parse({ status: 'draft' }), [
+      'active',
+      'out_of_stock',
+    ])!;
+    expect(filter.expression).toBe('#f0 IN (:v0, :v1)');
+    expect(filter.names).toEqual({ '#f0': 'status' });
+    expect(filter.values).toEqual({ ':v0': 'active', ':v1': 'out_of_stock' });
+  });
+
+  it('ANDs the visible statuses onto other clauses, last', () => {
+    const filter = buildProductFilter(SearchProductsSchema.parse({ category: 'mugs' }), ['active'])!;
+    expect(filter.expression).toBe('#f0 = :v0 AND #f1 IN (:v1)');
+    expect(filter.values).toEqual({ ':v0': 'mugs', ':v1': 'active' });
+  });
 });
