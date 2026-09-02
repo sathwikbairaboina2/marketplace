@@ -17,6 +17,7 @@ import { BookingsModule } from './bookings/bookings.module';
 import { FlowsModule } from './flows/flows.module';
 import { SettingsModule } from './settings/settings.module';
 import { StorefrontModule } from './storefront/storefront.module';
+import { ShopsModule } from './shops/shops.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { ThreadsModule } from './threads/threads.module';
 import { UploadsModule } from './uploads/uploads.module';
@@ -63,6 +64,7 @@ import { StatsModule } from './stats/stats.module';
     FlowsModule,
     SettingsModule,
     StorefrontModule,
+    ShopsModule,
     PipelineModule,
     ThreadsModule,
     CartModule,
