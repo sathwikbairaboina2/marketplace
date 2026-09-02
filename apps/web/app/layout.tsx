@@ -7,6 +7,7 @@ import '@ant-design/v5-patch-for-react-19';
 import './theme.css';
 import { ThemeProvider } from '../lib/theme/theme-context';
 import { AuthProvider } from '../lib/auth/auth-context';
+import { ShopProvider } from '../lib/shop/shop-context';
 import { SchemaProvider } from '../lib/schemas/schema-cache';
 import { CartProvider } from '../lib/cart/cart-context';
 import { ContractBanner } from '../components/contract-banner';
@@ -53,12 +54,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AntdRegistry>
           <ThemeProvider>
             <AuthProvider>
-              <SchemaProvider>
-                <CartProvider>
-                  <ContractBanner />
-                  {children}
-                </CartProvider>
-              </SchemaProvider>
+              {/* Above SchemaProvider: on a shop host the schemas load for a
+                  visitor with no session, and the shop is what says so. */}
+              <ShopProvider>
+                <SchemaProvider>
+                  <CartProvider>
+                    <ContractBanner />
+                    {children}
+                  </CartProvider>
+                </SchemaProvider>
+              </ShopProvider>
             </AuthProvider>
           </ThemeProvider>
         </AntdRegistry>

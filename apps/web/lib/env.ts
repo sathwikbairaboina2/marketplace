@@ -13,3 +13,6 @@ export const ENGINE_URL = strip(
   process.env.NEXT_PUBLIC_ENGINE_URL ?? 'http://localhost:3000/api/v1',
 );
 export const AGENTS_URL = strip(process.env.NEXT_PUBLIC_AGENTS_URL ?? 'http://localhost:3001');
+
+/** The host shops hang off: `<tenant>.<PLATFORM_HOST>` is a shop, the bare host is the console. */
+export const PLATFORM_HOST = process.env.NEXT_PUBLIC_PLATFORM_HOST ?? 'localhost:3002';
