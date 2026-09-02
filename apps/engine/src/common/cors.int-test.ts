@@ -9,7 +9,7 @@ describe('CORS', () => {
   let baseUrl: string;
 
   beforeAll(async () => {
-    process.env.CORS_ORIGINS = 'http://localhost:3002';
+    process.env.CORS_ORIGINS = 'http://localhost:3002,http://*.localhost:3002';
     process.env.SQS_CONSUMER_ENABLED = 'false';
     process.env.QUEUE_URL ??=
       'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/q.fifo';
@@ -89,5 +89,21 @@ describe('CORS', () => {
       headers: { Origin: 'http://evil.example', 'Access-Control-Request-Method': 'POST' },
     });
     expect(res.headers.get('access-control-allow-origin')).not.toBe('http://evil.example');
+  });
+
+  it('allows a shop subdomain under the wildcard entry', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/products`, {
+      method: 'OPTIONS',
+      headers: { Origin: 'http://acme.localhost:3002', 'Access-Control-Request-Method': 'GET' },
+    });
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://acme.localhost:3002');
+  });
+
+  it('refuses a two-label host the wildcard does not cover', async () => {
+    const res = await fetch(`${baseUrl}/api/v1/products`, {
+      method: 'OPTIONS',
+      headers: { Origin: 'http://a.b.localhost:3002', 'Access-Control-Request-Method': 'GET' },
+    });
+    expect(res.headers.get('access-control-allow-origin')).toBeNull();
   });
 });

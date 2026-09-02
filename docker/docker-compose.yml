@@ -112,7 +112,8 @@ services:
       # listening -- when it drops, the console is only reachable at the IPv4
       # literal, which is a different origin and would otherwise have every call
       # refused by CORS on top of the outage.
-      CORS_ORIGINS: http://localhost:3002,http://127.0.0.1:3002
+      # *.localhost: one shop per subdomain (see the engine's common/cors.ts).
+      CORS_ORIGINS: http://localhost:3002,http://127.0.0.1:3002,http://*.localhost:3002
       S3_ENDPOINT: http://localstack:4566
       # Host-facing on purpose -- this is the endpoint presigned URLs are signed
       # against, and the browser is what redeems them. S3_BUCKET arrives from
@@ -171,7 +172,8 @@ services:
       LOG_LEVEL: info
       DOCS_ENABLED: 'true'
       # Both loopback spellings, for the same reason the engine allows both.
-      CORS_ORIGINS: http://localhost:3002,http://127.0.0.1:3002
+      # *.localhost: one shop per subdomain (see the engine's common/cors.ts).
+      CORS_ORIGINS: http://localhost:3002,http://127.0.0.1:3002,http://*.localhost:3002
       COGNITO_ENDPOINT: http://cognito-local:9229
     depends_on:
       redis: { condition: service_healthy }
