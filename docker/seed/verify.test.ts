@@ -38,7 +38,9 @@ describe('seeded infrastructure', () => {
   });
 
   it('creates a Cognito user pool reachable over JWKS', async () => {
-    const res = await fetch(env.JWKS_URI.replace('cognito-local', 'localhost'));
+    // JWKS_URI names the compose service and its internal port; from the host
+    // the same pool is behind COGNITO_ENDPOINT_HOST, the published origin.
+    const res = await fetch(`${env.COGNITO_ENDPOINT_HOST}${new URL(env.JWKS_URI).pathname}`);
     expect(res.status).toBe(200);
     const body = (await res.json()) as { keys: unknown[] };
     expect(body.keys.length).toBeGreaterThan(0);
