@@ -17,16 +17,23 @@ section at the end says what each one loses or gains.
 Weeks run from Monday 7 September 2026. Every week names what a merchant can
 verify at the end of it, because that — not the day count — is the test.
 
+> **Later the same evening**, a second debate — on the storefront itself,
+> `docs/DEBATE-storefront.md` — ran a design director, a merchant and a
+> conversion lead over the same app with two presets actually published. It
+> found a fuse in this plan, added two items, and shipped four of week 1's
+> rows. Those are marked **done** below.
+
 ### Week 1 — the demo stops lying (5 days)
 
 | Days | Item |
 |---|---|
 | 2.0 | **Backlog item 1** — rented VM, Compose stack, Caddy with wildcard TLS, nightly snapshots, the restore drill run once, the four seeded shops on their subdomains. First for a technical reason: `NEXT_PUBLIC_PLATFORM_HOST` is inlined into the browser bundle (`apps/web/lib/env.ts:19`), so per-shop chrome is being verified on the wrong hostname until this lands. |
-| 0.5 | **U13a** — `formatMoney` renders a symbol (`lib/format.ts:76` moves to `style: 'currency'`); `cart.service.ts:119`'s `?? 'USD'` goes. Two hours of code, the rest re-shooting the campaign lines that assert on prices. |
+| 0.5 | **U13a — done** (`d6aae1c`). `formatPrice` renders ₹340.00 and $74.00 at all thirteen price sites. The storefront debate found what this item had not named: the checkout's Currency select offered USD, EUR and GBP only, while `order-checkout.service.ts:76` refuses an order whose currency differs from its products'. The day the seed turns to rupees, every checkout on every demo shop would have failed — in the build the week-2 interviews look at. The select is gone; the order takes the currency its cart is priced in. |
 | 1.0 | **S — the seed fixture** — a published `StorefrontConfig` per demo tenant, captured through the wizard as `docker/seed/catalogue.ts:14-17` requires, with real hero banners; the four shops become Indian studios with Indian addresses and rupee prices; a rupee announcement string. The first day on which any of the five presets is visible in the running product. |
-| 0.5 | **U1a** — masthead, hero, `<title>`, `og:site_name` and JSON-LD read `businessProfile.name`, falling back to the slug; the `STOREFRONT · 6 Showing` band deleted. Three string sites; no test asserts the literal. Re-pointed at `T` in week 3. |
-| 0.5 | **Cheap wins** — cards say "In stock / Low / Sold out" instead of a count; a `max-width: 767px` twin for `.mp-more-grid` (`pages.css:149-151`); a "View your shop" link in the cockpit; a shop-host `not-found.tsx`; a no-result state on the order lookup. |
-| 0.5 | **U8** — the edit form renders `ImageUploader` and sends `images` on the PATCH; the caption at `products/new/page.tsx:79` deleted. `UpdateProductSchema` already accepts it. **The release valve:** if anything above runs long, this falls first. |
+| 0.5 | **U1a — done** (`d6aae1c`). Masthead, hero and the crawler's title now resolve the shop's name the same way, so the search result and the header can no longer disagree; the `STOREFRONT · 6 Showing` band is gone. Re-pointed at `T` in week 3. |
+| 0.5 | **Cheap wins — done** (`d6aae1c`). Cards and the product page say "In stock", "Only n left" or "Sold out"; a phone twin for `.mp-more-grid`; "View your shop" in the cockpit sidebar; a shop-host `not-found.tsx`; a no-result state on the guest lookup. |
+| 0.5 | **U8 — done** (`d6aae1c`), and cheaper than sized: the edit form already rendered `ImageUploader`, so only the false caption at `products/new/page.tsx:79` needed deleting. |
+| 1.0 | **W — the theme reaches the page — done** (`5a4fb23`). New, and the storefront debate's central finding: `--mp-font-heading` was read by three files in the whole web app, so a shop that chose Fraunces set its product names, prices and page titles in Inter; and `shop-shell.tsx` handed the nested antd provider `colorPrimary` and `colorLink` alone, so a themed shop kept a 10px radius on a 6px card, Inter throughout, and a cold slate table header on a cream page. The provider now takes the resolved variables; the heading font reaches the seven selectors that carry a shop's voice; `--mp-hero-border` no longer draws a teal hairline round a brown shop. |
 
 Verifiable: her shop is on a real subdomain, carries her name, quotes rupees,
 does not publish her stock counts, and a bad photograph can be replaced.
@@ -35,8 +42,9 @@ does not publish her stock counts, and a bad photograph can be replaced.
 
 | Days | Item |
 |---|---|
-| 2.0 | **U3 — guest booking** |
-| 3.0 | **U4 — an event is something a person can want** |
+| 2.0 | **U3 — guest booking.** The storefront debate raised its severity rather than its size: there is no sign-up route anywhere in the web app, so "Sign in to book" is not a detour a stranger can take — it is a dead end, and the class half of the catalogue converts at zero, not merely poorly. |
+| 3.0 | **U4 — an event is something a person can want**, and its storefront list becomes a card grid, which retires the phone table that clips PRICE off a 390px viewport. |
+| 0.5 | **P — a phone number on an order.** New, from the storefront debate. No phone field exists in the checkout contracts or on `OrderRecord`, and none of the eighteen backlog items or thirteen U-items adds one. Razorpay's `prefill.contact` needs it, a Pune delivery needs it, and U6's order desk has nothing to call. Checkout field order: email, phone, name, address, city, pincode. |
 
 Verifiable: a workshop on a phone with a photograph, a place, a rupee price,
 places left, and a Book button a stranger can press without a password. **The
@@ -58,7 +66,7 @@ and knows its own name even when the merchant never finished the wizard.
 
 | Days | Item |
 |---|---|
-| 4.0 | **Backlog item 2 continues** — signed webhook as the source of truth for `paid`, reconciliation of `awaiting_payment` older than an hour, full refund with per-stage stock restore, UPI and cards. |
+| 4.0 | **Backlog item 2 continues** — a signed webhook as the source of truth for `paid`, reconciliation of `awaiting_payment` older than an hour, full refund with per-stage stock restore. **UPI intent leads and cards follow**, the amount is in rupees, and the shop's name is on the page: the storefront debate's requirement, from a merchant whose customers have never typed a card number into a phone. A guest must also be able to release her own unpaid reservation — abandoning the pay page holds the stock indefinitely today. |
 | 1.0 | **Verification** — one serial local run: the journeys (97, becoming about 112), the 160 campaign cases, the Playwright specs, the axe gate, and the human screenshot pass. Not negotiable; it was never costed before. |
 
 Verifiable: a stranger pays with a test UPI id on a real URL and the seller
@@ -84,7 +92,7 @@ reads six names and six emails.
 | 1.0 | **M — the onboarding cost measurement** |
 | 1.5 | **U5 — no cockpit table loses its price off a phone** |
 | 0.5 | **U12a — the persona picker gated to the platform host** |
-| 1.0 | Declared float. |
+| 1.0 | **Cart drawer.** The design director's highest-conversion request and the one they said they would fight for: it replaces the add-to-cart toast with what was added, the new total and two buttons. antd `Drawer` is already themed. Here rather than in week 1 because the path has to work before it is made pleasant. |
 
 Verifiable: a merchant's first hour ends with a checklist that tells the
 truth, and `docs/STATUS.md` carries the number decision 4 requires before
