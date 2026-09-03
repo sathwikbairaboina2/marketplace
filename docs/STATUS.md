@@ -3,8 +3,15 @@
 ## 3 September 2026 — phase 0 hygiene, a crawler can read, a stranger can buy
 
 **Phase 0.** `master` is pushed to the private GitHub remote and is the
-default branch. CI runs a `typecheck` script per package through turbo, which
-found one stale fixture `next build` never sees. The debt list is paid except
+default branch, and CI is green on a runner for the first time (run
+33765284511: unit job and engine end-to-end job both pass). Two things only
+a runner could find: the e2e job compiled its tests before the workspace
+packages were built, and the unit job ran suites that need a stack; the
+stack-bound suites now run in the e2e job after boot. A push does not start
+a run on this repository for a reason not yet found; `gh workflow run ci.yml
+--ref master` does, so the workflow accepts a hand dispatch. CI also runs a
+`typecheck` script per package through turbo, which found one stale fixture
+`next build` never sees. The debt list is paid except
 journey sharding, which needs the model on a runner: `orders.service.ts` is a
 facade over checkout, payment and lifecycle services; the admin check is
 `assertAdmin()` in one place; `backfill:search` writes the search blob under
