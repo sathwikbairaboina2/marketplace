@@ -53,4 +53,20 @@ describe('SupportService', () => {
     // reference must; and no fabricated fields arrive.
     expect(sent.content).toContain('30.00 USD');
   });
+
+  it('lists orders newest first with the time of day, so "most recent" is answerable on a same-day book', async () => {
+    // Two orders on one day. A date alone cannot rank them, and a careful
+    // model then rightly says it cannot tell which is the latest.
+    engine.listOrders.mockResolvedValue([
+      order({ id: '01M0G37HX0K2WR8GGNM3ZEARLY', createdAt: '2026-09-03T09:15:00.000Z' }),
+      order({ id: '01M0G37HX0K2WR8GGNM3ZLATER', createdAt: '2026-09-03T14:22:00.000Z' }),
+    ]);
+    llm.pushText('Order ZLATER is your latest.');
+
+    await service.ask('what is my most recent order?', 'tok');
+    const sent = (llm.calls[0].messages[0] as { content: string }).content;
+    expect(sent).toContain('newest first');
+    expect(sent.indexOf('ZLATER')).toBeLessThan(sent.indexOf('ZEARLY'));
+    expect(sent).toContain('placed 2026-09-03 14:22 UTC');
+  });
 });

@@ -1,5 +1,32 @@
 # Status
 
+## 3 September 2026 — off the default ports, onto one shared model
+
+Two changes so the stack coexists with everything else on this machine.
+**Host ports are the defaults plus 30000**: engine `33000`, agents `33001`,
+web `33002`, localstack `34566`, redis `36379`, dynamodb `38000`,
+cognito-local `39229`. Inside the compose network nothing moved. Every
+host-facing literal followed: the web image's `NEXT_PUBLIC_*`, the seed's
+media URLs, `CORS_ORIGINS`, `S3_PUBLIC_ENDPOINT`, the harnesses and the
+int-test defaults. One trap surfaced: cognito-local stamps `iss` from its own
+default domain, `http://localhost:9229`, whatever port it is published on, so
+the seed now writes `JWT_ISSUER` from `COGNITO_ISSUER_ORIGIN` and the harness
+endpoint from `COGNITO_HOST_ORIGIN` separately.
+
+**The stack no longer runs an ollama.** `agents` talks to the research-plugin
+stack's `research-ollama` on `127.0.0.1:25103` (GPU attached, and the model
+store is a volume that stack already shares with instacreator), which holds
+`qwen3.8:27b`; `ollama-init` is a gate that runs `ollama pull` there and
+fails fast if the daemon is down. The devkit boot checks the daemon before
+building anything. Warm structured-output latency with thinking on is about
+2.4s; the first call after the daemon loads the 17GB model is about 45s.
+
+With the ports free the public storefront was finally proven end to end:
+devkit boot UP, engine e2e 147/147, engine and agents unit+int 261 and 153
+green, 91/91 journeys, 31 playwright specs, shop-host screenshots looked at.
+Details in `docs/STATUS-public-storefront.md`. The model upgrade exposed one
+real defect in the support agent (order facts had no time of day), fixed.
+
 ## 3 September 2026 — roadmap, and a shop a stranger can visit
 
 `docs/ROADMAP.md` sets the direction: compete with Shopify on the
@@ -180,10 +207,11 @@ Ten defects, every one caught by a test rather than by reading code.
   red suites twice, every one passing alone. `int-test` suites boot Nest
   applications and one calls a local model that holds a core for a minute.
   Jest is capped at two workers per app and CI pins `--concurrency=1`.
-- **Ollama publishes `11435`, not its default `11434`.** Any other ollama on the
-  machine already answers on the default, and a host-side wait against it
-  succeeds while talking to a daemon that has never heard of this project's
-  model.
+- **The stack has no ollama; host ports are +30000.** Since 3 September the
+  agents use the shared `research-ollama` daemon on `127.0.0.1:25103`
+  (`qwen3.8:27b`), and every published port is the default plus 30000 because
+  other projects' containers sit on the defaults. A host-side wait against
+  `11434` or `3000` talks to somebody else's service and proves nothing.
 
 ## Next
 

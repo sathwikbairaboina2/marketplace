@@ -41,39 +41,32 @@ every behaviour it had.
 
 ## Verification
 
-Run on 2026-09-03:
+Run on 2026-09-03 against the live Docker stack, after the stack moved to the
++30000 host-port block and onto the shared `research-ollama` daemon (see
+`docs/STATUS.md`, same date):
 
 | Suite | Result |
 |---|---|
-| Engine unit (`jest --testPathIgnorePatterns int-test`) | all suites green, incl. new `cors`, `shop-scope`, `products.service.visible`, extended `dynamo-search.provider` |
-| Engine typecheck (`tsc --noEmit`) | clean |
-| Web unit (`vitest run`) | 48 files, 273 tests green, incl. new `shop-host`, `reads`, `(shop)/layout`, extended `shop-header` |
-| Web build (`next build`, lint + types) | clean |
-| Journeys harness | `node --check` clean; 91 journeys defined (was 83) |
+| Devkit boot (`_devkit/marketplace/devup.ps1 -Reset`) | UP: health, docs, auth, tenant isolation, spoofed-header check all pass |
+| Engine e2e (`test:e2e`, incl. `shops.e2e.test.ts`) | 18 suites, 147 tests green |
+| Engine unit + int-tests (`turbo run test`, incl. `cors.int-test` wildcard cases) | 40 suites, 261 tests green |
+| Agents unit + int-tests (incl. the live-model `ollama.provider.int-test`) | 31 suites, 153 tests green |
+| Web unit (`vitest run`) | 48 files, 273 tests green |
+| Web build (`next build`, lint + types) | clean, inside the web image build |
+| Browser journeys (`e2e:journeys`) | 91 of 91, incl. the seven "a stranger at the door" journeys |
+| Playwright specs (`test:e2e`) | 31 passed |
+| Screenshots | `acme.localhost:33002` `/products`, `/events`, `/about` in a fresh context: Sign in offered, no Orders/Bookings, seeded images load from the media port, About shows its honest empty state |
 
-**Not run, and why.** The engine e2e suite (`shops.e2e.test.ts`, 11 cases),
-the CORS int-test's two wildcard cases, the 91 browser journeys and the
-preset screenshots all need the Docker stack. At the time of writing ports
-3000 and 6379 were held by other projects' containers (`instascraper-web-1`,
-`lipsync-redis`) and 3001 by a stale `remotion still --help` node process, and
-the session's permission mode refused to stop them. The devkit's own
-preflight (`_devkit/marketplace/devup.ps1`) would refuse for the same reason.
-Until those run, this slice is **built and unit-verified, not proven end to
-end**; the CLAUDE.md rule that a UI change is finished only when it has been
-rendered and looked at has not been met.
+One journey failed on the first run and it was not this slice: "the support
+agent answers from the buyer's own orders". The order facts handed to the
+model carried a date with no time, so on a same-day order book the stronger
+`qwen3.8:27b` correctly said it could not tell which order was the most
+recent, where `qwen2.5:7b-instruct` used to guess. The facts now carry the
+time of day and are listed newest first, and say so; a unit test pins it.
 
-To finish the verification once the ports are free:
-
-```
-docker stop instascraper-web-1 lipsync-redis      # or move them off 3000/6379
-pnpm docker:up
-pnpm --filter @marketplace/engine test:e2e
-pnpm --filter @marketplace/web e2e:journeys
-pnpm --filter @marketplace/web test:e2e
-```
-
-then open `http://<published tenant>.localhost:3002/products` and `/about`
-in a fresh browser context, light and dark, and look.
+The storefront's dark theme is a header toggle, not `prefers-color-scheme`,
+so a dark-scheme browser context renders the same as light. Nothing in this
+slice changed that.
 
 ## Decisions worth remembering
 

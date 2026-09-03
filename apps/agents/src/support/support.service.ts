@@ -21,6 +21,13 @@ interface OrderFacts {
   createdAt: string;
 }
 
+/** `2026-09-03T14:22:07.123Z` -> `2026-09-03 14:22 UTC`: a day alone cannot rank
+ *  two orders placed the same afternoon, and "my most recent order" is the
+ *  commonest question this assistant gets. */
+function placedAt(iso: string): string {
+  return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+}
+
 /** One order, flattened to the words the model may use. */
 function describe(order: OrderFacts): string {
   const ref = order.id.slice(-6);
@@ -35,7 +42,7 @@ function describe(order: OrderFacts): string {
         ? 'cancelled'
         : `paid, currently at stage "${stage}"`;
   const amount = `${(order.totalAmountMinor / 100).toFixed(2)} ${order.currency}`;
-  return `Order ${ref}: placed ${order.createdAt.slice(0, 10)}, ${amount}, ${state}.`;
+  return `Order ${ref}: placed ${placedAt(order.createdAt)}, ${amount}, ${state}.`;
 }
 
 @Injectable()
@@ -59,10 +66,15 @@ export class SupportService {
       };
     }
 
-    const facts = orders.map(describe).join('\n');
+    // Newest first, and said so: the model should not have to infer the order
+    // of a list, and the engine's own ordering is not part of its contract.
+    const facts = [...orders]
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .map(describe)
+      .join('\n');
     const answer = await this.llm.text({
       system: SYSTEM,
-      messages: [{ role: 'user', content: `${question}\n\nOrder facts:\n${facts}` }],
+      messages: [{ role: 'user', content: `${question}\n\nOrder facts (newest first):\n${facts}` }],
     });
     return { answer: answer.trim().slice(0, 5000) || 'Something went blank — please ask again.' };
   }
