@@ -41,7 +41,10 @@
   text-align: center;
   font-size: var(--mp-text-sm);
   font-weight: 560;
-  color: #ecfeff;
+  /* Plain white, not the default theme's cyan-tinted white: this band is
+     painted in the shop's own accent, and the WCAG refinement in
+     contracts/src/storefront.ts is what guarantees white reads on it. */
+  color: #fff;
   background: linear-gradient(90deg, var(--mp-primary-deep), var(--mp-primary));
 }
 
@@ -299,6 +302,7 @@
 }
 
 .mp-page-header h1 {
+  font-family: var(--mp-font-heading);
   font-size: var(--mp-text-xl);
   line-height: 1.2;
 }
@@ -607,6 +611,7 @@
 }
 
 .mp-card-name {
+  font-family: var(--mp-font-heading);
   display: block;
   font-weight: 590;
   font-size: var(--mp-text-base);

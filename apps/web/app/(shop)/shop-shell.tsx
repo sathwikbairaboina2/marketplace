@@ -89,9 +89,41 @@ export default function ShopShell({ children }: { children: React.ReactNode }) {
   );
 
   if (!accent || !vars) return shell;
-  const accentText = (vars as Record<string, string>)['--mp-primary-text'];
+  const v = vars as Record<string, string>;
+  const accentText = v['--mp-primary-text'];
+  // The accent alone left every other antd token on the default theme: a
+  // 10px button against a 6px card, Inter inside a shop that chose Fraunces,
+  // and a cold slate table header on a warm page. The resolved variables are
+  // the shop's, so hand antd the same ones.
+  const px = (value: string | undefined, fallback: number) =>
+    value ? Number.parseInt(value, 10) || fallback : fallback;
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: accent, colorLink: accentText } }}>
+    <ConfigProvider
+      theme={{
+        token: {
+          colorPrimary: accent,
+          colorLink: accentText,
+          fontFamily: v['--mp-font-body'],
+          borderRadius: px(v['--mp-radius-md'], 8),
+          borderRadiusLG: px(v['--mp-radius-lg'], 10),
+          borderRadiusSM: px(v['--mp-radius-sm'], 6),
+          colorBorder: v['--mp-line'],
+          colorBorderSecondary: v['--mp-line'],
+          colorText: v['--mp-ink'],
+          colorTextSecondary: v['--mp-ink-soft'],
+          colorTextTertiary: v['--mp-muted'],
+          colorBgContainer: v['--mp-surface-raised'],
+          colorBgElevated: v['--mp-surface-raised'],
+        },
+        components: {
+          Table: {
+            headerBg: v['--mp-surface-sunken'],
+            headerColor: v['--mp-muted'],
+            borderColor: v['--mp-line'],
+          },
+        },
+      }}
+    >
       {shell}
     </ConfigProvider>
   );

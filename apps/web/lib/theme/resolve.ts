@@ -48,6 +48,11 @@ export function resolveTheme(config: StorefrontConfig | null, mode: Mode): Recor
     '--mp-success': c.success,
     '--mp-warning': c.warning,
     '--mp-danger': c.danger,
+    // Left on the base palette, these were the theme's visible leaks: a teal
+    // hairline round a brown shop's banner, cool slate monograms on a cream
+    // page, and slate-tinted shadows under warm cards.
+    '--mp-hero-border': `${accent}33`,
+    '--mp-placeholder-ink': c.muted,
     '--mp-hero-bg': preset.heroBg[mode],
     '--mp-hero-ink': c.ink,
     '--mp-hero-muted': c.muted,

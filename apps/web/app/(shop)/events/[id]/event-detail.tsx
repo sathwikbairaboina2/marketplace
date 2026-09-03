@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Button, Descriptions, Form, InputNumber, Progress, message } from 'antd';
-import { ArrowLeftOutlined, CalendarOutlined, EnvironmentOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import type { EventResponse } from '@marketplace/contracts';
 import { createBooking } from '../../../../lib/api/bookings';
 import { useAuth } from '../../../../lib/auth/auth-context';
@@ -154,7 +154,7 @@ export default function EventDetail() {
                 <CalendarOutlined /> {formatDateTime(event.startDate)}
               </span>
               <span>
-                <EnvironmentOutlined /> ends {formatDateTime(event.endDate)}
+                <ClockCircleOutlined /> ends {formatDateTime(event.endDate)}
               </span>
             </div>
 
