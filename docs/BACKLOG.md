@@ -12,6 +12,11 @@ and typecheck; the debt list except journey sharding.
 Each item: outcome; why now; in; out; acceptance journey; touch points; size;
 depends on; question for the CEO.
 
+> **3 September, later the same day:** the sequence for weeks 1 to 6 is
+> superseded by `docs/BACKLOG-surface.md`, the outcome of
+> `docs/DEBATE-surface.md`. Item numbers and sizes below remain the record;
+> that file says what each one loses or gains.
+
 ## Sequence
 
 ### 1. A merchant's shop is on a real URL by Friday

@@ -172,3 +172,71 @@ POS; a mobile app; variants beyond a single option axis; any hosted model.
 3. *Payments and KYC stall an Indian sole proprietor.* Test: put one real
    merchant through Razorpay onboarding on our sandbox before building the
    provider properly, and time it.
+
+---
+
+## Addendum, 3 September 2026 — after `docs/DEBATE-surface.md`
+
+The surface debate produced three further decisions. They stand under the
+same rule as the six above: the plan proceeds under them until the owner
+overrules one.
+
+## Decision 7 — Free bookings, paid at the door, are a product for v1
+
+**Decision.** A class booked online without an account and paid in cash or
+by UPI in the room is a booking the platform supports, from week 2, before
+Razorpay exists. Guest booking ships ahead of the payment provider.
+
+**Why.** Backlog item 4 asked this and nobody answered. A significant share
+of studio teaching in India is sold exactly this way today. Answering yes
+makes the wedge demonstrable in the week-2 interviews — a maker books a
+place at a real class in her own shop, on her own phone, with no password —
+and lets a studio use the platform for its purpose a fortnight before the
+gateway.
+
+**Rules out.** Leaving the login wall on the event page for a month; putting
+guest booking inside Razorpay's week.
+
+**Reverses it.** Guest booking costing more than three days.
+
+## Decision 8 — A tenant record exists, and carries the plan
+
+**Decision.** From week 3 the engine holds one row per shop — identity,
+default currency, timezone, and the plan fields decision 2 needs: `plan`,
+`billingAnchor`, `platformBadge`, `agentBudget`, `billingRef` — stored and
+unenforced. Enforcement is backlog item 7. It is infrastructure spend, not
+design spend, and is reported as such.
+
+**Why.** `TENANT#<id>` is a key prefix, not an item; the shop's name lives
+only in a published storefront config; currency is per product; and three
+plans cannot be charged for without a field that says which one a merchant
+is on. Four later backlog items each need something from this row.
+
+**Rules out.** Free-form brand customisation; a `tenants` module when the
+settings seam is 26 lines and proven; any meter or gate this quarter.
+
+**Reverses it.** The record costing more than four days, in which case the
+name band-aid stays for the interviews and the record slips behind Razorpay.
+
+## Decision 9 — The stop date
+
+**Decision.** The quarter's metric — ten shops that have taken a stranger's
+money through the platform in the last thirty days — starts counting the
+week of Monday 5 October 2026, a two-week slip from the debate's plan. If no
+stranger has paid a real merchant through the platform by **Monday 19
+October 2026**, all surface work stops that morning; the only thing built
+from then is the shortest path from one merchant to one payment, ugly if
+need be; and decision 6 reopens, because by then the twenty interviews will
+have said whether the fault is the wedge or the execution.
+
+**Why.** Two weeks buys a shop that carries the merchant's name, a class a
+stranger can book, prices in rupees, an order desk that names the buyer, and
+a phone that does not eat the price off a table. Four weeks would not have
+been worth it, and an open-ended slip is how a positioning becomes a hobby.
+
+**Rules out.** Any further surface work being scheduled past 19 October
+without a payment on the books.
+
+**Reverses it.** Nothing. The founder-run demo studio from week 4 is the
+backstop: if it has not taken a payment by 19 October either, the problem is
+us, not the market.
