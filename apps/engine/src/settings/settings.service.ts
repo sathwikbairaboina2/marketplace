@@ -2,8 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Announcement, UpdateAnnouncement } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { settingsSk } from '../persistence/keys';
-import { ProblemException } from '../common/problem';
-import { currentPrincipal } from '../common/tenant-context';
+import { assertAdmin } from '../common/roles';
 
 const ANNOUNCEMENT_SK = settingsSk('announcement');
 
@@ -19,9 +18,7 @@ export class SettingsService {
   }
 
   async updateAnnouncement(input: UpdateAnnouncement): Promise<Announcement> {
-    if (currentPrincipal().role !== 'admin') {
-      throw new ProblemException('forbidden', 403, 'Only an admin can set the announcement');
-    }
+    assertAdmin('set the announcement');
     await this.repo.put(ANNOUNCEMENT_SK, { text: input.text, enabled: input.enabled });
     return input;
   }

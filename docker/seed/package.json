@@ -2,7 +2,11 @@
   "name": "@marketplace/seed",
   "version": "0.0.0",
   "private": true,
-  "scripts": { "test": "jest", "build": "tsc -p tsconfig.json --noEmit" },
+  "scripts": {
+    "test": "jest",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.665.0",
     "@aws-sdk/client-dynamodb": "^3.665.0",

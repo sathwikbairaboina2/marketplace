@@ -59,6 +59,7 @@ const draftedSnapshot: OnboardingSnapshot = {
     { role: 'assistant', content: 'Draft updated.' },
   ],
   draft: null,
+  setupPlan: null,
 };
 
 beforeEach(() => {

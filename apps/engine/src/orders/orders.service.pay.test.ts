@@ -1,4 +1,7 @@
 import { OrdersService } from './orders.service';
+import { OrderCheckoutService } from './order-checkout.service';
+import { OrderPaymentService } from './order-payment.service';
+import { OrderLifecycleService } from './order-lifecycle.service';
 
 const repo = {
   get: jest.fn(),
@@ -46,9 +49,9 @@ const awaitingOrder = (over: Record<string, unknown> = {}) => ({
 describe('OrdersService.pay', () => {
   const service = new OrdersService(
     repo as never,
-    registry as never,
-    pipeline as never,
-    provider as never,
+    new OrderCheckoutService(repo as never, registry as never, pipeline as never),
+    new OrderPaymentService(repo as never, provider as never),
+    new OrderLifecycleService(repo as never),
   );
   beforeEach(() => jest.clearAllMocks());
 
@@ -118,9 +121,9 @@ describe('OrdersService.pay', () => {
 describe('OrdersService.cancel from the payment gate', () => {
   const service = new OrdersService(
     repo as never,
-    registry as never,
-    pipeline as never,
-    provider as never,
+    new OrderCheckoutService(repo as never, registry as never, pipeline as never),
+    new OrderPaymentService(repo as never, provider as never),
+    new OrderLifecycleService(repo as never),
   );
   beforeEach(() => jest.clearAllMocks());
 

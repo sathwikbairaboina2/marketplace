@@ -3,9 +3,9 @@ import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import { DEFAULT_PIPELINE, Pipeline, Stage, UpdatePipeline } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { PIPELINE_SK } from '../persistence/keys';
-import { currentPrincipal } from '../common/tenant-context';
 import { newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
+import { assertAdmin } from '../common/roles';
 import { failedTransactionIndexes } from '../common/transaction-errors';
 
 @Injectable()
@@ -21,9 +21,7 @@ export class PipelineService {
   }
 
   async update(input: UpdatePipeline): Promise<Pipeline> {
-    if (currentPrincipal().role !== 'admin') {
-      throw new ProblemException('forbidden', 403, 'Only an admin can set the order stages');
-    }
+    assertAdmin('set the order stages');
 
     // A stage arriving without an id is one the owner just added; a stage that
     // brought its id keeps it, because its id is what pins existing orders and

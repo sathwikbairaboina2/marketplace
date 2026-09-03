@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/main.js",
+    "backfill:search": "node dist/scripts/backfill-search.js",
     "start:dev": "nest start --watch",
     "test": "jest",
     "test:e2e": "jest --config jest-e2e.config.js --runInBand"

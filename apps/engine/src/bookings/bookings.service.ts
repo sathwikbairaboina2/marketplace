@@ -12,6 +12,7 @@ import { entitySk, gsi1UserPk, gsi1UserSk, skPrefix } from '../persistence/keys'
 import { currentPrincipal } from '../common/tenant-context';
 import { newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
+import { assertAdmin } from '../common/roles';
 import { conflictedTransactionIndexes, failedTransactionIndexes } from '../common/transaction-errors';
 
 // The HTTP-facing shape of a booking. `BookingRecord` (from @marketplace/contracts) mirrors
@@ -223,9 +224,7 @@ export class BookingsService {
    * `listForCurrentUser` applies, so it is gated rather than filtered.
    */
   async listForTenant(limit: number, cursor: string | null): Promise<Page<BookingResponse>> {
-    if (currentPrincipal().role !== 'admin') {
-      throw new ProblemException('forbidden', 403, 'Only an admin can list the shop bookings');
-    }
+    assertAdmin('list the shop bookings');
     const page = await this.repo.queryPrefix<BookingRecord>(skPrefix('Booking'), { limit, cursor });
     return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
   }

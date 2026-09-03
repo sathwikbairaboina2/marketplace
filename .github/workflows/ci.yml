@@ -31,12 +31,10 @@ jobs:
       - name: Build (packages the apps compile against)
         run: pnpm build
 
+      # One `typecheck` script per package, so the list of what gets checked
+      # lives with the packages and not in this file.
       - name: Typecheck
-        run: |
-          npx tsc -p packages/contracts/tsconfig.json --noEmit
-          npx tsc -p apps/engine/tsconfig.json --noEmit
-          npx tsc -p apps/agents/tsconfig.json --noEmit
-          npx tsc -p apps/web/tsconfig.json --noEmit
+        run: npx turbo run typecheck --concurrency=1
 
       # `--concurrency=1`, not the default fan-out. Running every package's
       # jest and vitest at once on a two-core runner produced a dozen unrelated

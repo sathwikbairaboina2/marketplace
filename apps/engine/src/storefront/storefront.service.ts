@@ -10,6 +10,7 @@ import {
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { settingsSk } from '../persistence/keys';
 import { ProblemException } from '../common/problem';
+import { assertAdmin } from '../common/roles';
 import { foreignMediaUrl } from '../common/media-policy';
 import { currentPrincipal } from '../common/tenant-context';
 import { UploadsService } from '../uploads/uploads.service';
@@ -47,9 +48,7 @@ export class StorefrontService {
   }
 
   private assertAdmin(action: string): void {
-    if (currentPrincipal().role !== 'admin') {
-      throw new ProblemException('forbidden', 403, `Only an admin can ${action}`);
-    }
+    assertAdmin(action);
   }
 
   /** Absence is a state: a store that never ran the wizard renders the default theme. */
