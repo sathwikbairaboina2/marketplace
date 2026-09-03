@@ -81,7 +81,7 @@ export default function AdminOrderDetailPage() {
                 title: 'Product',
                 dataIndex: 'productId',
                 render: (productId: string) => (
-                  <Ref value={productId} href={`/admin/products/${productId}`} />
+                  <Ref value={productId} href={`/admin/products/${productId}/edit`} />
                 ),
               },
               { title: 'Qty', dataIndex: 'quantity', align: 'right', width: 80 },

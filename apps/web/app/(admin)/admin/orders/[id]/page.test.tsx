@@ -50,6 +50,16 @@ beforeEach(() => {
 });
 
 describe('AdminOrderDetailPage', () => {
+  // Found by clicking: the line-item link pointed at /admin/products/:id,
+  // a route that does not exist; the editor lives one segment further on.
+  it('links each line item to the product editor, not a 404', async () => {
+    render(<AdminOrderDetailPage />);
+    await act(async () => {});
+
+    const link = screen.getByRole('link', { name: /80MN6/ });
+    expect(link).toHaveAttribute('href', '/admin/products/01KZERNS77Z1E2HB509WV80MN6/edit');
+  });
+
   // The button names the shop's own next stage rather than saying "advance":
   // the stages are the owner's words, and the seller is confirming what they
   // have physically done.
