@@ -5,8 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Alert, Button, Form, Input, InputNumber, message } from 'antd';
 import { CreditCardOutlined } from '@ant-design/icons';
 import { CardSchema, type OrderResponse } from '@marketplace/contracts';
-import { getOrder } from '../../../../../lib/api/orders';
-import { payOrder } from '../../../../../lib/api/checkout';
+import { useShopCommerce } from '../../../../../lib/shop/commerce';
 import { ProblemError } from '../../../../../lib/api/http';
 import { useResource } from '../../../../../lib/use-resource';
 import { formatMoney } from '../../../../../lib/format';
@@ -21,9 +20,10 @@ export default function PayPage() {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<{ title: string; detail?: string } | null>(null);
 
+  const commerce = useShopCommerce();
   const { data: order, error, loading, retry } = useResource<OrderResponse>(
-    () => getOrder(id),
-    [id],
+    () => commerce.getOrder(id),
+    [id, commerce],
   );
 
   if (loading) return <DetailSkeleton />;
@@ -54,7 +54,7 @@ export default function PayPage() {
     setBusy(true);
     setProblem(null);
     try {
-      await payOrder(order.id, parsed.data);
+      await commerce.payOrder(order.id, parsed.data);
       void message.success('Payment received');
       router.push(`/orders/${order.id}`);
     } catch (err) {

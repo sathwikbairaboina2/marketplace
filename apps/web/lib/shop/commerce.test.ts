@@ -1,0 +1,97 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+
+const token = { getCart: vi.fn(), putCartLine: vi.fn(), clearCart: vi.fn() };
+vi.mock('../api/cart', () => ({
+  getCart: () => token.getCart(),
+  putCartLine: (...a: unknown[]) => token.putCartLine(...a),
+  clearCart: () => token.clearCart(),
+}));
+vi.mock('../api/checkout', () => ({ checkout: vi.fn(), payOrder: vi.fn() }));
+vi.mock('../api/orders', () => ({ getOrder: vi.fn() }));
+const pub = {
+  guestMint: vi.fn(),
+  guestGetCart: vi.fn(),
+  guestPutCartLine: vi.fn(),
+  guestClearCart: vi.fn(),
+  guestCheckout: vi.fn(),
+  guestGetOrder: vi.fn(),
+  guestPayOrder: vi.fn(),
+};
+vi.mock('../api/shop', () => ({
+  guestMint: (...a: unknown[]) => pub.guestMint(...a),
+  guestGetCart: (...a: unknown[]) => pub.guestGetCart(...a),
+  guestPutCartLine: (...a: unknown[]) => pub.guestPutCartLine(...a),
+  guestClearCart: (...a: unknown[]) => pub.guestClearCart(...a),
+  guestCheckout: (...a: unknown[]) => pub.guestCheckout(...a),
+  guestGetOrder: (...a: unknown[]) => pub.guestGetOrder(...a),
+  guestPayOrder: (...a: unknown[]) => pub.guestPayOrder(...a),
+}));
+vi.mock('../auth/auth-context', () => ({ useAuth: () => ({ principal: null }) }));
+vi.mock('./shop-context', () => ({ useShop: () => null }));
+
+import { commerceFor } from './commerce';
+
+const cart = { lines: [], totalMinor: 0 };
+
+beforeEach(() => {
+  localStorage.clear();
+  for (const fn of [...Object.values(token), ...Object.values(pub)]) fn.mockReset();
+});
+
+describe('commerceFor', () => {
+  it('is the token routes with a session, wherever the page is', () => {
+    const c = commerceFor({ tenantId: 'acme' }, true);
+    expect(c.guest).toBe(false);
+    void c.getCart();
+    expect(token.getCart).toHaveBeenCalled();
+    expect(pub.guestMint).not.toHaveBeenCalled();
+  });
+
+  it('is the token routes on the platform host even without a session, but asks for no cart', async () => {
+    const c = commerceFor(null, false);
+    expect(c.guest).toBe(false);
+    expect(await c.getCart()).toEqual(cart);
+    expect(token.getCart).not.toHaveBeenCalled();
+  });
+
+  it('answers an empty cart for a stranger who has no ticket, without minting one', async () => {
+    const c = commerceFor({ tenantId: 'acme' }, false);
+    expect(c.guest).toBe(true);
+    expect(await c.getCart()).toEqual(cart);
+    expect(pub.guestMint).not.toHaveBeenCalled();
+    expect(pub.guestGetCart).not.toHaveBeenCalled();
+  });
+
+  it('mints a ticket on the first write, keeps it, and sends it on every guest call', async () => {
+    pub.guestMint.mockResolvedValue('t1.mac');
+    pub.guestPutCartLine.mockResolvedValue(cart);
+    pub.guestGetCart.mockResolvedValue(cart);
+    const c = commerceFor({ tenantId: 'acme' }, false);
+
+    await c.putLine('p1', 2);
+    expect(pub.guestMint).toHaveBeenCalledWith('acme');
+    expect(pub.guestPutCartLine).toHaveBeenCalledWith('acme', 't1.mac', 'p1', 2);
+    expect(c.ticket()).toBe('t1.mac');
+
+    await c.getCart();
+    expect(pub.guestGetCart).toHaveBeenCalledWith('acme', 't1.mac');
+    expect(pub.guestMint).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps tickets apart per shop', async () => {
+    localStorage.setItem('marketplace.guest.acme', 'acme-ticket');
+    const globex = commerceFor({ tenantId: 'globex' }, false);
+    expect(globex.ticket()).toBeNull();
+  });
+
+  it('refuses a guest checkout with no email, and sends it with one', async () => {
+    localStorage.setItem('marketplace.guest.acme', 't1.mac');
+    pub.guestCheckout.mockResolvedValue({ id: 'o1' });
+    const c = commerceFor({ tenantId: 'acme' }, false);
+    const body = { currency: 'USD', shippingAddress: { line1: 'x' }, attributes: {} };
+
+    await expect(c.checkout(body, 'key')).rejects.toThrow(/email/);
+    await c.checkout(body, 'key', 'a@b.co');
+    expect(pub.guestCheckout).toHaveBeenCalledWith('acme', 't1.mac', { ...body, email: 'a@b.co' }, 'key');
+  });
+});

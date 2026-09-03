@@ -41,7 +41,7 @@ export class OrdersService {
     return toResponse(record);
   }
 
-  create(input: CreateOrder, opts: { awaitPayment?: boolean } = {}): Promise<OrderResponse> {
+  create(input: CreateOrder, opts: { awaitPayment?: boolean; guestEmail?: string } = {}): Promise<OrderResponse> {
     return this.checkout.create(input, opts);
   }
 
@@ -73,6 +73,20 @@ export class OrdersService {
     // order exists to somebody not allowed to see it.
     const principal = currentPrincipal();
     if (!found || (found.userId !== principal.userId && principal.role !== 'admin')) {
+      throw new ProblemException('not-found', 404, 'Order not found');
+    }
+    return toResponse(found);
+  }
+
+  /**
+   * A guest finding their order again from a fresh browser: the id and the
+   * email they gave at checkout, both required, compared case-insensitively.
+   * One 404 for every miss -- no such order, an order that was not a guest's,
+   * a wrong email -- so the lookup cannot be used to learn which of those it was.
+   */
+  async lookup(orderId: string, email: string): Promise<OrderResponse> {
+    const found = await this.repo.get<OrderRecord>(entitySk('Order', orderId));
+    if (!found?.guestEmail || found.guestEmail.toLowerCase() !== email.trim().toLowerCase()) {
       throw new ProblemException('not-found', 404, 'Order not found');
     }
     return toResponse(found);

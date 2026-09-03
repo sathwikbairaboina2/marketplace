@@ -11,6 +11,8 @@ export const EnvSchema = z.object({
   JWKS_URI: z.string().url(),
   JWT_ISSUER: z.string().min(1),
   JWT_AUDIENCE: z.string().min(1),
+  /** Signs guest tickets (see guest/guest-token.ts). Required: an unsigned guest is anybody's cart. */
+  GUEST_SECRET: z.string().min(16),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   SQS_CONSUMER_ENABLED: z
     .enum(['true', 'false'])

@@ -6,9 +6,16 @@ const REQUIRED_ENV = {
   JWKS_URI: 'http://localhost:9229/pool/.well-known/jwks.json',
   JWT_ISSUER: 'http://localhost:9229/pool',
   JWT_AUDIENCE: 'client-id',
+  GUEST_SECRET: 'a-fixture-secret-long-enough',
 };
 
 describe('EnvSchema docs configuration', () => {
+  it('refuses a missing or short guest secret: an unsigned ticket is a cart anyone can claim', () => {
+    const { GUEST_SECRET: _drop, ...without } = REQUIRED_ENV;
+    expect(EnvSchema.safeParse(without).success).toBe(false);
+    expect(EnvSchema.safeParse({ ...REQUIRED_ENV, GUEST_SECRET: 'short' }).success).toBe(false);
+  });
+
   it('defaults DOCS_ENABLED to false', () => {
     expect(EnvSchema.parse(REQUIRED_ENV).DOCS_ENABLED).toBe(false);
   });

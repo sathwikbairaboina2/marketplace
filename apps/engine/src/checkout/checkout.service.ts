@@ -13,7 +13,7 @@ export class CheckoutService {
     private readonly orders: OrdersService,
   ) {}
 
-  async checkout(input: CheckoutRequest): Promise<OrderResponse> {
+  async checkout(input: CheckoutRequest, opts: { guestEmail?: string } = {}): Promise<OrderResponse> {
     const resolved = await this.cart.get();
     if (resolved.lines.length === 0) {
       throw new ProblemException(
@@ -42,7 +42,7 @@ export class CheckoutService {
         ...input,
         items: resolved.lines.map((l) => ({ productId: l.productId, quantity: l.qty })),
       },
-      { awaitPayment: true },
+      { awaitPayment: true, guestEmail: opts.guestEmail },
     );
 
     // Best-effort once the order exists. If this throw propagated, the

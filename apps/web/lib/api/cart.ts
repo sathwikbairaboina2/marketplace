@@ -8,3 +8,7 @@ export const putCartLine = (productId: string, qty: number): Promise<CartRespons
 
 export const clearCart = (): Promise<CartResponse> =>
   request('/cart', { method: 'DELETE', schema: CartResponseSchema });
+
+/** After sign-in on a shop host: the cart built as a stranger joins this account's. */
+export const mergeGuestCart = (guest: string): Promise<CartResponse> =>
+  request('/cart/merge', { method: 'POST', body: { guest }, schema: CartResponseSchema });

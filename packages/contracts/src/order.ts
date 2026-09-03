@@ -26,6 +26,15 @@ export type CreateOrder = z.infer<typeof CreateOrderSchema>;
 export const AdvanceOrderSchema = z.object({ currentStageId: z.string() }).strict();
 export type AdvanceOrder = z.infer<typeof AdvanceOrderSchema>;
 
+/** How a guest finds an order again: the id from the confirmation page and the email they gave. */
+export const OrderLookupSchema = z
+  .object({
+    orderId: UlidSchema,
+    email: z.string().trim().toLowerCase().email().max(254),
+  })
+  .strict();
+export type OrderLookup = z.infer<typeof OrderLookupSchema>;
+
 export interface OrderLineItem {
   productId: string;
   quantity: number;
@@ -47,6 +56,8 @@ export interface OrderRecord {
   shippingAddress: Record<string, string>;
   createdAt: string;
   attributes: Record<string, unknown>;
+  /** Present on a guest's order only: the address they gave to find it again. */
+  guestEmail?: string;
   // Optional on the stored record, required on the response: orders written
   // before stages existed have none of these, and `toResponse` fills them from
   // DEFAULT_PIPELINE rather than a migration backfilling the table.

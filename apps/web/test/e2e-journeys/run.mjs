@@ -1361,12 +1361,20 @@ await journey('the shop host shows the active product and not the draft, with no
   must((await stranger.getByRole('link', { name: /Orders/ }).count()) === 0, 'Orders shown to a stranger');
 });
 
-await journey('a stranger opening a product is sent to sign in only when they try to buy', async () => {
+await journey('a stranger opening a product can add it to a cart without signing in', async () => {
+  // Guest checkout: the cart is a stranger's now (lib/shop/commerce). What
+  // still asks for a session on a shop host is a booking.
   await stranger.goto(`${SHOP_A}/products/${openMug.id}`);
   await stranger.getByRole('heading', { name: openMug.name }).waitFor({ timeout: 30_000 });
   await stranger.getByRole('button', { name: 'Add to cart' }).click();
-  await stranger.waitForURL(/\/login\?next=/, { timeout: 30_000 });
-  must(decodeURIComponent(stranger.url()).includes(`/products/${openMug.id}`), 'next does not point back');
+  await stranger.getByText(/added to cart/i).waitFor({ timeout: 15_000 });
+  must(!stranger.url().includes('/login'), 'a stranger was sent to sign in to add to the cart');
+  const ticket = await stranger.evaluate((t) => localStorage.getItem(`marketplace.guest.${t}`), A);
+  must(typeof ticket === 'string' && ticket.includes('.'), 'no guest ticket was minted');
+  // The stranger context is reused by the journeys below; leave its cart empty.
+  await stranger.goto(`${SHOP_A}/cart`);
+  await stranger.getByRole('button', { name: /remove/i }).first().click();
+  await stranger.waitForTimeout(1000);
 });
 
 await journey('the events list opens to a stranger', async () => {
@@ -1425,6 +1433,114 @@ await journey('the support box answers on the shop host, not only on the platfor
   const answer = (await page.getByTestId('support-answer').innerText()).trim();
   must(answer.length > 10 && !/failed to fetch/i.test(answer), `no answer on the shop host: ${answer.slice(0, 120)}`);
   await ctx.close();
+});
+
+await journey('a crawler on the shop host gets a title, JSON-LD, robots and a sitemap', async () => {
+  // A stranger's browser again: nothing here may depend on a session.
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(`${SHOP_A}/products/${openMug.id}`);
+  await page.waitForTimeout(1500);
+  const title = await page.title();
+  must(title.includes(openMug.name), `document title is "${title}"`);
+  const ld = await page.locator('script[type="application/ld+json"]').first().textContent();
+  must(ld && JSON.parse(ld)['@type'] === 'Product' && JSON.parse(ld).name === openMug.name, 'no Product JSON-LD');
+  const canonical = await page.locator('link[rel="canonical"]').getAttribute('href');
+  must(canonical === `${SHOP_A}/products/${openMug.id}`, `canonical is ${canonical}`);
+
+  // Through the browser, not fetch(): Node resolves no `*.localhost` name,
+  // Chromium resolves every one of them to loopback. The crawler this
+  // journey plays is the browser's kind.
+  const robotsRes = await page.goto(`${SHOP_A}/robots.txt`);
+  const robotsText = await page.locator('body').innerText();
+  must(robotsRes?.status() === 200 && /Allow: \//.test(robotsText) && /Disallow: \/cart/.test(robotsText), `robots: ${robotsText.slice(0, 80)}`);
+  must(robotsText.includes(`${SHOP_A}/sitemap.xml`), 'robots does not point at the sitemap');
+  const sitemapRes = await page.goto(`${SHOP_A}/sitemap.xml`);
+  const xml = await page.content();
+  must(sitemapRes?.status() === 200 && xml.includes(`${SHOP_A}/products/${openMug.id}`), 'sitemap lacks the product');
+  must(!xml.includes(hiddenDraft.id), 'sitemap leaks the draft');
+  await page.goto(`${WEB}/robots.txt`);
+  const closed = await page.locator('body').innerText();
+  must(/Disallow: \/$/m.test(closed), `platform robots: ${closed.slice(0, 60)}`);
+  await ctx.close();
+});
+
+let guestOrderId;
+const GUEST_EMAIL = `stranger-${RUN}@example.com`;
+await journey('a stranger buys a mug on the shop host without ever signing in', async () => {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  page.on('response', (r) => {
+    if (r.status() >= 500) serverErrors.push(`${r.status()} ${r.url()}`);
+  });
+  await page.goto(`${SHOP_A}/products/${openMug.id}`);
+  await page.getByRole('button', { name: /add to cart/i }).click();
+  await page.getByText(/added to cart/i).waitFor({ timeout: 15_000 });
+  must(!page.url().includes('/login'), 'a stranger was sent to sign in to add to the cart');
+
+  await page.goto(`${SHOP_A}/cart`);
+  await page.getByLabel('Email').fill(GUEST_EMAIL);
+  await page.getByLabel('Address').fill('42 Harbour Road');
+  await page.getByLabel('City').fill('Bristol');
+  await page.getByLabel('Postcode').fill('BS1 4TR');
+  await page.getByRole('button', { name: /checkout/i }).click();
+  await page.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
+  guestOrderId = page.url().match(/orders\/([0-9A-Z]{26})/)[1];
+
+  await page.getByLabel('Card number').fill('4242424242424242');
+  await page.getByLabel('Month').fill('12');
+  await page.getByLabel('Year').fill('2030');
+  await page.getByLabel('CVC').fill('123');
+  await page.getByRole('button', { name: /pay/i }).click();
+  await page.waitForURL(new RegExp(`/orders/${guestOrderId}$`), { timeout: 60_000 });
+  await page.waitForTimeout(1500);
+  must(/confirmed/i.test(await page.locator('body').innerText()), 'the guest order is not shown confirmed');
+  await ctx.close();
+
+  const order = await api(tokenAdminA, 'GET', `/orders/${guestOrderId}`);
+  must(order.status === 200 && order.json.status === 'confirmed', `engine holds status ${order.json.status}`);
+  must(order.json.guestEmail === GUEST_EMAIL, `engine holds guest email ${order.json.guestEmail}`);
+  must(String(order.json.userId).startsWith('guest:'), `owner is ${order.json.userId}`);
+});
+
+await journey('a stranger in a fresh browser finds that order with its number and email', async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(`${SHOP_A}/orders`);
+  await page.getByLabel('Order number').fill(guestOrderId);
+  await page.getByLabel('Email').fill(GUEST_EMAIL);
+  await page.getByRole('button', { name: /find order/i }).click();
+  await page.waitForURL(new RegExp(`/orders/${guestOrderId}`), { timeout: 30_000 });
+  await page.waitForTimeout(1500);
+  must(/confirmed/i.test(await page.locator('body').innerText()), 'the lookup did not show the order');
+  await page.goto(`${SHOP_A}/orders/${guestOrderId}?email=${encodeURIComponent('someone-else@example.com')}`);
+  await page.waitForTimeout(1500);
+  must(!/confirmed/i.test(await page.locator('body').innerText()), 'a wrong email still showed the order');
+  await ctx.close();
+});
+
+await journey('a stranger who then signs in keeps the cart they built', async () => {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(`${SHOP_A}/products/${openMug.id}`);
+  await page.getByRole('button', { name: /add to cart/i }).click();
+  await page.getByText(/added to cart/i).waitFor({ timeout: 15_000 });
+
+  await page.goto(`${SHOP_A}/login?next=%2Fcart`);
+  await page.getByLabel('Username').fill(A_BUYER);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL(/\/cart/, { timeout: 30_000 });
+  await page.waitForTimeout(2000);
+  must((await page.getByText(openMug.name).count()) > 0, 'the cart emptied on sign-in');
+  const ticket = await page.evaluate((t) => localStorage.getItem(`marketplace.guest.${t}`), A);
+  must(ticket === null, 'the guest ticket survived sign-in');
+  await ctx.close();
+  // Leave the buyer's cart as it was for the journeys that follow.
+  const own = await api(tokenBuyerA, 'GET', '/cart');
+  for (const line of own.json.lines) {
+    if (line.productId === openMug.id) await api(tokenBuyerA, 'PUT', `/cart/lines/${openMug.id}`, { qty: 0 });
+  }
 });
 
 await journey('the public API answers without a token and hides the draft', async () => {

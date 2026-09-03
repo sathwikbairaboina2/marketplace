@@ -24,6 +24,7 @@ function makeEnv(overrides: Partial<EnvConfig> = {}): EnvConfig {
     JWKS_URI: 'http://localhost:9229/.well-known/jwks.json',
     JWT_ISSUER: 'http://localhost:9229/pool',
     JWT_AUDIENCE: 'client',
+    GUEST_SECRET: 'a-fixture-secret-long-enough',
     LOG_LEVEL: 'info',
     SQS_CONSUMER_ENABLED: true,
     DOCS_ENABLED: false,

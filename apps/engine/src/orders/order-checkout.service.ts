@@ -33,7 +33,7 @@ export class OrderCheckoutService {
 
   async create(
     input: CreateOrder,
-    opts: { awaitPayment?: boolean } = {},
+    opts: { awaitPayment?: boolean; guestEmail?: string } = {},
   ): Promise<OrderResponse> {
     if (input.items.length > MAX_ORDER_LINE_ITEMS) {
       throw new ProblemException(
@@ -133,6 +133,9 @@ export class OrderCheckoutService {
       // points at no stage until `pay` moves it into the first one.
       currentStageId: opts.awaitPayment ? null : pipeline.stages[0].id,
       stageEnteredAt: createdAt,
+      // Only on a guest's order. Spread conditionally so a signed-in buyer's
+      // record carries no `guestEmail: undefined` for DynamoDB to refuse.
+      ...(opts.guestEmail ? { guestEmail: opts.guestEmail } : {}),
     };
 
     const fullRecord: OrderRecord = {

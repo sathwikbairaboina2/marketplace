@@ -23,7 +23,7 @@ vi.mock('../../lib/theme/theme-context', () => ({ useTheme: () => ({ mode: 'ligh
 vi.mock('../../components/shop-header', () => ({ ShopHeader: () => <div>header</div> }));
 vi.mock('../../components/announcement-bar', () => ({ AnnouncementBar: () => null }));
 
-import ShopShell from './layout';
+import ShopShell from './shop-shell';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -57,16 +57,28 @@ describe('ShopShell', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('still protects the cart on a shop host, and says where to come back to', async () => {
+  it('lets a stranger into the cart on a shop host: a guest checkout is the point', async () => {
     shop = { tenantId: 'acme' };
     pathname = '/cart';
+    const { findByText } = render(
+      <ShopShell>
+        <p>body</p>
+      </ShopShell>,
+    );
+    expect(await findByText('body')).toBeInTheDocument();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('still protects bookings on a shop host, and says where to come back to', async () => {
+    shop = { tenantId: 'acme' };
+    pathname = '/bookings';
     render(
       <ShopShell>
         <p>body</p>
       </ShopShell>,
     );
     await flush();
-    expect(push).toHaveBeenCalledWith('/login?next=%2Fcart');
+    expect(push).toHaveBeenCalledWith('/login?next=%2Fbookings');
   });
 
   it('signs out a session that belongs to another shop', async () => {

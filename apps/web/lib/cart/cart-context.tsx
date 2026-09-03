@@ -2,9 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { CartResponse } from '@marketplace/contracts';
-import { clearCart, getCart, putCartLine } from '../api/cart';
 import { notifyProblem } from '../problem-notify';
-import { useAuth } from '../auth/auth-context';
+import { useShopCommerce } from '../shop/commerce';
 
 const KEY_KEY = 'marketplace.cart.idempotencyKey';
 const EMPTY: CartResponse = { lines: [], totalMinor: 0 };
@@ -29,7 +28,7 @@ const CartContext = createContext<CartValue | null>(null);
  * the checkout *intent*, minted once and reused by every retry.
  */
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { token } = useAuth();
+  const commerce = useShopCommerce();
   const [cart, setCart] = useState<CartResponse>(EMPTY);
   const [idempotencyKey, setIdempotencyKey] = useState<string>('');
 
@@ -39,34 +38,37 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIdempotencyKey(storedKey);
   }, []);
 
-  // The cart is the signed-in user's; fetch when a session exists, and drop
-  // the mirror when it ends so the next user never sees the previous cart.
+  // The cart is whoever the commerce binding says it is: the signed-in
+  // user's, or a stranger's on their ticket. Refetched whenever the binding
+  // changes -- a sign-in or sign-out -- so the next person never sees the
+  // previous cart. A stranger with no ticket gets an empty cart and no request.
   useEffect(() => {
-    if (!token) {
-      setCart(EMPTY);
-      return;
-    }
-    getCart().then(setCart).catch(notifyProblem);
-  }, [token]);
+    setCart(EMPTY);
+    commerce.getCart().then(setCart).catch(notifyProblem);
+  }, [commerce]);
 
   /** A failed write leaves the server authoritative: refetch, then report. */
-  const recover = useCallback((err: unknown) => {
-    getCart()
-      .then(setCart)
-      .catch(() => setCart(EMPTY));
-    notifyProblem(err);
-  }, []);
+  const recover = useCallback(
+    (err: unknown) => {
+      commerce
+        .getCart()
+        .then(setCart)
+        .catch(() => setCart(EMPTY));
+      notifyProblem(err);
+    },
+    [commerce],
+  );
 
   const add = useCallback(
     async (productId: string, qty: number) => {
       const existing = cart.lines.find((l) => l.productId === productId);
       try {
-        setCart(await putCartLine(productId, (existing?.qty ?? 0) + qty));
+        setCart(await commerce.putLine(productId, (existing?.qty ?? 0) + qty));
       } catch (err) {
         recover(err);
       }
     },
-    [cart.lines, recover],
+    [cart.lines, commerce, recover],
   );
 
   const setQty = useCallback(
@@ -78,12 +80,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         lines: prev.lines.map((l) => (l.productId === productId ? { ...l, qty } : l)),
       }));
       try {
-        setCart(await putCartLine(productId, qty));
+        setCart(await commerce.putLine(productId, qty));
       } catch (err) {
         recover(err);
       }
     },
-    [recover],
+    [commerce, recover],
   );
 
   const remove = useCallback(
@@ -93,22 +95,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         lines: prev.lines.filter((l) => l.productId !== productId),
       }));
       try {
-        setCart(await putCartLine(productId, 0));
+        setCart(await commerce.putLine(productId, 0));
       } catch (err) {
         recover(err);
       }
     },
-    [recover],
+    [commerce, recover],
   );
 
   const clear = useCallback(async () => {
     setCart(EMPTY);
     try {
-      setCart(await clearCart());
+      setCart(await commerce.clearCart());
     } catch (err) {
       recover(err);
     }
-  }, [recover]);
+  }, [commerce, recover]);
 
   /** Call only after a successful order, or an explicit abandon. */
   const resetKey = useCallback(() => {

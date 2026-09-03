@@ -1,6 +1,10 @@
-import { Controller, Delete, Get, Param, Put } from '@nestjs/common';
-import { CartResponse, PutCartLine, PutCartLineSchema } from '@marketplace/contracts';
+import { Controller, Delete, Get, HttpCode, Inject, Param, Post, Put } from '@nestjs/common';
+import { CartResponse, MergeCart, MergeCartSchema, PutCartLine, PutCartLineSchema } from '@marketplace/contracts';
 import { ZodBody } from '../common/zod-validation.pipe';
+import { ENV, EnvConfig } from '../config/env.schema';
+import { ProblemException } from '../common/problem';
+import { currentPrincipal } from '../common/tenant-context';
+import { guestUserId, verifyGuest } from '../guest/guest-token';
 import { CartService } from './cart.service';
 
 /**
@@ -9,7 +13,25 @@ import { CartService } from './cart.service';
  */
 @Controller('cart')
 export class CartController {
-  constructor(private readonly cart: CartService) {}
+  constructor(
+    private readonly cart: CartService,
+    @Inject(ENV) private readonly env: EnvConfig,
+  ) {}
+
+  /**
+   * After sign-in: the cart built as a stranger joins this account's. The
+   * ticket must be this shop's -- verified against the JWT's tenant, so a
+   * ticket from another shop is refused rather than silently emptied.
+   */
+  @Post('merge')
+  @HttpCode(200)
+  merge(@ZodBody(MergeCartSchema) body: MergeCart): Promise<CartResponse> {
+    const id = verifyGuest(this.env.GUEST_SECRET, currentPrincipal().tenantId, body.guest);
+    if (!id) {
+      throw new ProblemException('invalid-guest', 401, 'Guest ticket missing or not for this shop');
+    }
+    return this.cart.mergeFrom(guestUserId(id));
+  }
 
   @Get()
   get(): Promise<CartResponse> {

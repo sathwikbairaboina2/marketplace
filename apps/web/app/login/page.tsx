@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, Button, Card, Form, Input, Select } from 'antd';
 import { TagsOutlined } from '@ant-design/icons';
 import { useAuth } from '../../lib/auth/auth-context';
+import { useShop } from '../../lib/shop/shop-context';
+import { mergeGuestCart } from '../../lib/api/cart';
+import { clearGuestTicket, readGuestTicket } from '../../lib/guest/guest-ticket';
 
 interface Persona {
   username: string;
@@ -21,6 +24,7 @@ function landingFrom(next: string | null): string {
 
 function LoginForm() {
   const { signIn } = useAuth();
+  const shop = useShop();
   const router = useRouter();
   const params = useSearchParams();
   const landing = landingFrom(params.get('next'));
@@ -41,6 +45,18 @@ function LoginForm() {
     setError(null);
     try {
       await signIn(values.username, values.password);
+      // The cart built as a stranger comes along. Best effort: a merge that
+      // fails must not fail the sign-in, and the ticket is spent either way
+      // so the next stranger in this browser starts with nothing of ours.
+      const ticket = shop ? readGuestTicket(shop.tenantId) : null;
+      if (shop && ticket) {
+        try {
+          await mergeGuestCart(ticket);
+        } catch {
+          // The engine keeps the guest cart; a retry is a fresh sign-in.
+        }
+        clearGuestTicket(shop.tenantId);
+      }
       router.push(landing);
     } catch (err) {
       setError((err as Error).message);

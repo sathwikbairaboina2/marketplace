@@ -1,6 +1,11 @@
 import {
   AnnouncementSchema,
+  type Card,
+  CartResponseSchema,
   EventResponseSchema,
+  type GuestCheckoutRequest,
+  GuestTokenResponseSchema,
+  OrderResponseSchema,
   ProductResponseSchema,
   SchemaListSchema,
   StorefrontPublicResponseSchema,
@@ -49,3 +54,60 @@ export const publicGetAnnouncement = (tenantId: string) =>
 
 export const publicListSchemas = (tenantId: string) =>
   request(`${base(tenantId)}/schemas`, { schema: SchemaListSchema });
+
+// ---------------------------------------------------------------- a stranger's cart
+// Every one of these carries the ticket; the engine's GuestGuard is what
+// turns it into a principal, and the same cart, checkout and order services
+// answer as they do for a signed-in buyer.
+
+export const guestMint = (tenantId: string) =>
+  request(`${base(tenantId)}/guest`, { method: 'POST', schema: GuestTokenResponseSchema }).then(
+    (res) => res.guest,
+  );
+
+export const guestGetCart = (tenantId: string, guest: string) =>
+  request(`${base(tenantId)}/cart`, { schema: CartResponseSchema, guest });
+
+export const guestPutCartLine = (tenantId: string, guest: string, productId: string, qty: number) =>
+  request(`${base(tenantId)}/cart/lines/${productId}`, {
+    method: 'PUT',
+    body: { qty },
+    schema: CartResponseSchema,
+    guest,
+  });
+
+export const guestClearCart = (tenantId: string, guest: string) =>
+  request(`${base(tenantId)}/cart`, { method: 'DELETE', schema: CartResponseSchema, guest });
+
+export const guestCheckout = (
+  tenantId: string,
+  guest: string,
+  body: GuestCheckoutRequest,
+  idempotencyKey: string,
+) =>
+  request(`${base(tenantId)}/checkout`, {
+    method: 'POST',
+    body,
+    schema: OrderResponseSchema,
+    idempotencyKey,
+    guest,
+  });
+
+export const guestGetOrder = (tenantId: string, guest: string, id: string) =>
+  request(`${base(tenantId)}/orders/${id}`, { schema: OrderResponseSchema, guest });
+
+export const guestPayOrder = (tenantId: string, guest: string, id: string, card: Card) =>
+  request(`${base(tenantId)}/orders/${id}/pay`, {
+    method: 'POST',
+    body: { card },
+    schema: OrderResponseSchema,
+    guest,
+  });
+
+/** No ticket: the guest is back in a fresh browser with the id and the email they gave. */
+export const lookupOrder = (tenantId: string, orderId: string, email: string) =>
+  request(`${base(tenantId)}/orders/lookup`, {
+    method: 'POST',
+    body: { orderId, email },
+    schema: OrderResponseSchema,
+  });

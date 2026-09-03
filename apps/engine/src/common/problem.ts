@@ -39,6 +39,7 @@ export type ProblemType =
   | 'too-many-requests'
   | 'unauthorized'
   | 'forbidden'
+  | 'invalid-guest'
   | 'not-found'
   | 'invalid-request'
   | 'internal-error';

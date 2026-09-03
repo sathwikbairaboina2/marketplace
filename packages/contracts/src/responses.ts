@@ -86,6 +86,7 @@ export const OrderResponseSchema = z
     currentStageId: z.string().nullable(),
     stageEnteredAt: IsoDateTimeSchema,
     payment: PaymentSchema.optional(),
+    guestEmail: z.string().optional(),
   })
   .strict();
 export type OrderResponse = z.infer<typeof OrderResponseSchema>;

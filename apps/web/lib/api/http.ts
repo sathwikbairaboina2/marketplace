@@ -60,6 +60,8 @@ export interface RequestOptions<S extends z.ZodTypeAny> {
   query?: Record<string, string | number | undefined>;
   schema: S;
   idempotencyKey?: string;
+  /** A stranger's ticket for the guest routes under /shops/:tenantId (see lib/guest). */
+  guest?: string;
   /** Service base URL; defaults to the engine. The agents service passes its own. */
   base?: string;
 }
@@ -90,6 +92,7 @@ export async function request<S extends z.ZodTypeAny>(
   if (token) headers.set('Authorization', `Bearer ${token}`);
   if (opts.body !== undefined) headers.set('Content-Type', 'application/json');
   if (opts.idempotencyKey) headers.set('Idempotency-Key', opts.idempotencyKey);
+  if (opts.guest) headers.set('X-Guest', opts.guest);
 
   const res = await fetch(url, {
     method: opts.method ?? 'GET',

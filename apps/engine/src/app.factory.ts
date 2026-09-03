@@ -56,7 +56,10 @@ export async function createApp(): Promise<INestApplication> {
       // `Idempotency-Key` is required on POST /orders and POST /bookings, and a
       // preflight that silently drops it turns every order the browser places
       // into an opaque CORS failure with no server-side trace.
-      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
+      // X-Guest: the stranger's ticket on the guest routes under /shops/:t.
+      // Found the way this list always is: the whole guest flow worked from
+      // a terminal and died in the browser's preflight.
+      allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Guest'],
       // PUT: the settings routes update in place -- without it the preflight
       // rejects the request and the browser never sends the PUT at all.
       //

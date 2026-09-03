@@ -1,12 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Alert, Button, Descriptions, Popconfirm, Table } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { MessageResponse, OrderResponse } from '@marketplace/contracts';
-import { cancelOrder, getOrder } from '../../../../lib/api/orders';
-import { getProduct } from '../../../../lib/api/products';
+import { cancelOrder } from '../../../../lib/api/orders';
+import { useShopCommerce } from '../../../../lib/shop/commerce';
+import { useShop } from '../../../../lib/shop/shop-context';
+import { lookupOrder } from '../../../../lib/api/shop';
+import { useShopReads } from '../../../../lib/shop/reads';
 import { listWholeThread } from '../../../../lib/api/messages';
 import { ProblemError } from '../../../../lib/api/http';
 import { notifyProblem } from '../../../../lib/problem-notify';
@@ -24,13 +27,28 @@ import { formatDateTime, formatMoney } from '../../../../lib/format';
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const commerce = useShopCommerce();
+  const shop = useShop();
+  // Names come through the shop reads: public on a shop host, so a guest's
+  // order page never touches a token route that would bounce them to login.
+  const reads = useShopReads();
+  // A guest back in a fresh browser arrives from the lookup form with the
+  // email in the query; a guest in the browser that placed the order has
+  // the ticket. Either reads the same order; neither reads anyone else's.
+  const lookupEmail = useSearchParams().get('email');
   const schema = useSchema('Order');
   const {
     data: order,
     error,
     loading,
     retry,
-  } = useResource<OrderResponse>(() => getOrder(id), [id]);
+  } = useResource<OrderResponse>(
+    () =>
+      commerce.guest && shop && lookupEmail
+        ? lookupOrder(shop.tenantId, id, lookupEmail)
+        : commerce.getOrder(id),
+    [id, commerce, shop, lookupEmail],
+  );
 
   // Declared above the early returns: a hook cannot live after a conditional
   // `return`. A line item carries only the id its price was locked against, and
@@ -45,14 +63,14 @@ export default function OrderDetailPage() {
         // One unreachable product must not cost the order its other names, and
         // must not raise a toast either: the row degrades to its reference.
         try {
-          return [productId, (await getProduct(productId)).name] as const;
+          return [productId, (await reads.getProduct(productId)).name] as const;
         } catch {
           return [productId, null] as const;
         }
       }),
     );
     return Object.fromEntries(resolved.filter(([, name]) => name !== null) as [string, string][]);
-  }, [productIds]);
+  }, [productIds, reads]);
 
   // Declared with the other hooks, above the early returns. Closed threads come
   // back too -- they are the history -- and are grouped by stage below against
@@ -61,8 +79,10 @@ export default function OrderDetailPage() {
     data: messagePage,
     retry: retryMessages,
   } = useResource<{ items: MessageResponse[]; truncated: boolean }>(
-    () => listWholeThread(id),
-    [id],
+    // The thread is a token route; a stranger has no thread yet, and asking
+    // would only bounce them to the login page.
+    () => (commerce.guest ? Promise.resolve({ items: [], truncated: false }) : listWholeThread(id)),
+    [id, commerce],
   );
 
   if (loading) return <DetailSkeleton />;
@@ -78,7 +98,10 @@ export default function OrderDetailPage() {
   // An order in the payment gate is always cancellable: no money has moved and
   // no stage has begun.
   const canCancel =
-    awaitingPayment || (order.status === 'confirmed' && currentStage?.cancellable === true);
+    // A guest has no cancel route yet (see the guest checkout design): the
+    // seller can clear an unpaid guest order from the cockpit.
+    !commerce.guest &&
+    (awaitingPayment || (order.status === 'confirmed' && currentStage?.cancellable === true));
 
   const cancel = async () => {
     try {
@@ -185,7 +208,8 @@ export default function OrderDetailPage() {
             currentStageId={order.currentStageId ?? ''}
             cancelled={order.status === 'cancelled'}
             renderStageExtra={(stage, state) => {
-              if (!stage.messaging) return null;
+              // Messages are a buyer's; a guest has no thread to open.
+              if (!stage.messaging || commerce.guest) return null;
               const forStage = messages.filter((message) => message.stageId === stage.id);
               // A stage already passed with nothing said in it is not worth a heading.
               if (state !== 'current' && forStage.length === 0) return null;
@@ -199,6 +223,16 @@ export default function OrderDetailPage() {
               );
             }}
           />
+          )}
+
+          {commerce.guest && (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginTop: 12 }}
+              message="Keep your order number with the email you gave"
+              description="Together they find this order again from any browser, under Orders."
+            />
           )}
 
           {canCancel && (

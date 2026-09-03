@@ -6,6 +6,10 @@ const listOrders = vi.fn();
 vi.mock('../../../lib/api/orders', () => ({
   listOrders: (limit: number, cursor: string | null) => listOrders(limit, cursor),
 }));
+vi.mock('../../../lib/shop/commerce', () => {
+  const commerce = { guest: false };
+  return { useShopCommerce: () => commerce };
+});
 vi.mock('../../../components/record-name', () => ({
   ProductName: ({ id }: { id: string }) => <span>{id}</span>,
 }));

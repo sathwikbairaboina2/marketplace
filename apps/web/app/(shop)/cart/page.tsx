@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, Form, Input, InputNumber, Select } from 'antd';
 import { DeleteOutlined, ShoppingOutlined } from '@ant-design/icons';
-import { checkout } from '../../../lib/api/checkout';
 import { useCart } from '../../../lib/cart/cart-context';
+import { useShopCommerce } from '../../../lib/shop/commerce';
 import { ProblemError } from '../../../lib/api/http';
 import { notifyProblem } from '../../../lib/problem-notify';
 import { toAttributes, toFormItems } from '../../../lib/schema-fields';
@@ -21,6 +21,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function CartPage() {
   const { cart, setQty, remove, clear, idempotencyKey, resetKey } = useCart();
+  const commerce = useShopCommerce();
   const { lines } = cart;
   const schema = useSchema('Order');
   const router = useRouter();
@@ -57,7 +58,7 @@ export default function CartPage() {
       // rather than creating a second order.
       for (let attempt = 0; ; attempt++) {
         try {
-          const order = await checkout(body, idempotencyKey);
+          const order = await commerce.checkout(body, idempotencyKey, values.email as string | undefined);
           // The engine cleared the cart; refresh the mirror and mint a fresh
           // key for the next intent. Payment happens on the next screen.
           void clear();
@@ -176,6 +177,21 @@ export default function CartPage() {
             id="checkout-form"
             className="mp-checkout-form"
           >
+            {/* A stranger's one extra fact: how they find the order again.
+                A signed-in buyer has an account for that. */}
+            {commerce.guest && (
+              <>
+                <h2>Your email</h2>
+                <Form.Item
+                  name="email"
+                  label="Email"
+                  extra="No account needed. Keep this with your order number to find the order later."
+                  rules={[{ required: true, type: 'email', message: 'An email address, so you can find your order again' }]}
+                >
+                  <Input placeholder="you@example.com" autoComplete="email" />
+                </Form.Item>
+              </>
+            )}
             <h2>Delivery</h2>
             <Form.Item name="line1" label="Address" rules={[{ required: true }]}>
               <Input placeholder="42 Harbour Road" />

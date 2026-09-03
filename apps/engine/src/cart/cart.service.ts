@@ -3,6 +3,7 @@ import {
   CartLine,
   CartResponse,
   MAX_CART_LINES,
+  MAX_QUANTITY,
   ProductRecord,
   ResolvedCartLine,
 } from '@marketplace/contracts';
@@ -13,6 +14,20 @@ import { ProblemException } from '../common/problem';
 
 interface CartItem {
   lines: CartLine[];
+}
+
+/** Pure, so the arithmetic has a test of its own: own lines first, then the guest's. */
+export function mergeLines(own: CartLine[], guest: CartLine[]): CartLine[] {
+  const out = own.map((l) => ({ ...l }));
+  for (const line of guest) {
+    const existing = out.find((l) => l.productId === line.productId);
+    if (existing) {
+      existing.qty = Math.min(MAX_QUANTITY, existing.qty + line.qty);
+    } else if (out.length < MAX_CART_LINES) {
+      out.push({ ...line });
+    }
+  }
+  return out;
 }
 
 @Injectable()
@@ -68,6 +83,22 @@ export class CartService {
     }
     await this.repo.put(this.sk(), { lines: next });
     return this.resolve(next);
+  }
+
+  /**
+   * What a stranger carted, joined to the account they then signed in to.
+   * Quantities for the same product add up (capped at MAX_QUANTITY), the
+   * buyer's own lines keep their place, and lines that would not fit are
+   * dropped from the guest's end rather than refused -- a sign-in must not
+   * fail because of a cart. The guest cart is emptied; the ticket is spent.
+   */
+  async mergeFrom(guestUserId: string): Promise<CartResponse> {
+    const guestSk = cartSk(guestUserId);
+    const guest = (await this.repo.get<CartItem>(guestSk))?.lines ?? [];
+    const merged = mergeLines(await this.rawLines(), guest);
+    await this.repo.put(this.sk(), { lines: merged });
+    await this.repo.put(guestSk, { lines: [] });
+    return this.resolve(merged);
   }
 
   async clear(): Promise<CartResponse> {

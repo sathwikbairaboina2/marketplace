@@ -14,6 +14,7 @@ describe('CORS', () => {
     process.env.QUEUE_URL ??=
       'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/q.fifo';
     process.env.REDIS_URL ??= 'redis://localhost:36379';
+    process.env.GUEST_SECRET ??= 'local-guest-secret-not-for-prod';
     process.env.JWKS_URI ??= 'http://localhost:39229/pool/.well-known/jwks.json';
     process.env.JWT_ISSUER ??= 'http://localhost:39229/pool';
     process.env.JWT_AUDIENCE ??= 'client-id';
@@ -97,6 +98,9 @@ describe('CORS', () => {
       headers: { Origin: 'http://acme.localhost:33002', 'Access-Control-Request-Method': 'GET' },
     });
     expect(res.headers.get('access-control-allow-origin')).toBe('http://acme.localhost:33002');
+    // Every header a browser client sends has to be named, or the request
+    // never leaves the browser: the guest ticket is one of them.
+    expect(res.headers.get('access-control-allow-headers')).toMatch(/x-guest/i);
   });
 
   it('refuses a two-label host the wildcard does not cover', async () => {

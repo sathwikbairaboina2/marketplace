@@ -4,17 +4,20 @@ import { render, screen, act, waitFor } from '@testing-library/react';
 const getCart = vi.fn();
 const putCartLine = vi.fn();
 const clearCart = vi.fn();
-vi.mock('../api/cart', () => ({
-  getCart: (...a: unknown[]) => getCart(...a),
-  putCartLine: (...a: unknown[]) => putCartLine(...a),
+// The binding is the seam now (lib/shop/commerce): the provider talks to
+// whichever cart the binding names, and this test names one.
+let token: string | null = 'tok-1';
+const commerce = {
+  guest: false,
+  ticket: () => null,
+  getCart: (...a: unknown[]) => (token ? getCart(...a) : Promise.resolve({ lines: [], totalMinor: 0 })),
+  putLine: (...a: unknown[]) => putCartLine(...a),
   clearCart: (...a: unknown[]) => clearCart(...a),
-}));
+};
+vi.mock('../shop/commerce', () => ({ useShopCommerce: () => commerce }));
 
 const notifyProblem = vi.fn();
 vi.mock('../problem-notify', () => ({ notifyProblem: (e: unknown) => notifyProblem(e) }));
-
-let token: string | null = 'tok-1';
-vi.mock('../auth/auth-context', () => ({ useAuth: () => ({ token }) }));
 
 import { CartProvider, useCart } from './cart-context';
 

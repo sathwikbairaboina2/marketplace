@@ -6,6 +6,7 @@ import { ConfigModule } from './config/config.module';
 import { loggerOptions } from './config/logger.options';
 import { DevTokenEnvSchema, ENV, EnvConfig } from './config/env.schema';
 import { HealthModule } from './health/health.module';
+import { GuestModule } from './guest/guest.module';
 import { AuthModule } from './auth/auth.module';
 import { PersistenceModule } from './persistence/persistence.module';
 import { RedisModule } from './redis/redis.module';
@@ -53,6 +54,7 @@ import { StatsModule } from './stats/stats.module';
     }),
     DevTokenModule.registerIfEnabled(DevTokenEnvSchema.parse(process.env)),
     AuthModule,
+    GuestModule,
     HealthModule,
     PersistenceModule,
     RedisModule,

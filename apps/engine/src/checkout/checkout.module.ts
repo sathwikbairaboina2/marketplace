@@ -8,5 +8,7 @@ import { CheckoutService } from './checkout.service';
   imports: [CartModule, OrdersModule],
   controllers: [CheckoutController],
   providers: [CheckoutService],
+  // Exported for the guest module, whose routes check a stranger out.
+  exports: [CheckoutService],
 })
 export class CheckoutModule {}

@@ -16,6 +16,18 @@ const payOrder = vi.fn();
 vi.mock('../../../../../lib/api/checkout', () => ({
   payOrder: (id: string, card: unknown) => payOrder(id, card),
 }));
+// The page reaches both through the commerce binding (lib/shop/commerce);
+// this test binds it to the token routes above, as a signed-in buyer has.
+// One object for the whole test: the page keys its fetch effect on the
+// binding, and a fresh object per render would refetch for ever.
+vi.mock('../../../../../lib/shop/commerce', () => {
+  const commerce = {
+    guest: false,
+    getOrder: (id: string) => getOrder(id),
+    payOrder: (id: string, card: unknown) => payOrder(id, card),
+  };
+  return { useShopCommerce: () => commerce };
+});
 
 import { ProblemError } from '../../../../../lib/api/http';
 

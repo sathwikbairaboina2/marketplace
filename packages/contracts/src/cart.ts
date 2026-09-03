@@ -44,3 +44,17 @@ export type CartResponse = z.infer<typeof CartResponseSchema>;
  */
 export const CheckoutRequestSchema = CreateOrderSchema.omit({ items: true });
 export type CheckoutRequest = z.infer<typeof CheckoutRequestSchema>;
+
+/** A stranger's checkout: the same facts plus the one thing that lets them find the order again. */
+export const GuestCheckoutRequestSchema = CheckoutRequestSchema.extend({
+  email: z.string().trim().toLowerCase().email().max(254),
+}).strict();
+export type GuestCheckoutRequest = z.infer<typeof GuestCheckoutRequestSchema>;
+
+/** Body of POST /shops/:tenantId/guest's answer: an opaque ticket for X-Guest. */
+export const GuestTokenResponseSchema = z.object({ guest: z.string().min(1) }).strict();
+export type GuestTokenResponse = z.infer<typeof GuestTokenResponseSchema>;
+
+/** Body of POST /cart/merge: the ticket a signed-in buyer carried as a stranger. */
+export const MergeCartSchema = z.object({ guest: z.string().min(1).max(200) }).strict();
+export type MergeCart = z.infer<typeof MergeCartSchema>;

@@ -12,8 +12,13 @@ import { PageHeader } from '../../../components/page-header';
 import { Ref } from '../../../components/ref';
 import { ProductName } from '../../../components/record-name';
 import { SupportBox } from '../../../components/support-box';
+import { OrderLookup } from '../../../components/order-lookup';
+import { useShopCommerce } from '../../../lib/shop/commerce';
 
 export default function OrdersPage() {
+  const commerce = useShopCommerce();
+  // A stranger has no list to show. They have an order number and an email.
+  if (commerce.guest) return <OrderLookup />;
   return (
     <>
       {/* No count in the subtitle: cursor pagination cannot supply one, and a

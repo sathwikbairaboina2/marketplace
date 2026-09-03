@@ -2,15 +2,29 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import OrderDetailPage from './page';
 
-vi.mock('next/navigation', () => ({ useParams: () => ({ id: 'ord-1' }) }));
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ id: 'ord-1' }),
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const getOrder = vi.fn();
+// The page reads the order through the commerce binding; a signed-in buyer's
+// binding is the token route mocked below.
+vi.mock('../../../../lib/shop/commerce', () => {
+  const commerce = { guest: false, getOrder: (id: string) => getOrder(id) };
+  return { useShopCommerce: () => commerce };
+});
+vi.mock('../../../../lib/shop/shop-context', () => ({ useShop: () => null }));
+vi.mock('../../../../lib/api/shop', () => ({ lookupOrder: vi.fn() }));
 const getProduct = vi.fn();
 vi.mock('../../../../lib/api/orders', () => ({
   getOrder: (id: string) => getOrder(id),
   cancelOrder: (id: string) => cancelOrder(id),
 }));
-vi.mock('../../../../lib/api/products', () => ({ getProduct: (id: string) => getProduct(id) }));
+vi.mock('../../../../lib/shop/reads', () => {
+  const reads = { getProduct: (id: string) => getProduct(id) };
+  return { useShopReads: () => reads };
+});
 vi.mock('../../../../lib/schemas/schema-cache', () => ({ useSchema: () => null }));
 vi.mock('../../../../lib/problem-notify', () => ({ notifyProblem: vi.fn() }));
 

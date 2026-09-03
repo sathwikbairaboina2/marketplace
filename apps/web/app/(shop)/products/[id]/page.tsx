@@ -1,139 +1,51 @@
-'use client';
+import type { Metadata } from 'next';
+import { ProductResponseSchema } from '@marketplace/contracts';
+import { requestShop } from '../../../../lib/server/shop';
+import { shopIdentity } from '../../../../lib/server/shop-identity';
+import { publicRead } from '../../../../lib/server/engine';
+import { productMetadata, productJsonLd } from '../../../../lib/seo/storefront-seo';
+import ProductDetail from './product-detail';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { Button, Descriptions, InputNumber, message } from 'antd';
-import { ArrowLeftOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import type { ProductResponse } from '@marketplace/contracts';
-import { toDescriptionRows } from '../../../../lib/schema-fields';
-import { useAuth } from '../../../../lib/auth/auth-context';
-import { useShopReads } from '../../../../lib/shop/reads';
-import { useSchema } from '../../../../lib/schemas/schema-cache';
-import { useCart } from '../../../../lib/cart/cart-context';
-import { useResource } from '../../../../lib/use-resource';
-import { placeholderFor } from '../../../../lib/placeholder';
-import { formatMoney } from '../../../../lib/format';
-import { StatusTag } from '../../../../components/status-tag';
-import { ErrorPanel } from '../../../../components/error-panel';
-import { DetailSkeleton } from '../../../../components/skeletons';
-import { MoreFromShop } from '../../../../components/more-from-shop';
+type Params = { params: Promise<{ id: string }> };
 
-const LOW_STOCK = 5;
+/**
+ * Server wrapper: the title, description, canonical and JSON-LD a crawler
+ * reads, fetched through the public shop surface -- the same route a
+ * stranger's browser uses, so nothing is described here that a stranger
+ * could not see. The page itself is the client component beside this file.
+ */
+async function load({ params }: Params) {
+  const shop = await requestShop();
+  if (!shop.tenantId) return null;
+  const { id } = await params;
+  const record = await publicRead(
+    `/shops/${encodeURIComponent(shop.tenantId)}/products/${encodeURIComponent(id)}`,
+    ProductResponseSchema,
+  );
+  if (!record) return null;
+  return { record, identity: await shopIdentity({ ...shop, tenantId: shop.tenantId }) };
+}
 
-export default function ProductDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const schema = useSchema('Product');
-  const { principal } = useAuth();
-  const { add } = useCart();
-  const reads = useShopReads();
-  const [qty, setQty] = useState(1);
+export async function generateMetadata(props: Params): Promise<Metadata> {
+  const loaded = await load(props);
+  return loaded ? productMetadata(loaded.record, loaded.identity) : {};
+}
 
-  const {
-    data: product,
-    error,
-    loading,
-    retry,
-  } = useResource<ProductResponse>(() => reads.getProduct(id), [id, reads]);
-
-  // A missing product and a broken engine are different facts and the reader
-  // needs to be told which one happened. This previously rendered a skeleton
-  // for ever on any failure, which said neither.
-  if (loading) return <DetailSkeleton />;
-  if (error) return <ErrorPanel error={error} onRetry={retry} />;
-  if (!product) return null;
-
-  const image = product.images[0];
-  const { gradient, initials } = placeholderFor(product.id, product.name);
-  const soldOut = product.stock === 0;
-  const attributeRows = schema ? toDescriptionRows(schema.fields, product.attributes) : [];
-
+export default async function Page(props: Params) {
+  const loaded = await load(props);
   return (
     <>
-      <Link href="/products" className="mp-back">
-        <ArrowLeftOutlined /> All products
-      </Link>
-
-      {/* Two columns: the photograph carries the page, the buy box holds every
-          decision. Previously this was a 160px thumbnail above a flat list in
-          which the price had the same weight as `assemblyRequired`. */}
-      <div className="mp-detail">
-        <div className="mp-detail-media">
-          {image ? (
-            <img src={image} alt={product.name} />
-          ) : (
-            <span className="mp-detail-placeholder" style={{ background: gradient }}>
-              {initials}
-            </span>
-          )}
-        </div>
-
-        <div className="mp-detail-buy">
-          <span className="mp-card-cat">{product.category}</span>
-          <h1>{product.name}</h1>
-
-          <div className="mp-detail-price">
-            {formatMoney(product.priceMinor, product.currency)}
-            <span className="cur">{product.currency}</span>
-          </div>
-
-          <p className="mp-detail-desc">{product.description}</p>
-
-          <div className="mp-detail-avail">
-            <StatusTag status={product.status} />
-            <span
-              className="mp-card-stock"
-              data-low={soldOut || product.stock <= LOW_STOCK || undefined}
-            >
-              {soldOut ? 'Sold out' : `${product.stock} in stock`}
-            </span>
-          </div>
-
-          <div className="mp-detail-actions">
-            <InputNumber
-              min={1}
-              max={Math.max(product.stock, 1)}
-              value={qty}
-              disabled={soldOut}
-              onChange={(v) => setQty(v ?? 1)}
-              aria-label="Quantity"
-            />
-            <Button
-              type="primary"
-              size="large"
-              icon={<ShoppingCartOutlined />}
-              disabled={soldOut}
-              onClick={() => {
-                // A stranger is sent to sign in and brought straight back:
-                // the cart is the buyer's, and there is no buyer yet.
-                if (!principal) {
-                  router.push(`/login?next=${encodeURIComponent(`/products/${product.id}`)}`);
-                  return;
-                }
-                // The server resolves name, price and image; the page sends
-                // only identity and quantity.
-                void add(product.id, qty).then(() =>
-                  message.success(`${product.name} added to cart`),
-                );
-              }}
-            >
-              Add to cart
-            </Button>
-          </div>
-
-          {/* Tenant-defined attributes, kept apart from the core facts above --
-              they are the tenant's vocabulary, not the platform's. */}
-          {attributeRows.length > 0 && (
-            <div className="mp-detail-specs">
-              <h2>Specifications</h2>
-              <Descriptions column={1} size="small" items={attributeRows} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      <MoreFromShop excludeId={product.id} />
+      {loaded && (
+        <script
+          type="application/ld+json"
+          // JSON, not HTML: the only `<` that could appear is inside a string
+          // value, and it is escaped so a description cannot close the tag.
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(productJsonLd(loaded.record, loaded.identity)).replace(/</g, '\\u003c'),
+          }}
+        />
+      )}
+      <ProductDetail />
     </>
   );
 }

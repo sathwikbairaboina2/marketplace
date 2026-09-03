@@ -120,6 +120,9 @@ services:
       # *.localhost: one shop per subdomain (see the engine's common/cors.ts).
       # Host side is the +30000 block (see the port table in CLAUDE.md).
       CORS_ORIGINS: http://localhost:33002,http://127.0.0.1:33002,http://*.localhost:33002
+      # Signs guest tickets. A fixture value: this file never runs anywhere
+      # but a laptop, and a deployment supplies its own.
+      GUEST_SECRET: local-guest-secret-not-for-prod
       S3_ENDPOINT: http://localstack:4566
       # Host-facing on purpose -- this is the endpoint presigned URLs are signed
       # against, and the browser is what redeems them. S3_BUCKET arrives from
@@ -208,6 +211,10 @@ services:
       # NEXT_PUBLIC_* pair, which are baked into the browser bundle at image build time and
       # therefore cannot be set here -- see apps/web/Dockerfile.
       COGNITO_ENDPOINT: http://cognito-local:9229
+      # Where server components reach the engine: the compose service, not the
+      # host-facing port the browser bundle was built with. Read at request
+      # time by lib/server/engine.ts for metadata, robots and the sitemap.
+      ENGINE_INTERNAL_URL: http://engine:3000/api/v1
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
