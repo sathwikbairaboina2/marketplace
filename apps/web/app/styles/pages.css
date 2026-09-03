@@ -150,6 +150,14 @@
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
 }
 
+/* 200px minimums fit one column in a 390px phone and stacked four cards a
+   screen tall each; two narrow columns is what the main grid does there. */
+@media (max-width: 767px) {
+  .mp-more-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* A one-row table floats in a full-width void; give short storefront lists a
    measure of their own. */
 .mp-list-measure {

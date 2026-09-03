@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from 'antd';
 import type { OrderResponse } from '@marketplace/contracts';
 import { listOrders } from '../../../lib/api/orders';
-import { formatMoney, formatRelative } from '../../../lib/format';
+import { formatPrice, formatRelative } from '../../../lib/format';
 import { CursorTable } from '../../../components/cursor-table';
 import { EmptyState } from '../../../components/empty-state';
 import { StatusTag } from '../../../components/status-tag';
@@ -86,7 +86,7 @@ export default function OrdersPage() {
               dataIndex: 'totalAmountMinor',
               className: 'mp-num',
               align: 'right' as const,
-              render: (minor: number, row) => `${formatMoney(minor, row.currency)} ${row.currency}`,
+              render: (minor: number, row) => formatPrice(minor, row.currency),
             },
             {
               title: 'Ref',

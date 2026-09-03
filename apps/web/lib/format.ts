@@ -83,6 +83,35 @@ export function formatMoney(minor: number, currency?: string): string {
   });
 }
 
+/**
+ * Minor units to money a shopper reads: `34000, 'INR'` -> `₹340.00`,
+ * `7400, 'USD'` -> `$74.00`, `3400, 'JPY'` -> `¥3,400`.
+ *
+ * `formatMoney` deliberately returns a bare number, and every price on every
+ * screen was rendering that number followed by the ISO code -- `340.00 USD`
+ * -- which is how a bank statement reads, not a shop. This is the one place
+ * a symbol is chosen, so a shop in rupees says ₹ everywhere at once.
+ *
+ * The narrow symbol (`$`, not `US$`) is what a shopper in the shop's own
+ * market expects; a shop is one currency, so there is nothing to
+ * disambiguate against. A code Intl does not recognise falls back to the
+ * bare amount with the code after it, which is exactly what rendered before.
+ */
+export function formatPrice(minor: number, currency: string): string {
+  const digits = fractionDigitsFor(currency);
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(minor / 10 ** digits);
+  } catch {
+    return `${formatMoney(minor, currency)} ${currency}`;
+  }
+}
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from 'antd';
 import type { ProductResponse } from '@marketplace/contracts';
 import { listProducts } from '../../../../lib/api/products';
-import { formatMoney } from '../../../../lib/format';
+import { formatPrice } from '../../../../lib/format';
 import { CursorTable } from '../../../../components/cursor-table';
 import { PageHeader } from '../../../../components/page-header';
 import { OnboardingChecklist } from '../../../../components/onboarding-checklist';
@@ -68,7 +68,7 @@ export default function AdminProductsPage() {
             className: 'mp-num',
             align: 'right' as const,
             render: (minor: number, row) =>
-              `${formatMoney(minor, row.currency)} ${row.currency}`,
+              formatPrice(minor, row.currency),
           },
           { title: 'Stock', dataIndex: 'stock', className: 'mp-num', align: 'right' as const },
           {

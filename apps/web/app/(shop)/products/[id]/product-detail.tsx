@@ -14,7 +14,7 @@ import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { useCart } from '../../../../lib/cart/cart-context';
 import { useResource } from '../../../../lib/use-resource';
 import { placeholderFor } from '../../../../lib/placeholder';
-import { formatMoney } from '../../../../lib/format';
+import { formatPrice } from '../../../../lib/format';
 import { StatusTag } from '../../../../components/status-tag';
 import { ErrorPanel } from '../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../components/skeletons';
@@ -76,8 +76,7 @@ export default function ProductDetail() {
           <h1>{product.name}</h1>
 
           <div className="mp-detail-price">
-            {formatMoney(product.priceMinor, product.currency)}
-            <span className="cur">{product.currency}</span>
+            {formatPrice(product.priceMinor, product.currency)}
           </div>
 
           <p className="mp-detail-desc">{product.description}</p>
@@ -88,7 +87,11 @@ export default function ProductDetail() {
               className="mp-card-stock"
               data-low={soldOut || product.stock <= LOW_STOCK || undefined}
             >
-              {soldOut ? 'Sold out' : `${product.stock} in stock`}
+              {soldOut
+                ? 'Sold out'
+                : product.stock <= LOW_STOCK
+                  ? `Only ${product.stock} left`
+                  : 'In stock'}
             </span>
           </div>
 

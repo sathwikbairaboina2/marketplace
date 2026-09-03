@@ -8,7 +8,7 @@ import { CardSchema, type OrderResponse } from '@marketplace/contracts';
 import { useShopCommerce } from '../../../../../lib/shop/commerce';
 import { ProblemError } from '../../../../../lib/api/http';
 import { useResource } from '../../../../../lib/use-resource';
-import { formatMoney } from '../../../../../lib/format';
+import { formatPrice } from '../../../../../lib/format';
 import { PageHeader } from '../../../../../components/page-header';
 import { ErrorPanel } from '../../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../../components/skeletons';
@@ -74,7 +74,7 @@ export default function PayPage() {
     <>
       <PageHeader
         title="Payment"
-        subtitle={`${formatMoney(order.totalAmountMinor, order.currency)} ${order.currency} to pay`}
+        subtitle={`${formatPrice(order.totalAmountMinor, order.currency)} to pay`}
       />
 
       <div className="mp-checkout">
@@ -118,7 +118,7 @@ export default function PayPage() {
               disabled={busy}
               data-testid="pay-now"
             >
-              Pay {formatMoney(order.totalAmountMinor, order.currency)} {order.currency}
+              Pay {formatPrice(order.totalAmountMinor, order.currency)}
             </Button>
           </Form>
 

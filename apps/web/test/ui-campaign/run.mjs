@@ -455,9 +455,10 @@ await check('a product card shows its category', async () => {
   must(text.includes('coffee'), 'category missing from the grid');
 });
 
-await check('a product card shows how many are in stock', async () => {
+await check('a product card says whether it is in stock, without publishing the count', async () => {
   const text = await page.locator('body').innerText();
-  must(/in stock/i.test(text), 'no stock indication');
+  must(/in stock|only \d+ left|sold out/i.test(text), 'no availability shown');
+  must(!/\d+ in stock/i.test(text), 'the grid publishes exact stock counts');
 });
 
 await check('an out-of-stock product is marked as sold out', async () => {
@@ -704,19 +705,19 @@ await check('checkout refuses when only the address is filled', async () => {
   must(page.url().includes('/cart'), 'an order went through without a city');
 });
 
-await check('the currency can be changed', async () => {
-  await page.locator('.ant-form-item', { hasText: 'Currency' }).locator('.ant-select').click();
-  await page.waitForTimeout(400);
-  await page.getByTitle('EUR').click();
-  await page.waitForTimeout(600);
+await check('the shopper is not asked to pick a currency, and the summary carries a symbol', async () => {
+  // A Currency select used to sit on this form. The engine refuses an order
+  // whose currency differs from its products' (order-checkout.service.ts),
+  // so every option but the shop's own made checkout fail.
+  must(
+    (await page.locator('.ant-form-item', { hasText: 'Currency' }).count()) === 0,
+    'the checkout form still asks the shopper for a currency',
+  );
   const text = await page.locator('body').innerText();
-  must(text.includes('EUR'), 'the summary did not follow the currency');
+  must(/[$₹€£]/.test(text), 'the summary shows no currency symbol');
 });
 
 await check('a complete checkout reserves the order and lands on the payment page', async () => {
-  await page.locator('.ant-form-item', { hasText: 'Currency' }).locator('.ant-select').click();
-  await page.waitForTimeout(300);
-  await page.getByTitle('USD').click();
   await page.getByLabel('City').fill('Bristol');
   await page.getByLabel('Postcode').fill('BS1 4TR');
   await page.getByRole('button', { name: 'Checkout' }).click();
@@ -804,8 +805,10 @@ await check('stock fell by what was ordered', async () => {
   await page.goto(`${WEB}/products/${created[0].id}`);
   await page.waitForTimeout(1800);
   const text = await page.locator('body').innerText();
-  must(/in stock/i.test(text), 'no stock shown');
-  const left = Number((text.match(/(\d+)\s+in stock/i) ?? [])[1]);
+  // The kettle starts at 5, which is the low-stock threshold, so what a
+  // shopper is told after a sale is the count itself: "Only 3 left".
+  const left = Number((text.match(/only\s+(\d+)\s+left/i) ?? [])[1]);
+  must(Number.isFinite(left), `no remaining-stock line on the page`);
   must(left < Number(PRODUCTS[0].stock), `stock still ${left}`);
 });
 

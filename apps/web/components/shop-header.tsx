@@ -17,7 +17,8 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '../lib/auth/auth-context';
 import { useCart } from '../lib/cart/cart-context';
-import { useStorefrontConfig } from '../lib/storefront-config';
+import { useShop } from '../lib/shop/shop-context';
+import { shopDisplayName, useStorefrontConfig } from '../lib/storefront-config';
 import { ThemeToggle } from './theme-toggle';
 
 // These accessible names are a contract: auth.spec.ts asserts a buyer sees
@@ -50,6 +51,7 @@ export function ShopHeader() {
   const { principal, signOut } = useAuth();
   const { cart } = useCart();
   const storefront = useStorefrontConfig();
+  const shop = useShop();
   const pathname = usePathname();
   const screens = Grid.useBreakpoint();
   // On a phone the labelled buttons cost the header a whole extra row; the
@@ -59,14 +61,14 @@ export function ShopHeader() {
 
   return (
     <header className="mp-shop-header">
-      {/* A wordmark, not the tenant. The storefront hero announces the tenant
-          in full, and showing it in both places made `acme` ambiguous on the
-          page as well as redundant to read. */}
+      {/* The shop's own name. This said "Marketplace" on every shop -- the
+          platform's wordmark on a merchant's masthead -- while the document
+          title already carried the real name for crawlers. */}
       <Link href="/products" className="mp-shop-brand">
         <span className="mp-mark" aria-hidden="true">
           <TagsOutlined />
         </span>
-        Marketplace
+        {shopDisplayName(storefront, shop?.tenantId)}
       </Link>
 
       <nav className="mp-shop-nav">

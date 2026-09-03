@@ -12,11 +12,13 @@ import {
   NodeIndexOutlined,
   ProfileOutlined,
   SettingOutlined,
+  ShopOutlined,
   ShoppingCartOutlined,
   TagsOutlined,
 } from '@ant-design/icons';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/auth/auth-context';
+import { useShopUrl } from '../lib/shop/shop-url';
 import { ThemeToggle } from './theme-toggle';
 
 interface Item {
@@ -63,6 +65,7 @@ const GROUPS: { label: string; items: Item[] }[] = [
 export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { principal, signOut } = useAuth();
   const pathname = usePathname();
+  const shopUrl = useShopUrl(principal?.tenantId);
 
   return (
     <div className="mp-sidebar">
@@ -107,6 +110,13 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
           {principal?.tenantId}
         </div>
         <div className="mp-sidebar-role">{principal?.role ?? 'no role'}</div>
+        {/* The one link out of the back office. A seller had no way from
+            their cockpit to the page their customers see. */}
+        {shopUrl && (
+          <a className="mp-sidebar-shoplink" href={shopUrl} target="_blank" rel="noopener">
+            <ShopOutlined /> View your shop
+          </a>
+        )}
         <div className="mp-sidebar-actions">
           <ThemeToggle />
           <Tooltip title="Sign out">

@@ -1,71 +1,21 @@
 'use client';
 
-import { ShopOutlined } from '@ant-design/icons';
-import type { ProductResponse } from '@marketplace/contracts';
-
 /**
- * Filled entirely from data the page already has -- no extra request, and no
- * invented marketing copy, so it reads truthfully for a tenant seeded five
- * minutes ago as well as for one with a real catalogue.
+ * The band above the grid when the owner has not published a hero banner:
+ * the shop's name and what it is. Nothing else.
  *
- * The figures describe what has been loaded rather than what exists, because
- * cursor pagination gives no total. Presented as labelled stats rather than a
- * sentence: three numbers in a row are read at a glance, a sentence is not.
- *
- * There is no image. This carried the newest product's generated monogram at
- * hero scale, which on a seeded tenant reads as a photograph that failed to
- * load rather than as art direction -- and it competed with the grid of real
- * cards directly beneath it.
+ * This used to carry three live counters -- Showing, Categories, In stock --
+ * computed from whatever page of products had loaded. They were the shop's
+ * inventory report where a shopper expected the shop, and they published the
+ * stock position of the whole catalogue to anyone who opened it. A published
+ * banner replaces this band entirely (see products/page.tsx).
  */
-export function StorefrontHero({
-  tenantId,
-  products,
-  known = true,
-}: {
-  tenantId: string;
-  products: ProductResponse[];
-  /**
-   * False while the catalogue is loading or after it failed. An empty array is
-   * indistinguishable from a failed one, and rendering it as `0 Showing` states
-   * as fact something the page does not know -- the error screenshot showed
-   * three confident zeroes above a panel saying the request had failed.
-   */
-  known?: boolean;
-}) {
-  const categories = new Set(products.map((p) => p.category)).size;
-  const inStock = products.filter((p) => p.stock > 0).length;
-  // An em dash holds the tile's shape, so the hero does not resize when the
-  // numbers arrive.
-  const show = (n: number) => (known ? n : '—');
-
+export function StorefrontHero({ name, tagline }: { name: string; tagline?: string }) {
   return (
     <section className="mp-hero">
       <div className="mp-hero-text">
-        <span className="mp-hero-eyebrow">
-          <ShopOutlined /> Storefront
-        </span>
-        <h1>{tenantId}</h1>
-      </div>
-
-      {/* A sibling, not a child. As the only child of a flex row this stack
-          left roughly 60% of the band empty once the hero image was deleted.
-
-          No product name here: the grid below already renders every name, and
-          repeating one makes "is this product on the page?" ambiguous -- it
-          would also keep showing a product the active filter excluded. */}
-      <div className="mp-hero-stats">
-        <div className="mp-hero-stat">
-          <span className="v">{show(products.length)}</span>
-          <span className="k">Showing</span>
-        </div>
-        <div className="mp-hero-stat">
-          <span className="v">{show(categories)}</span>
-          <span className="k">{known && categories === 1 ? 'Category' : 'Categories'}</span>
-        </div>
-        <div className="mp-hero-stat">
-          <span className="v">{show(inStock)}</span>
-          <span className="k">In stock</span>
-        </div>
+        <h1>{name}</h1>
+        {tagline && <p className="mp-hero-tagline">{tagline}</p>}
       </div>
     </section>
   );

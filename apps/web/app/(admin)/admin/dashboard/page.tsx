@@ -5,7 +5,7 @@ import { Alert, Button, Card, Statistic, Table } from 'antd';
 import type { SalesStats } from '@marketplace/contracts';
 import { getSalesStats } from '../../../../lib/api/stats';
 import { useResource } from '../../../../lib/use-resource';
-import { formatMoney } from '../../../../lib/format';
+import { formatMoney, formatPrice } from '../../../../lib/format';
 import { PageHeader } from '../../../../components/page-header';
 import { EmptyState } from '../../../../components/empty-state';
 import { ErrorPanel } from '../../../../components/error-panel';
@@ -100,7 +100,7 @@ export default function DashboardPage() {
                     dataIndex: 'revenueMinor',
                     align: 'right',
                     width: 150,
-                    render: (minor: number, row) => `${formatMoney(minor, row.currency)} ${row.currency}`,
+                    render: (minor: number, row) => formatPrice(minor, row.currency),
                   },
                 ]}
               />

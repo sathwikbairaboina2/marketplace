@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button, Form, Input, InputNumber, Select } from 'antd';
+import { Button, Form, Input, InputNumber } from 'antd';
 import { DeleteOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useCart } from '../../../lib/cart/cart-context';
 import { useShopCommerce } from '../../../lib/shop/commerce';
@@ -11,7 +11,7 @@ import { ProblemError } from '../../../lib/api/http';
 import { notifyProblem } from '../../../lib/problem-notify';
 import { toAttributes, toFormItems } from '../../../lib/schema-fields';
 import { useSchema } from '../../../lib/schemas/schema-cache';
-import { formatMoney } from '../../../lib/format';
+import { formatPrice } from '../../../lib/format';
 import { placeholderFor } from '../../../lib/placeholder';
 import { PageHeader } from '../../../components/page-header';
 import { EmptyState } from '../../../components/empty-state';
@@ -28,11 +28,12 @@ export default function CartPage() {
   const [form] = Form.useForm();
   const [busy, setBusy] = useState(false);
 
-  // Every amount on this page is denominated in whatever the order will be
-  // placed in, so the summary follows the field rather than naming a currency
-  // of its own. useWatch is undefined on first render, before initialValues
-  // have been applied.
-  const currency = (Form.useWatch('currency', form) as string | undefined) ?? 'USD';
+  // The order is placed in the currency the products are priced in: the
+  // engine refuses a mixed-currency order, so the one thing a currency field
+  // on this page could do was make checkout fail. The shopper is not asked.
+  // An unavailable line carries a placeholder currency; skip it if there is
+  // anything better.
+  const currency = lines.find((l) => !l.unavailable)?.currency ?? lines[0]?.currency ?? 'USD';
 
   const submit = async (values: Record<string, unknown>) => {
     setBusy(true);
@@ -40,7 +41,7 @@ export default function CartPage() {
       // The items come from the server-side cart, not from this page: the
       // checkout body carries only the facts the cart cannot know.
       const body = {
-        currency: values.currency as string,
+        currency,
         shippingAddress: {
           line1: values.line1 as string,
           city: values.city as string,
@@ -142,7 +143,7 @@ export default function CartPage() {
                   <span className="mp-line-unit">
                     {line.unavailable
                       ? 'No longer available'
-                      : `${formatMoney(line.unitPriceMinor, currency)} ${currency} each`}
+                      : `${formatPrice(line.unitPriceMinor, currency)} each`}
                   </span>
                 </div>
                 <InputNumber
@@ -155,7 +156,7 @@ export default function CartPage() {
                 <span className="mp-line-total">
                   {line.unavailable
                     ? '—'
-                    : `${formatMoney(line.unitPriceMinor * line.qty, currency)} ${currency}`}
+                    : formatPrice(line.unitPriceMinor * line.qty, currency)}
                 </span>
                 <Button
                   type="text"
@@ -173,7 +174,6 @@ export default function CartPage() {
             form={form}
             layout="vertical"
             onFinish={submit}
-            initialValues={{ currency: 'USD' }}
             id="checkout-form"
             className="mp-checkout-form"
           >
@@ -203,9 +203,6 @@ export default function CartPage() {
               <Form.Item name="postcode" label="Postcode" rules={[{ required: true }]}>
                 <Input placeholder="BS1 4TR" />
               </Form.Item>
-              <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
-                <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
-              </Form.Item>
             </div>
             {schema && Object.keys(schema.fields).length > 0 && (
               <>
@@ -223,13 +220,13 @@ export default function CartPage() {
               Subtotal · {units} item{units === 1 ? '' : 's'}
             </span>
             <span className="mp-num">
-              {formatMoney(total, currency)} {currency}
+              {formatPrice(total, currency)}
             </span>
           </div>
           <div className="mp-summary-row mp-summary-total">
             <span>Total</span>
             <span className="mp-num">
-              {formatMoney(total, currency)} {currency}
+              {formatPrice(total, currency)}
             </span>
           </div>
           {/* Indicative only: POST /orders locks unit prices server-side at

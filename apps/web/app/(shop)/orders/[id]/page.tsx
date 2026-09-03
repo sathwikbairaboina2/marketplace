@@ -21,9 +21,10 @@ import { useResource } from '../../../../lib/use-resource';
 import { Ref } from '../../../../components/ref';
 import { StatusTag } from '../../../../components/status-tag';
 import { PageHeader } from '../../../../components/page-header';
+import { EmptyState } from '../../../../components/empty-state';
 import { ErrorPanel } from '../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../components/skeletons';
-import { formatDateTime, formatMoney } from '../../../../lib/format';
+import { formatDateTime, formatPrice } from '../../../../lib/format';
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -86,10 +87,25 @@ export default function OrderDetailPage() {
   );
 
   if (loading) return <DetailSkeleton />;
+  // A stranger's lookup that matched nothing is not a fault to retry: one of
+  // the two things they typed is wrong, and the form is where to fix it.
+  if (commerce.guest && error instanceof ProblemError && error.status === 404) {
+    return (
+      <EmptyState
+        title="No order matches"
+        description="Check the order number from your confirmation and the email you gave at checkout — both have to match."
+        action={
+          <Link href="/orders">
+            <Button type="primary">Try again</Button>
+          </Link>
+        }
+      />
+    );
+  }
   if (error) return <ErrorPanel error={error} onRetry={retry} />;
   if (!order) return null;
 
-  const money = (minor: number) => `${formatMoney(minor, order.currency)} ${order.currency}`;
+  const money = (minor: number) => formatPrice(minor, order.currency);
   const attributeRows = schema ? toDescriptionRows(schema.fields, order.attributes) : [];
 
   const messages = messagePage?.items ?? [];

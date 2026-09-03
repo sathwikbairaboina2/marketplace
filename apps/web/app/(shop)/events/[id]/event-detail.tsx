@@ -14,7 +14,7 @@ import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { ProblemError } from '../../../../lib/api/http';
 import { notifyProblem } from '../../../../lib/problem-notify';
 import { useResource } from '../../../../lib/use-resource';
-import { formatDateTime, formatMoney } from '../../../../lib/format';
+import { formatDateTime, formatPrice } from '../../../../lib/format';
 import { ErrorPanel } from '../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../components/skeletons';
 import { MoreFromShop } from '../../../../components/more-from-shop';
@@ -90,8 +90,7 @@ export default function EventDetail() {
         <div className="mp-detail-buy" style={{ order: 2 }}>
           <h2 style={{ marginBottom: 'var(--mp-space-4)' }}>Book tickets</h2>
           <div className="mp-detail-price">
-            {event.basePriceMinor === 0 ? 'Free' : formatMoney(event.basePriceMinor, event.currency)}
-            {event.basePriceMinor > 0 && <span className="cur">{event.currency}</span>}
+            {event.basePriceMinor === 0 ? 'Free' : formatPrice(event.basePriceMinor, event.currency)}
           </div>
 
           <div className="mp-capacity">

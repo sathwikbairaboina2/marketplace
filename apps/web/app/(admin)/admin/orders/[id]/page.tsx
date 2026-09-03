@@ -18,7 +18,7 @@ import { StageTracker } from '../../../../../components/stage-tracker';
 import { StageThread } from '../../../../../components/stage-thread';
 import { Ref } from '../../../../../components/ref';
 import { ProductName } from '../../../../../components/record-name';
-import { formatDateTime, formatMoney } from '../../../../../lib/format';
+import { formatDateTime, formatPrice } from '../../../../../lib/format';
 
 /**
  * The seller's side of one order: where it is, what to do next, and the
@@ -43,7 +43,7 @@ export default function AdminOrderDetailPage() {
   const messages = messagePage?.items ?? [];
   const index = order.stages.findIndex((stage) => stage.id === order.currentStageId);
   const next = order.stages[index + 1];
-  const money = (minor: number) => `${formatMoney(minor, order.currency)} ${order.currency}`;
+  const money = (minor: number) => formatPrice(minor, order.currency);
 
   const advance = async () => {
     // An awaiting_payment order has no stage to advance from; the button is

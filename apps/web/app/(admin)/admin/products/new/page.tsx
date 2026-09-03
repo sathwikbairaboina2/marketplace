@@ -76,7 +76,7 @@ export default function NewProductPage() {
 
   return (
     <>
-      <PageHeader title="New product" subtitle="Add photos now — they can't be changed after the product is created." />
+      <PageHeader title="New product" subtitle="Photos, price and stock can all be changed after the product is listed." />
       <Card className="mp-form-card">
         <Form
           form={form}

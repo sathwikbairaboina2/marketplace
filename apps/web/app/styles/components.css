@@ -358,6 +358,12 @@
   margin: 0;
 }
 
+.mp-hero-tagline {
+  color: var(--mp-hero-muted);
+  margin: var(--mp-space-2) 0 0;
+  max-width: 48ch;
+}
+
 /* A tenant banner reuses the hero band; its copy is owner-written, so the
    subline gets a measure instead of the stats block. */
 .mp-banner p {
@@ -1079,4 +1085,18 @@
 .mp-support-composer {
   display: flex;
   gap: var(--mp-space-2);
+}
+
+/* The way out of the cockpit and into the shop the customer sees. */
+.mp-sidebar-shoplink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--mp-space-3);
+  font-size: var(--mp-text-xs);
+  color: var(--mp-muted);
+}
+
+.mp-sidebar-shoplink:hover {
+  color: var(--mp-accent);
 }

@@ -14,7 +14,7 @@ import { FilterRail, ProductGrid } from '../../../components/filter-rail';
 import { ProductCard } from '../../../components/product-card';
 import { StorefrontBanner } from '../../../components/storefront-banner';
 import { StorefrontHero } from '../../../components/storefront-hero';
-import { useStorefrontConfig } from '../../../lib/storefront-config';
+import { shopDisplayName, useStorefrontConfig } from '../../../lib/storefront-config';
 import { EmptyState } from '../../../components/empty-state';
 import { ErrorPanel } from '../../../components/error-panel';
 import { GridSkeleton } from '../../../components/skeletons';
@@ -114,9 +114,8 @@ export default function ProductsPage() {
         <StorefrontBanner banner={hero} />
       ) : (
         <StorefrontHero
-          tenantId={shop?.tenantId ?? principal?.tenantId ?? ''}
-          products={items}
-          known={!loading && !error}
+          name={shopDisplayName(storefront, shop?.tenantId ?? principal?.tenantId)}
+          tagline={storefront?.businessProfile.kind}
         />
       )}
 

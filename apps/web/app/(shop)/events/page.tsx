@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from 'antd';
 import type { EventResponse } from '@marketplace/contracts';
 import { useShopReads } from '../../../lib/shop/reads';
-import { formatDateTime, formatMoney } from '../../../lib/format';
+import { formatDateTime, formatPrice } from '../../../lib/format';
 import { CursorTable } from '../../../components/cursor-table';
 import { EmptyState } from '../../../components/empty-state';
 import { PageHeader } from '../../../components/page-header';
@@ -57,7 +57,7 @@ export default function EventsPage() {
               dataIndex: 'basePriceMinor',
               className: 'mp-num',
               align: 'right' as const,
-              render: (minor: number, row) => `${formatMoney(minor, row.currency)} ${row.currency}`,
+              render: (minor: number, row) => formatPrice(minor, row.currency),
             },
           ]}
         />

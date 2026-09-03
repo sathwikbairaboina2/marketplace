@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime, formatMoney, formatRelative } from './format';
+import { formatDate, formatDateTime, formatMoney, formatPrice, formatRelative } from './format';
 
 describe('formatDateTime', () => {
   // The whole point: `2026-09-15T09:00:00.000Z` was being rendered verbatim to
@@ -91,5 +91,33 @@ describe('formatMoney with a currency', () => {
 
   it('falls back to two decimals for a code it does not recognise', () => {
     expect(formatMoney(1000, 'XYZ')).toBe('10.00');
+  });
+});
+
+describe('formatPrice', () => {
+  // Every price on every screen read `340.00 USD`: a bare number and an ISO
+  // code, the way a bank statement is written. A shop says ₹340.00.
+  it('renders the currency symbol, not the code', () => {
+    expect(formatPrice(34000, 'INR')).toBe('₹340.00');
+    expect(formatPrice(7400, 'USD')).toBe('$74.00');
+    expect(formatPrice(89900, 'EUR')).toBe('€899.00');
+    expect(formatPrice(1850, 'GBP')).toBe('£18.50');
+  });
+
+  it('keeps the minor-unit arithmetic of formatMoney', () => {
+    expect(formatPrice(3400, 'JPY')).toBe('¥3,400');
+    expect(formatPrice(1234, 'BHD')).toMatch(/1\.234$/);
+    expect(formatPrice(0, 'INR')).toBe('₹0.00');
+  });
+
+  it('groups thousands', () => {
+    expect(formatPrice(124990000, 'USD')).toBe('$1,249,900.00');
+  });
+
+  // Intl accepts any well-formed code and prints it as the symbol, which is
+  // the right fallback: the amount is still right and the code is visible.
+  it('shows the code itself for a currency it has no symbol for', () => {
+    expect(formatPrice(1000, 'XYZ')).toMatch(/XYZ/);
+    expect(formatPrice(1000, 'XYZ')).toMatch(/10\.00/);
   });
 });

@@ -536,12 +536,17 @@ await journey('ordering moves stock by exactly the quantity bought', async () =>
   );
 });
 
-await journey('the stock the shopper sees matches the stock the engine holds', async () => {
+await journey('the availability the shopper sees matches the stock the engine holds', async () => {
   const got = await api(tokenBuyerA, 'GET', `/products/${orderProduct.id}`);
   await shopper.goto(`${WEB}/products/${orderProduct.id}`);
   await shopper.waitForTimeout(2000);
   const text = await shopper.locator('body').innerText();
-  must(text.includes(`${got.json.stock} in stock`), `page does not say "${got.json.stock} in stock"`);
+  // A shopper is told whether to hurry, not how much the shop holds: the
+  // exact count is the seller's business and used to be on every card.
+  const stock = got.json.stock;
+  const expected = stock === 0 ? 'Sold out' : stock <= 5 ? `Only ${stock} left` : 'In stock';
+  must(text.includes(expected), `page does not say "${expected}" for a stock of ${stock}`);
+  must(!/\d+ in stock/.test(text), 'the page publishes an exact stock count');
 });
 
 await journey('an order with two different products keeps both lines', async () => {

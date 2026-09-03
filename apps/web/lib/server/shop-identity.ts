@@ -4,9 +4,10 @@ import { publicRead } from './engine';
 import type { RequestShop } from './shop';
 
 /**
- * The shop as a crawler should name it. The published About title is the
- * name the owner chose; before one is published the tenant id stands in, as
- * the storefront hero already shows it.
+ * The shop as a crawler should name it: the business name from the owner's
+ * interview, else the About title, else the tenant id. The same chain as
+ * `shopDisplayName` in lib/storefront-config.tsx, which the header and the
+ * hero use -- the search result and the masthead must agree.
  */
 export async function shopIdentity(shop: RequestShop & { tenantId: string }): Promise<ShopIdentity> {
   const published = await publicRead(
@@ -15,7 +16,8 @@ export async function shopIdentity(shop: RequestShop & { tenantId: string }): Pr
   );
   return {
     tenantId: shop.tenantId,
-    name: published?.config?.about.title ?? shop.tenantId,
+    name:
+      published?.config?.businessProfile.name ?? published?.config?.about.title ?? shop.tenantId,
     origin: shop.origin,
   };
 }

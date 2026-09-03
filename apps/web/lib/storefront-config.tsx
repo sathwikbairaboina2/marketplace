@@ -27,3 +27,17 @@ export function StorefrontConfigProvider({
 export function useStorefrontConfig(): StorefrontConfig | null {
   return useContext(StorefrontConfigContext);
 }
+
+/**
+ * What a shop calls itself, in the header and the hero: the name the owner
+ * gave the interview, else the About title, else the tenant id. The crawler's
+ * name (lib/server/shop-identity.ts) resolves the same way, so the tab title
+ * and the masthead can no longer disagree. Off a shop host there is no shop,
+ * and the platform's own name is right.
+ */
+export function shopDisplayName(
+  config: StorefrontConfig | null,
+  tenantId: string | null | undefined,
+): string {
+  return config?.businessProfile.name ?? config?.about.title ?? tenantId ?? 'Marketplace';
+}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { ProductResponse } from '@marketplace/contracts';
 import { placeholderFor } from '../lib/placeholder';
 import { StatusTag } from './status-tag';
-import { formatMoney } from '../lib/format';
+import { formatPrice } from '../lib/format';
 
 const LOW_STOCK = 5;
 
@@ -44,11 +44,17 @@ export function ProductCard({ product }: { product: ProductResponse }) {
 
         <div className="mp-card-foot">
           <span className="mp-card-price">
-            {formatMoney(product.priceMinor, product.currency)}
-            <span className="cur">{product.currency}</span>
+            {formatPrice(product.priceMinor, product.currency)}
           </span>
+          {/* The count is the seller's, not the shopper's: "38 in stock" on
+              every card published the inventory of the whole shop. A shopper
+              needs to know whether to hurry, and only then how much. */}
           <span className="mp-card-stock" data-low={soldOut || product.stock <= LOW_STOCK}>
-            {soldOut ? 'Sold out' : `${product.stock} in stock`}
+            {soldOut
+              ? 'Sold out'
+              : product.stock <= LOW_STOCK
+                ? `Only ${product.stock} left`
+                : 'In stock'}
           </span>
         </div>
       </div>
