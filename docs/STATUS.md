@@ -27,6 +27,18 @@ green, 91/91 journeys, 31 playwright specs, shop-host screenshots looked at.
 Details in `docs/STATUS-public-storefront.md`. The model upgrade exposed one
 real defect in the support agent (order facts had no time of day), fixed.
 
+**Then a walk through the real browser found two more** that 91 green
+journeys had not: the support box on a shop host said "Failed to fetch",
+because the agents matched CORS_ORIGINS as a static list while the engine had
+learned the `*.localhost` wildcard (the matcher now lives in
+`@marketplace/auth` and both use it; a 92nd journey asks from the shop host);
+and the seller's order page linked line items to `/admin/products/:id`, a
+route that does not exist (now `/edit`, pinned by a test). Noted, not fixed:
+the cockpit sidebar's Bookings entry reuses the shopper page because no seller
+bookings page exists; seller order lines show a product ref where the buyer
+sees a name; the storefront's dark theme is a header toggle, not
+`prefers-color-scheme`.
+
 ## 3 September 2026 — roadmap, and a shop a stranger can visit
 
 `docs/ROADMAP.md` sets the direction: compete with Shopify on the
