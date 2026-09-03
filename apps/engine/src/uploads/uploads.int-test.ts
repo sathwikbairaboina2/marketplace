@@ -20,8 +20,8 @@ const BUCKET = 'marketplace-media';
 const env = {
   AWS_REGION: 'us-east-1',
   S3_BUCKET: BUCKET,
-  S3_ENDPOINT: 'http://localhost:4566',
-  S3_PUBLIC_ENDPOINT: 'http://localhost:4566',
+  S3_ENDPOINT: 'http://localhost:34566',
+  S3_PUBLIC_ENDPOINT: 'http://localhost:34566',
   MAX_IMAGE_BYTES: 5_242_880,
 } as EnvConfig;
 

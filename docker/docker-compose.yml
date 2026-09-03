@@ -4,7 +4,7 @@ services:
   dynamodb-local:
     image: amazon/dynamodb-local:2.5.2
     command: ['-jar', 'DynamoDBLocal.jar', '-inMemory', '-sharedDb']
-    ports: ['8000:8000']
+    ports: ['38000:8000']
     healthcheck:
       test: ['CMD-SHELL', 'curl -s -o /dev/null http://localhost:8000 || exit 1']
       interval: 3s
@@ -15,7 +15,7 @@ services:
     environment:
       SERVICES: sqs,s3
       AWS_DEFAULT_REGION: us-east-1
-    ports: ['4566:4566']
+    ports: ['34566:4566']
     healthcheck:
       # Both services, not just sqs. LocalStack reports one as available before
       # the other, and an engine that starts against a half-ready LocalStack
@@ -37,7 +37,7 @@ services:
     # superset of plain Redis (redis-cli PING and every command ThreadRegistryService
     # and RedisModule use still work), so nothing else on this instance is affected.
     image: redis/redis-stack-server:7.4.0-v3
-    ports: ['6379:6379']
+    ports: ['36379:6379']
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 3s
@@ -45,7 +45,7 @@ services:
 
   cognito-local:
     image: jagregory/cognito-local:3.21.0
-    ports: ['9229:9229']
+    ports: ['39229:9229']
     volumes: ['cognito-data:/app/.cognito']
     healthcheck:
       test:
@@ -63,6 +63,11 @@ services:
       SQS_ENDPOINT: http://localstack:4566
       S3_ENDPOINT: http://localstack:4566
       COGNITO_ENDPOINT: http://cognito-local:9229
+      # Where a harness on the host reaches cognito-local (the published port).
+      # Not the token issuer: cognito-local stamps `iss` from its own default
+      # domain, `http://localhost:9229`, whatever port it is published on --
+      # see seed.ts, which writes JWT_ISSUER from COGNITO_ISSUER_ORIGIN.
+      COGNITO_HOST_ORIGIN: http://localhost:39229
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
@@ -75,7 +80,7 @@ services:
 
   engine:
     build: { context: .., dockerfile: apps/engine/Dockerfile }
-    ports: ['3000:3000']
+    ports: ['33000:3000']
     # Long form with `required: false`: Compose resolves `env_file` at project-load time, but
     # `.env.generated` is produced by the `seed` container during the *same* `up`. On a clean
     # clone the file does not exist yet, and a required `env_file` would fail `docker compose
@@ -113,12 +118,13 @@ services:
       # literal, which is a different origin and would otherwise have every call
       # refused by CORS on top of the outage.
       # *.localhost: one shop per subdomain (see the engine's common/cors.ts).
-      CORS_ORIGINS: http://localhost:3002,http://127.0.0.1:3002,http://*.localhost:3002
+      # Host side is the +30000 block (see the port table in CLAUDE.md).
+      CORS_ORIGINS: http://localhost:33002,http://127.0.0.1:33002,http://*.localhost:33002
       S3_ENDPOINT: http://localstack:4566
       # Host-facing on purpose -- this is the endpoint presigned URLs are signed
       # against, and the browser is what redeems them. S3_BUCKET arrives from
       # .env.generated, written by the seed.
-      S3_PUBLIC_ENDPOINT: http://localhost:4566
+      S3_PUBLIC_ENDPOINT: http://localhost:34566
       COGNITO_ENDPOINT: http://cognito-local:9229
     depends_on:
       seed: { condition: service_completed_successfully }
@@ -128,32 +134,30 @@ services:
       interval: 3s
       retries: 30
 
-  ollama:
-    image: ollama/ollama:0.32.5
-    # Host side is 11435, not ollama's default 11434: that default is what any
-    # other ollama on the machine will already have taken, and a naive port-wait
-    # against it succeeds while talking to a daemon that has never heard of this
-    # project's model. Inside the compose network everything still speaks to
-    # `ollama:11434`, so only host-side tooling is affected.
-    ports: ['11435:11434']
-    volumes: ['ollama-models:/root/.ollama']
-    healthcheck:
-      test: ['CMD-SHELL', 'ollama list >/dev/null 2>&1 || exit 1']
-      interval: 5s
-      retries: 40
-
+  # No ollama service of its own. The model (`qwen3.8:27b`, 17GB) is served by
+  # one shared daemon on this machine -- the research-plugin stack's
+  # `research-ollama`, published on `127.0.0.1:25103` with the GPU attached --
+  # so several projects run against one copy instead of each pulling its own
+  # into a private volume. `host.docker.internal` reaches it from inside this
+  # compose network; `extra_hosts` below makes that name resolve on a Linux
+  # daemon too, where Docker Desktop's automatic entry does not exist.
+  # Override OLLAMA_BASE_URL / LLM_MODEL in the environment to point elsewhere.
   ollama-init:
-    image: ollama/ollama:0.32.5
+    # A gate, not a server: `ollama pull` against the shared daemon is a no-op
+    # when the model is already there and pulls it into the shared store when it
+    # is not, so `agents` never starts against a daemon that has never heard of
+    # its model. It also fails fast, with the daemon's own error, when the shared
+    # ollama is down -- which reads better than agents' readiness timing out.
+    image: ollama/ollama:0.33.1
     environment:
-      OLLAMA_HOST: http://ollama:11434
-    entrypoint: ['/bin/sh', '-c', 'ollama pull qwen2.5:7b-instruct']
+      OLLAMA_HOST: ${OLLAMA_BASE_URL:-http://host.docker.internal:25103}
+    extra_hosts: ['host.docker.internal:host-gateway']
+    entrypoint: ['ollama', 'pull', '${LLM_MODEL:-qwen3.8:27b}']
     restart: 'no'
-    depends_on:
-      ollama: { condition: service_healthy }
 
   agents:
     build: { context: .., dockerfile: apps/agents/Dockerfile }
-    ports: ['3001:3001']
+    ports: ['33001:3001']
     # Same rationale as `engine` above: `.env.generated` may not exist yet on a clean clone
     # when this file is first loaded, and the second `docker:up` step force-recreates this
     # service (see package.json) so a surviving container can't run with a stale JWT issuer
@@ -167,14 +171,17 @@ services:
       SQS_ENDPOINT: http://localstack:4566
       REDIS_URL: redis://redis:6379
       ENGINE_BASE_URL: http://engine:3000
-      OLLAMA_BASE_URL: http://ollama:11434
-      LLM_MODEL: qwen2.5:7b-instruct
+      # The shared daemon described above `ollama-init`; both values may be
+      # overridden from the environment that runs `docker compose`.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:25103}
+      LLM_MODEL: ${LLM_MODEL:-qwen3.8:27b}
       LOG_LEVEL: info
       DOCS_ENABLED: 'true'
       # Both loopback spellings, for the same reason the engine allows both.
       # *.localhost: one shop per subdomain (see the engine's common/cors.ts).
-      CORS_ORIGINS: http://localhost:3002,http://127.0.0.1:3002,http://*.localhost:3002
+      CORS_ORIGINS: http://localhost:33002,http://127.0.0.1:33002,http://*.localhost:33002
       COGNITO_ENDPOINT: http://cognito-local:9229
+    extra_hosts: ['host.docker.internal:host-gateway']
     depends_on:
       redis: { condition: service_healthy }
       engine: { condition: service_healthy }
@@ -191,7 +198,7 @@ services:
 
   web:
     build: { context: .., dockerfile: apps/web/Dockerfile }
-    ports: ['3002:3002']
+    ports: ['33002:3002']
     # Same rationale as `engine` and `agents`: `.env.generated` may not exist on a clean clone
     # when this file is first loaded, and it supplies COGNITO_CLIENT_ID -- which the login
     # route handler needs to call InitiateAuth.
@@ -219,4 +226,3 @@ services:
 
 volumes:
   cognito-data:
-  ollama-models:

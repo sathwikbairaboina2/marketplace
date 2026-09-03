@@ -8,10 +8,10 @@ import { EnvConfig } from '../config/env.schema';
 const env = {
   AWS_REGION: 'us-east-1',
   TABLE_NAME: process.env.TABLE_NAME ?? 'MarketplaceEngine',
-  DYNAMODB_ENDPOINT: process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:8000',
+  DYNAMODB_ENDPOINT: process.env.DYNAMODB_ENDPOINT ?? 'http://localhost:38000',
 } as EnvConfig;
 
-const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:36379');
 const repo = new DynamoRepository(env);
 const registry = new SchemaRegistryService(repo, redis);
 

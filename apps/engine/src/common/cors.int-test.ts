@@ -9,13 +9,13 @@ describe('CORS', () => {
   let baseUrl: string;
 
   beforeAll(async () => {
-    process.env.CORS_ORIGINS = 'http://localhost:3002,http://*.localhost:3002';
+    process.env.CORS_ORIGINS = 'http://localhost:33002,http://*.localhost:33002';
     process.env.SQS_CONSUMER_ENABLED = 'false';
     process.env.QUEUE_URL ??=
       'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/q.fifo';
-    process.env.REDIS_URL ??= 'redis://localhost:6379';
-    process.env.JWKS_URI ??= 'http://localhost:9229/pool/.well-known/jwks.json';
-    process.env.JWT_ISSUER ??= 'http://localhost:9229/pool';
+    process.env.REDIS_URL ??= 'redis://localhost:36379';
+    process.env.JWKS_URI ??= 'http://localhost:39229/pool/.well-known/jwks.json';
+    process.env.JWT_ISSUER ??= 'http://localhost:39229/pool';
     process.env.JWT_AUDIENCE ??= 'client-id';
 
     app = await createApp();
@@ -48,13 +48,13 @@ describe('CORS', () => {
     const res = await fetch(`${baseUrl}/api/v1/products`, {
       method: 'OPTIONS',
       headers: {
-        Origin: 'http://localhost:3002',
+        Origin: 'http://localhost:33002',
         'Access-Control-Request-Method': 'POST',
         'Access-Control-Request-Headers': 'authorization,idempotency-key',
       },
     });
 
-    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:3002');
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:33002');
     const allowed = (res.headers.get('access-control-allow-headers') ?? '').toLowerCase();
     expect(allowed).toContain('authorization');
     // POST /orders and POST /bookings require this header. A preflight that
@@ -72,13 +72,13 @@ describe('CORS', () => {
     const res = await fetch(`${baseUrl}/api/v1/products`, {
       method: 'OPTIONS',
       headers: {
-        Origin: 'http://localhost:3002',
+        Origin: 'http://localhost:33002',
         'Access-Control-Request-Method': method,
         'Access-Control-Request-Headers': 'authorization',
       },
     });
 
-    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:3002');
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:33002');
     const allowedMethods = (res.headers.get('access-control-allow-methods') ?? '').toUpperCase();
     expect(allowedMethods).toContain(method);
   });
@@ -94,15 +94,15 @@ describe('CORS', () => {
   it('allows a shop subdomain under the wildcard entry', async () => {
     const res = await fetch(`${baseUrl}/api/v1/products`, {
       method: 'OPTIONS',
-      headers: { Origin: 'http://acme.localhost:3002', 'Access-Control-Request-Method': 'GET' },
+      headers: { Origin: 'http://acme.localhost:33002', 'Access-Control-Request-Method': 'GET' },
     });
-    expect(res.headers.get('access-control-allow-origin')).toBe('http://acme.localhost:3002');
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://acme.localhost:33002');
   });
 
   it('refuses a two-label host the wildcard does not cover', async () => {
     const res = await fetch(`${baseUrl}/api/v1/products`, {
       method: 'OPTIONS',
-      headers: { Origin: 'http://a.b.localhost:3002', 'Access-Control-Request-Method': 'GET' },
+      headers: { Origin: 'http://a.b.localhost:33002', 'Access-Control-Request-Method': 'GET' },
     });
     expect(res.headers.get('access-control-allow-origin')).toBeNull();
   });

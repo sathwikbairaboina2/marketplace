@@ -24,24 +24,28 @@ async function main(): Promise<void> {
   await seedCatalogue(subs);
   await seedImages(catalogue);
 
-  // The issuer and the JWKS URI deliberately use different hosts locally.
+  // Three origins for one cognito-local, each for a different reader.
   //
-  // Tokens are minted by the e2e suite running on the host, so cognito-local
-  // stamps `iss` with the host-facing origin. Issuer checking is a string
-  // comparison and never a network call, so JWT_ISSUER must match that.
-  // Fetching the JWKS *is* a network call made from inside the engine
-  // container, so JWKS_URI must use the compose service name.
+  // COGNITO_ENDPOINT_HOST is where a harness on the host reaches it: the
+  // published port. JWKS_URI is fetched from inside the engine container, so it
+  // uses the compose service name. JWT_ISSUER is neither: cognito-local stamps
+  // `iss` from its own configured issuer domain (its default,
+  // `http://localhost:9229`, whatever port the container is published on) and
+  // never from the request's Host header, and the engine compares the claim as
+  // a string. Confirmed by minting a token through the published port and
+  // reading the claim back.
   //
-  // Against real Cognito both values share one host; this asymmetry lives
+  // Against real Cognito all three share one host; this asymmetry lives
   // entirely in configuration, so no code branches on environment.
-  const hostOrigin = process.env.COGNITO_HOST_ORIGIN ?? 'http://localhost:9229';
+  const hostOrigin = process.env.COGNITO_HOST_ORIGIN ?? 'http://localhost:39229';
+  const issuerOrigin = process.env.COGNITO_ISSUER_ORIGIN ?? 'http://localhost:9229';
   const internalOrigin = process.env.COGNITO_ENDPOINT!;
 
   const lines = [
     `COGNITO_USER_POOL_ID=${userPoolId}`,
     `COGNITO_CLIENT_ID=${clientId}`,
     `COGNITO_ENDPOINT_HOST=${hostOrigin}`,
-    `JWT_ISSUER=${hostOrigin}/${userPoolId}`,
+    `JWT_ISSUER=${issuerOrigin}/${userPoolId}`,
     `JWT_AUDIENCE=${clientId}`,
     `JWKS_URI=${internalOrigin}/${userPoolId}/.well-known/jwks.json`,
     `QUEUE_URL=${queueUrl}`,

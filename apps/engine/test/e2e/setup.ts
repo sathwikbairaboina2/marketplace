@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 
 config({ path: resolve(__dirname, '../../../../docker/.env.generated') });
 
-export const baseUrl = process.env.ENGINE_BASE_URL ?? 'http://127.0.0.1:3000';
+export const baseUrl = process.env.ENGINE_BASE_URL ?? 'http://127.0.0.1:33000';
 
 export async function waitForHealthy(timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;

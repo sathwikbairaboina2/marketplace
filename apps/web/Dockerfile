@@ -21,11 +21,11 @@ COPY . .
 # The engine allows both loopback spellings as origins (see CORS_ORIGINS in
 # docker/docker-compose.yml), so the console still works whichever one the
 # reader types into the address bar.
-ENV NEXT_PUBLIC_ENGINE_URL=http://127.0.0.1:3000/api/v1
-ENV NEXT_PUBLIC_AGENTS_URL=http://127.0.0.1:3001
-# The host shops hang off. `acme.localhost:3002` is the acme shop; Chromium
+ENV NEXT_PUBLIC_ENGINE_URL=http://127.0.0.1:33000/api/v1
+ENV NEXT_PUBLIC_AGENTS_URL=http://127.0.0.1:33001
+# The host shops hang off. `acme.localhost:33002` is the acme shop; Chromium
 # resolves any *.localhost name to loopback, so no DNS work is needed locally.
-ENV NEXT_PUBLIC_PLATFORM_HOST=localhost:3002
+ENV NEXT_PUBLIC_PLATFORM_HOST=localhost:33002
 RUN pnpm install --frozen-lockfile \
  && pnpm --filter @marketplace/contracts build \
  && pnpm --filter @marketplace/web build

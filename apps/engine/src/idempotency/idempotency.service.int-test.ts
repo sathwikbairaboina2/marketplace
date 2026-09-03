@@ -2,7 +2,7 @@ import Redis from 'ioredis';
 import { IdempotencyService } from './idempotency.service';
 import { runWithTenant } from '../common/tenant-context';
 
-const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:36379');
 const service = new IdempotencyService(redis);
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>): Promise<T> =>

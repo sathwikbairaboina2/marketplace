@@ -43,23 +43,28 @@ the FIFO queue and its DLQ, and a Cognito user pool, then writes the generated
 identifiers to `docker/.env.generated`, which both the engine and agents
 containers read.
 
-`engine` serves on `:3000`, `agents` on `:3001`, both under `/api/v1`; the `web`
-console is on `:3002`.
-`agents`' readiness (`GET /api/v1/health/ready`) is only green once Redis
-answers, the engine reports ready, *and* Ollama has actually pulled the
-configured model (`qwen2.5:7b-instruct` by default) — not just that Ollama is
-listening. That model is 4.7GB: the **first** `pnpm docker:up` on a machine
-with no cached volume can take several minutes while `ollama-init` pulls it.
-Subsequent runs reuse the `ollama-models` Docker volume and start in seconds.
+`engine` serves on `:33000`, `agents` on `:33001`, both under `/api/v1`; the
+`web` console is on `:33002`. Every host port is the service's default plus
+30000 (see the table in `CLAUDE.md`); inside the compose network the defaults
+still apply.
 
-`pnpm docker:down` and `pnpm e2e`'s automatic teardown both preserve that
-volume deliberately — neither ever runs `docker compose down -v`, which would
-delete it and force the next `docker:up` to re-download 4.7GB. They do still
-wipe the rest of the stack's state (in particular the Cognito pool), so every
-run still starts from a clean data plane; only the cached model survives.
+The stack runs no ollama of its own. `agents` talks to one shared daemon on the
+machine — by default `http://host.docker.internal:25103`, the research-plugin
+stack's `research-ollama`, which holds `qwen3.8:27b` (17GB) for several
+projects — so one copy of the model serves all of them. `ollama-init` is a
+gate, not a server: it runs `ollama pull` against that daemon, a no-op when the
+model is present, and fails fast when the daemon is down. Set
+`OLLAMA_BASE_URL` and `LLM_MODEL` in the environment that runs `docker compose`
+to point anywhere else. `agents`' readiness (`GET /api/v1/health/ready`) is only
+green once Redis answers, the engine reports ready, *and* that daemon lists the
+configured model — not just that it is listening.
 
-With the stack up, Swagger UI is at `http://localhost:3000/api/v1/docs` (engine)
-and `http://localhost:3001/api/v1/docs` (agents). Each page authorizes itself on
+`pnpm docker:down` and `pnpm e2e`'s automatic teardown wipe the stack's state
+(in particular the Cognito pool) so every run starts from a clean data plane;
+the model lives outside this stack and is never touched.
+
+With the stack up, Swagger UI is at `http://localhost:33000/api/v1/docs` (engine)
+and `http://localhost:33001/api/v1/docs` (agents). Each page authorizes itself on
 load: it calls its own `POST /api/v1/dev/token`, a dev-only endpoint that mints a
 Cognito ID token for a fixed identity (`DEV_TENANT_ID`/`DEV_USERNAME`) and hands
 it to Swagger UI's "Try it out". Neither the docs page nor `/dev/token` exists
@@ -68,7 +73,7 @@ unless `DOCS_ENABLED=true` **and** `COGNITO_ENDPOINT` is set — true only in
 
 ## The console
 
-`http://localhost:3002` is a browser client for both services. Sign in with any
+`http://localhost:33002` is a browser client for both services. Sign in with any
 of eight seeded personas — four tenants, a seller and a buyer each — all sharing
 the password `Passw0rd!`:
 
@@ -133,7 +138,7 @@ belongs without a page reload and without a line of UI code naming it.
 
 ## The conversation
 
-A client connects a WebSocket to `/agents` on port 3001, passing a Cognito ID
+A client connects a WebSocket to `/agents` on port 33001, passing a Cognito ID
 token in the socket.io handshake `auth.token`. Events are `thread.start`,
 `thread.resume`, `message`, `confirm`, `reject`; the server replies with `state`
 snapshots and `error` problem documents. Every payload shape is exported from

@@ -22,14 +22,14 @@ const creds = { accessKeyId: 'local', secretAccessKey: 'local' };
 
 describe('seeded infrastructure', () => {
   it('creates the MarketplaceEngine table with GSI1', async () => {
-    const ddb = new DynamoDBClient({ region: 'us-east-1', endpoint: 'http://localhost:8000', credentials: creds });
+    const ddb = new DynamoDBClient({ region: 'us-east-1', endpoint: 'http://localhost:38000', credentials: creds });
     const out = await ddb.send(new DescribeTableCommand({ TableName: 'MarketplaceEngine' }));
     expect(out.Table?.TableStatus).toBe('ACTIVE');
     expect(out.Table?.GlobalSecondaryIndexes?.[0]?.IndexName).toBe('GSI1');
   });
 
   it('creates the FIFO queue with a redrive policy', async () => {
-    const sqs = new SQSClient({ region: 'us-east-1', endpoint: 'http://localhost:4566', credentials: creds });
+    const sqs = new SQSClient({ region: 'us-east-1', endpoint: 'http://localhost:34566', credentials: creds });
     const out = await sqs.send(
       new GetQueueAttributesCommand({ QueueUrl: env.QUEUE_URL, AttributeNames: ['FifoQueue', 'RedrivePolicy'] }),
     );
@@ -50,7 +50,7 @@ describe('seeded infrastructure', () => {
   it('can authenticate every demo user, and each token carries its tenant and role', async () => {
     const cognito = new CognitoIdentityProviderClient({
       region: 'us-east-1',
-      endpoint: 'http://localhost:9229',
+      endpoint: 'http://localhost:39229',
       credentials: creds,
     });
 
@@ -77,7 +77,7 @@ describe('seeded infrastructure', () => {
   const s3 = () =>
     new S3Client({
       region: 'us-east-1',
-      endpoint: 'http://localhost:4566',
+      endpoint: 'http://localhost:34566',
       credentials: creds,
       forcePathStyle: true,
     });
@@ -100,7 +100,7 @@ describe('seeded infrastructure', () => {
 
     // A plain fetch carrying no credentials at all -- exactly how an <img> tag
     // will load a product photograph.
-    const res = await fetch(`http://localhost:4566/${BUCKET_NAME}/${key}`);
+    const res = await fetch(`http://localhost:34566/${BUCKET_NAME}/${key}`);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('hello');
   });
@@ -129,7 +129,7 @@ describe('seeded infrastructure', () => {
   it('shows each seeded order to the buyer who placed it', async () => {
     const cognito = new CognitoIdentityProviderClient({
       region: 'us-east-1',
-      endpoint: 'http://localhost:9229',
+      endpoint: 'http://localhost:39229',
       credentials: creds,
     });
 
@@ -152,7 +152,7 @@ describe('seeded infrastructure', () => {
         }),
       );
 
-      const res = await fetch('http://localhost:3000/api/v1/orders?limit=50', {
+      const res = await fetch('http://localhost:33000/api/v1/orders?limit=50', {
         headers: { Authorization: `Bearer ${auth.AuthenticationResult!.IdToken}` },
       });
       expect(res.status).toBe(200);

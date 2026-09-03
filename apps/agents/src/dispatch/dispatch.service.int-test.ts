@@ -9,7 +9,7 @@ import { EngineJobMessageSchema } from '@marketplace/contracts';
 import { DispatchService } from './dispatch.service';
 import { EnvConfig } from '../config/env.schema';
 
-const sqsEndpoint = process.env.SQS_ENDPOINT ?? 'http://localhost:4566';
+const sqsEndpoint = process.env.SQS_ENDPOINT ?? 'http://localhost:34566';
 
 const sqs = new SQSClient({
   region: 'us-east-1',

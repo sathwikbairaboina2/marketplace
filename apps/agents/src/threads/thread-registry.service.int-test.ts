@@ -3,7 +3,7 @@ import { ulid } from 'ulid';
 import { ThreadRegistryService } from './thread-registry.service';
 import { EnvConfig } from '../config/env.schema';
 
-const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:36379');
 const env = { THREAD_TTL_SECONDS: 60 } as EnvConfig;
 const registry = new ThreadRegistryService(env, redis);
 

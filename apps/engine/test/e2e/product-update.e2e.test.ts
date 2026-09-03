@@ -87,7 +87,7 @@ describe('PATCH /products/:id', () => {
 
   // The media policy (#05) only admits this shop's own bucket slice, so the
   // fixtures point there; the objects need not exist for a URL to be stored.
-  const OWN = `http://localhost:4566/marketplace-media/${TENANT}/products`;
+  const OWN = `http://localhost:34566/marketplace-media/${TENANT}/products`;
 
   it('replaces the photographs', async () => {
     const created = await create({ images: [`${OWN}/a/old.png`] });
@@ -101,7 +101,7 @@ describe('PATCH /products/:id', () => {
   it("refuses a patch pointing at media that is not this shop's", async () => {
     const created = await create();
     const res = await patch(created.id, {
-      images: ['http://localhost:4566/marketplace-media/tenant_other/products/x/y.png'],
+      images: ['http://localhost:34566/marketplace-media/tenant_other/products/x/y.png'],
     });
     expect(res.status).toBe(422);
   });

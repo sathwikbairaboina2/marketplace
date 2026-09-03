@@ -3,7 +3,7 @@ import { EnvConfig } from '../config/env.schema';
 import { tokenFor } from '../../test/e2e/helpers/auth';
 
 const env = {
-  ENGINE_BASE_URL: process.env.ENGINE_BASE_URL ?? 'http://localhost:3000',
+  ENGINE_BASE_URL: process.env.ENGINE_BASE_URL ?? 'http://localhost:33000',
   ENGINE_TIMEOUT_MS: 10_000,
 } as EnvConfig;
 

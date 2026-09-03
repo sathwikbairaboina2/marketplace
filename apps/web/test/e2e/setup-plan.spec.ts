@@ -1,7 +1,7 @@
 import { expect, test, request as playwrightRequest } from '@playwright/test';
 import { ENGINE_URL, PASSWORD, WEB_URL, resolveUser, signIn } from './helpers/session';
 
-const AGENTS_URL = 'http://127.0.0.1:3001/api/v1';
+const AGENTS_URL = 'http://127.0.0.1:33001/api/v1';
 
 /**
  * The whole-system assertion for applying a setup plan: one call, two halves,

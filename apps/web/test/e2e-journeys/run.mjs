@@ -27,8 +27,8 @@ import { readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const WEB = 'http://localhost:3002';
-const ENGINE = 'http://127.0.0.1:3000/api/v1';
+const WEB = 'http://localhost:33002';
+const ENGINE = 'http://127.0.0.1:33000/api/v1';
 const OUT =
   process.env.JOURNEYS_OUT ??
   fileURLToPath(new URL('../../test-results/e2e-journeys', import.meta.url));
@@ -1290,14 +1290,14 @@ await journey('publishing puts the generated storefront in front of customers', 
 await journey('the published storefront is on the shop host for a stranger with no session', async () => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
-  await page.goto(`http://${C}.localhost:3002/products`);
+  await page.goto(`http://${C}.localhost:33002/products`);
   await page.locator('.mp-banner[data-slot="hero"] h1').first().waitFor({ timeout: 30_000 });
   must(!page.url().includes('/login'), 'a stranger was sent to sign in to see a published shop');
   const surface = await page.evaluate(() =>
     getComputedStyle(document.querySelector('.mp-shop')).getPropertyValue('--mp-surface').trim(),
   );
   must(surface !== '' && surface !== '#f8fafc', `the preset did not paint for a stranger (${surface})`);
-  await page.goto(`http://${C}.localhost:3002/about`);
+  await page.goto(`http://${C}.localhost:33002/about`);
   await page.locator('.mp-about h1').first().waitFor({ timeout: 30_000 });
   await ctx.close();
 });
@@ -1326,8 +1326,8 @@ await journey('an owner who skips the wizard is not asked again', async () => {
 // ================================================ 8b. the public storefront
 section('A stranger at the door');
 
-const SHOP_A = `http://${A}.localhost:3002`;
-const SHOP_B = `http://${B}.localhost:3002`;
+const SHOP_A = `http://${A}.localhost:33002`;
+const SHOP_B = `http://${B}.localhost:33002`;
 // A context of its own with no session in it: that is the whole point.
 const strangerCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
 const stranger = await strangerCtx.newPage();

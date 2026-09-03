@@ -1,7 +1,7 @@
 [
   {
     "images": [
-      "http://localhost:4566/marketplace-media/acme/products/01M04WZHT85W7302XW574P8YQ6/mug.jpg"
+      "http://localhost:34566/marketplace-media/acme/products/01M04WZHT85W7302XW574P8YQ6/mug.jpg"
     ],
     "entityType": "Product",
     "description": "Matte-glazed stoneware mug, 350ml. Photo: Didriks (CC BY).",
@@ -20,7 +20,7 @@
   },
   {
     "images": [
-      "http://localhost:4566/marketplace-media/acme/products/01M04WZJ77Q3WD1KNC8HBTM35H/jug.jpg"
+      "http://localhost:34566/marketplace-media/acme/products/01M04WZJ77Q3WD1KNC8HBTM35H/jug.jpg"
     ],
     "entityType": "Product",
     "description": "Wheel-thrown jug with a tenmoku glaze, 1.2L. Photo: Martin Cathrae (CC BY-SA).",
@@ -39,7 +39,7 @@
   },
   {
     "images": [
-      "http://localhost:4566/marketplace-media/acme/products/01M04WZJHBAF3ANSDMWMHX36ZQ/kettle-copper.jpg"
+      "http://localhost:34566/marketplace-media/acme/products/01M04WZJHBAF3ANSDMWMHX36ZQ/kettle-copper.jpg"
     ],
     "entityType": "Product",
     "description": "Hammered copper pour-over kettle, 900ml. Photo: markolaz (CC BY).",
@@ -58,7 +58,7 @@
   },
   {
     "images": [
-      "http://localhost:4566/marketplace-media/acme/products/01M04WZJWZ2GHJGBREKGPZVY0E/kettle-steel.jpg"
+      "http://localhost:34566/marketplace-media/acme/products/01M04WZJWZ2GHJGBREKGPZVY0E/kettle-steel.jpg"
     ],
     "entityType": "Product",
     "description": "Stainless gooseneck kettle, stovetop safe, 1.2L. Photo: Bean Poet (CC BY-SA).",
@@ -77,7 +77,7 @@
   },
   {
     "images": [
-      "http://localhost:4566/marketplace-media/acme/products/01M04WZK8FA3PNNDTSF0545X80/notebook.jpg"
+      "http://localhost:34566/marketplace-media/acme/products/01M04WZK8FA3PNNDTSF0545X80/notebook.jpg"
     ],
     "entityType": "Product",
     "description": "A5 hardback, 192 dotted pages, lay-flat binding. Photo: Generationbass.com (CC BY).",
@@ -96,7 +96,7 @@
   },
   {
     "images": [
-      "http://localhost:4566/marketplace-media/acme/products/01M04WZM03KB2PMK6TV2H8KGVR/lamp.jpg"
+      "http://localhost:34566/marketplace-media/acme/products/01M04WZM03KB2PMK6TV2H8KGVR/lamp.jpg"
     ],
     "entityType": "Product",
     "description": "Warm dimmable LED, weighted base, articulated arm. Photo: Ivan Radic (CC BY).",

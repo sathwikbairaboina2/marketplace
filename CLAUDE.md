@@ -41,26 +41,33 @@ change is finished.
 docker compose -f docker/docker-compose.yml up -d --build --force-recreate engine
 ```
 
-`web` and `agents` take the same form. A full `pnpm docker:up` spends most of its
-time waiting for the agents container to pull its ollama model, which a change to
-the engine cannot have invalidated.
+`web` and `agents` take the same form. A full `pnpm docker:up` rebuilds and
+re-seeds everything, which a change to one service cannot have invalidated.
 
 ## Ports this project publishes
 
 | Port | Service |
 |---|---|
-| 3000 | engine |
-| 3001 | agents |
-| 3002 | web |
-| 4566 | localstack |
-| 6379 | redis |
-| 8000 | dynamodb-local |
-| 9229 | cognito-local |
-| 11435 | ollama |
+| 33000 | engine |
+| 33001 | agents |
+| 33002 | web |
+| 34566 | localstack |
+| 36379 | redis |
+| 38000 | dynamodb-local |
+| 39229 | cognito-local |
 
-Ollama is on **11435**, not its default 11434, because that default is what every
-other ollama install on a machine will already be using. Nothing else here moves
-off its usual port.
+Every host port is the service's default **plus 30000**. Inside the compose
+network the defaults still apply (`engine:3000`, `redis:6379`, ...); only what
+the host sees moved, because other projects on this machine sit on the
+defaults. Host-side harnesses, the browser bundle's `NEXT_PUBLIC_*` values, the
+seed's media URLs and the engine's `CORS_ORIGINS` all name the 3xxxx ports.
+
+**There is no ollama in this stack.** `agents` uses one shared daemon,
+`http://host.docker.internal:25103` (`research-ollama` from the research-plugin
+project, GPU attached), which holds `qwen3.8:27b` for several projects at
+once. `ollama-init` only checks that the model is there. `OLLAMA_BASE_URL` and
+`LLM_MODEL` in the compose environment point it elsewhere; host-side tests
+default to `127.0.0.1:25103`.
 
 ## Traps this machine will spring
 

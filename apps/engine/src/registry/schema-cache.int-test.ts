@@ -2,7 +2,7 @@ import Redis from 'ioredis';
 import { EntitySchemaRecord } from '@marketplace/contracts';
 import { setSchemaCacheIfNewer } from './schema-cache';
 
-const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:36379');
 const uniqKey = () => `schema-cache-test:${Math.random().toString(36).slice(2, 10)}`;
 
 afterAll(async () => {

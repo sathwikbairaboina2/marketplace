@@ -3,8 +3,8 @@ import path from 'node:path';
 import { expect, type Page } from '@playwright/test';
 
 export const PASSWORD = 'Passw0rd!';
-export const ENGINE_URL = 'http://127.0.0.1:3000/api/v1';
-export const WEB_URL = 'http://localhost:3002';
+export const ENGINE_URL = 'http://127.0.0.1:33000/api/v1';
+export const WEB_URL = 'http://localhost:33002';
 
 /**
  * Written by global-setup: this run's own tenants (#19). The specs keep the

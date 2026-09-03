@@ -4,15 +4,16 @@ import { ChatMessage } from '@marketplace/contracts';
 import { OllamaLlmProvider } from './ollama.provider';
 import { EnvConfig } from '../config/env.schema';
 
-// 11435, not 11434: this is the only test in the repo that calls a model for
-// real, so it is the only one that has to agree with the host port
-// docker/docker-compose.yml publishes. 11434 is ollama's default, so any other
-// ollama on the machine already answers there; pointed at it this test reaches
-// that daemon, finds no qwen2.5:7b-instruct, and fails as `llm-unavailable`,
-// which reads as a broken provider rather than a misaddressed one.
+// 25103, not ollama's default 11434: this is the only test in the repo that
+// calls a model for real, so it is the only one that has to agree with where
+// docker/docker-compose.yml points `agents` -- the shared `research-ollama`
+// daemon that holds qwen3.8:27b for several projects on this machine. 11434 is
+// what every other ollama answers on; pointed there this test reaches a daemon
+// that has never heard of the model and fails as `llm-unavailable`, which reads
+// as a broken provider rather than a misaddressed one.
 const env = {
-  OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL ?? 'http://localhost:11435',
-  LLM_MODEL: process.env.LLM_MODEL ?? 'qwen2.5:7b-instruct',
+  OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:25103',
+  LLM_MODEL: process.env.LLM_MODEL ?? 'qwen3.8:27b',
   LLM_TEMPERATURE: 0,
   LLM_TIMEOUT_MS: 120_000,
 } as EnvConfig;

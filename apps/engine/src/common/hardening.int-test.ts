@@ -19,9 +19,9 @@ describe('hardening', () => {
     process.env.SQS_CONSUMER_ENABLED = 'false';
     process.env.QUEUE_URL ??=
       'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/q.fifo';
-    process.env.REDIS_URL ??= 'redis://127.0.0.1:6379';
-    process.env.JWKS_URI ??= 'http://127.0.0.1:9229/pool/.well-known/jwks.json';
-    process.env.JWT_ISSUER ??= 'http://127.0.0.1:9229/pool';
+    process.env.REDIS_URL ??= 'redis://127.0.0.1:36379';
+    process.env.JWKS_URI ??= 'http://127.0.0.1:39229/pool/.well-known/jwks.json';
+    process.env.JWT_ISSUER ??= 'http://127.0.0.1:39229/pool';
     process.env.JWT_AUDIENCE ??= 'client-id';
     // Small enough to reach in a test without a thousand requests.
     process.env.RATE_LIMIT = '5';

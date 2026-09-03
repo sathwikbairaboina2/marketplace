@@ -102,7 +102,7 @@ describe('products', () => {
       headers: headersA,
       body: JSON.stringify({
         ...product,
-        images: ['http://localhost:4566/marketplace-media/tenant_b/products/x/y.png'],
+        images: ['http://localhost:34566/marketplace-media/tenant_b/products/x/y.png'],
       }),
     });
     expect(res.status).toBe(422);

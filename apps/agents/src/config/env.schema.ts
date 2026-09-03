@@ -11,7 +11,7 @@ export const EnvSchema = z.object({
   JWT_ISSUER: z.string().min(1),
   JWT_AUDIENCE: z.string().min(1),
   OLLAMA_BASE_URL: z.string().url(),
-  LLM_MODEL: z.string().default('qwen2.5:7b-instruct'),
+  LLM_MODEL: z.string().default('qwen3.8:27b'),
   LLM_TEMPERATURE: z.coerce.number().min(0).max(2).default(0),
   LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(120_000),
   ENGINE_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),

@@ -2,7 +2,7 @@ import { io } from 'socket.io-client';
 import { readFileSync } from 'node:fs';
 
 const token = readFileSync(process.argv[2], 'utf8').trim();
-const socket = io('http://localhost:3001/agents', { auth: { token }, transports: ['websocket'] });
+const socket = io('http://localhost:33001/agents', { auth: { token }, transports: ['websocket'] });
 
 const die = (why) => { console.error('FAIL:', why); socket.close(); process.exit(1); };
 setTimeout(() => die('timeout'), 180_000);

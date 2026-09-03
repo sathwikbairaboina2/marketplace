@@ -4,7 +4,7 @@ import { authHeaders } from './helpers/auth';
 
 const sqs = new SQSClient({
   region: 'us-east-1',
-  endpoint: 'http://127.0.0.1:4566',
+  endpoint: 'http://127.0.0.1:34566',
   credentials: { accessKeyId: 'local', secretAccessKey: 'local' },
 });
 

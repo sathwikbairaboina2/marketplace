@@ -20,7 +20,7 @@ afterAll(async () => {
 });
 
 const env = {
-  REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:6379',
+  REDIS_URL: process.env.REDIS_URL ?? 'redis://localhost:36379',
   DRAFT_MAX_ATTEMPTS: 3,
   THREAD_TTL_SECONDS: 3600,
 } as EnvConfig;

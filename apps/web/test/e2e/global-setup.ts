@@ -19,7 +19,7 @@ import {
 const ENV_FILE = path.resolve(__dirname, '../../../../docker/.env.generated');
 const OUT_DIR = path.resolve(__dirname, '../../test-results');
 const OUT = path.join(OUT_DIR, 'pw-users.json');
-const ENGINE = 'http://127.0.0.1:3000/api/v1';
+const ENGINE = 'http://127.0.0.1:33000/api/v1';
 const PASSWORD = 'Passw0rd!';
 
 export default async function globalSetup(): Promise<void> {

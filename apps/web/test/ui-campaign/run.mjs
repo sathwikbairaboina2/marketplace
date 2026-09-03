@@ -30,7 +30,7 @@ import { readFileSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const WEB = 'http://localhost:3002';
+const WEB = 'http://localhost:33002';
 const OUT =
   process.env.UI_CAMPAIGN_OUT ??
   fileURLToPath(new URL('../../test-results/ui-campaign', import.meta.url));
@@ -152,7 +152,7 @@ await ensureUser(BUYER, 'buyer');
       AuthParameters: { USERNAME: ADMIN, PASSWORD },
     }),
   );
-  await fetch('http://127.0.0.1:3000/api/v1/storefront/onboarding', {
+  await fetch('http://127.0.0.1:33000/api/v1/storefront/onboarding', {
     method: 'PUT',
     headers: {
       authorization: `Bearer ${auth.AuthenticationResult.IdToken}`,

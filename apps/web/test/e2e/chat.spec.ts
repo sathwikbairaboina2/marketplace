@@ -3,7 +3,7 @@ import { signIn } from './helpers/session';
 
 /**
  * Asserts the socket, the graph and the phase machine -- and deliberately
- * nothing about the model's word choices. qwen2.5:7b-instruct runs locally and
+ * nothing about the model's word choices. qwen3.8:27b runs locally and
  * is slow; the deterministic half of this loop lives in registry-loop.spec.ts.
  */
 test('a conversation reaches awaiting_confirmation with a draft', async ({ page }) => {

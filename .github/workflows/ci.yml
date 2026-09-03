@@ -64,10 +64,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Deliberately not `pnpm docker:up`: that also starts `agents`, which
-      # waits on `ollama-init` pulling a 4.7GB model. The engine suite needs
-      # none of it, and a CI job should not download that on every run. The
-      # agents and web suites, which do need the model, are left to a manual
-      # or nightly run until there is somewhere to cache it.
+      # waits on `ollama-init` finding qwen3.8:27b (17GB) on a shared ollama
+      # daemon that a runner does not have. The engine suite needs none of it.
+      # The agents and web suites, which do need the model, are left to a
+      # manual or nightly run until there is somewhere to serve it from.
       - name: Bring up the data plane and the engine
         run: |
           node scripts/reset-env-generated.mjs
