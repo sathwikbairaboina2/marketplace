@@ -4,6 +4,8 @@ on:
   push:
     branches: [master, main]
   pull_request:
+  # A hand-started run, for the day a push somehow does not start one.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
