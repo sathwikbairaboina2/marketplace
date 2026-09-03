@@ -102,6 +102,13 @@ cart, pays, and gets an email. Google can index the shop.*
 Success: journey "anonymous visitor buys a mug at `acme.localhost:3002`" green;
 Lighthouse SEO ≥ 90 on a themed home page; no `(shop)` route requires a JWT.
 
+*Progress, 2026-09-03:* tenant by host and the public read surface landed
+(first slice); robots, sitemap, metadata and JSON-LD landed (SEO slice; the
+shell itself is still client-rendered); guest checkout landed on a signed
+ticket with lookup by id and email and cart merge on sign-in. Left in this
+theme: server-rendering the shell, customers as an identity separate from
+staff, and the cockpit on its own host. Lighthouse has not been run.
+
 ### Theme B — A stranger can open a shop: merchant self-serve
 
 *Outcome: someone signs up, names their store, talks to the onboarding agent,

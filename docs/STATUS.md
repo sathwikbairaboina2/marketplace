@@ -1,5 +1,46 @@
 # Status
 
+## 3 September 2026 — phase 0 hygiene, a crawler can read, a stranger can buy
+
+**Phase 0.** `master` is pushed to the private GitHub remote and is the
+default branch. CI runs a `typecheck` script per package through turbo, which
+found one stale fixture `next build` never sees. The debt list is paid except
+journey sharding, which needs the model on a runner: `orders.service.ts` is a
+facade over checkout, payment and lifecycle services; the admin check is
+`assertAdmin()` in one place; `backfill:search` writes the search blob under
+every product that predates it.
+
+**Theme A, SEO.** A shop host answers `robots.txt` (open, with the personal
+pages disallowed; the platform host is closed), `sitemap.xml` (products,
+events, about, nothing that is somebody's), and each product and event page
+carries a title, description, canonical, Open Graph and schema.org JSON-LD,
+fetched server-side through the public shop surface at `ENGINE_INTERNAL_URL`.
+The shell is unchanged and still client-rendered; the server layout exists to
+say what the document is. Node's fetch resolves no `*.localhost` name, so the
+crawler journey drives the browser.
+
+**Theme A, guest checkout.** `POST /shops/:t/guest` mints an HMAC-signed,
+tenant-bound ticket; `X-Guest` on the guest cart, checkout, order and pay
+routes under `/shops/:t` runs the existing services as `guest:<id>`. A guest
+checkout carries an email, stored on the order; `POST /shops/:t/orders/lookup`
+finds it again with id plus email (one 404 for every miss, ten a minute);
+`POST /cart/merge` joins a stranger's cart to the account they sign in to. In
+the web app `lib/shop/commerce` binds cart, checkout, order and pay to the
+guest routes on a shop host with no session and to the token routes
+otherwise; the cart page asks a stranger for an email, `/orders` shows them a
+lookup form, sign-in merges the cart. Design:
+`docs/superpowers/specs/2026-09-03-guest-checkout-design.md`.
+
+Three traps, each found by running and none by reading: the engine's CORS
+allow-list had to name `X-Guest` or every guest call died in preflight; an
+anonymous cart fetch on the platform host answers 401 and the shell turns
+that into a trip to the login page, so the binding must not fetch without a
+token; a guest's order page must resolve product names through the public
+reads, not the token route, for the same reason.
+
+Verified on the live stack: guest e2e 5/5, engine e2e 19 suites / 156 tests,
+CORS int-test pins the header, web unit 296, journeys 97/97 (alone; a run started seconds after the web container was recreated lost five journeys to the IPv6 loopback stall).
+
 ## 3 September 2026 — off the default ports, onto one shared model
 
 Two changes so the stack coexists with everything else on this machine.

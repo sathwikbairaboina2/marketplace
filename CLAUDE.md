@@ -24,16 +24,16 @@ Per package:
 ```bash
 pnpm --filter @marketplace/contracts test
 pnpm --filter @marketplace/engine test        # unit + int-tests (int-tests need the stack)
-pnpm --filter @marketplace/engine test:e2e    # 13 suites against a running stack
+pnpm --filter @marketplace/engine test:e2e    # 19 suites against a running stack
 pnpm --filter @marketplace/web test           # vitest
-pnpm --filter @marketplace/web e2e:journeys   # 73 whole-system browser journeys
+pnpm --filter @marketplace/web e2e:journeys   # 97 whole-system browser journeys
 pnpm --filter @marketplace/web ui:campaign    # 161-case ordered browser session
 ```
 
-**Type checking is `build`.** There is no `typecheck` script; `nest build` and
-`next build` are what surface type errors, and `next build` also lints. A change
-that passes vitest can still fail the web build — run it before believing a UI
-change is finished.
+**Type checking.** Every package has a `typecheck` script (`tsc --noEmit`);
+`npx turbo run typecheck --concurrency=1` runs them all and is what CI runs.
+It covers test files too, which `next build` does not. `next build` still
+lints, so a UI change is finished only when the web build passes as well.
 
 **Rebuilding one container after a source change**, rather than a full boot:
 
@@ -125,6 +125,6 @@ default to `127.0.0.1:25103`.
 
 ## Current state
 
-`master`, tree clean, **no remote configured — nothing has ever been pushed**.
-CI exists at `.github/workflows/ci.yml` and has never run on a runner, for the
-same reason.
+`master` is pushed to a private GitHub remote (`origin`) and is its default
+branch. CI at `.github/workflows/ci.yml` runs unit, int and engine e2e on a
+runner; the agents and web suites need the shared model and stay local.
