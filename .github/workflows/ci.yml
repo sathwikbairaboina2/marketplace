@@ -42,8 +42,15 @@ jobs:
       # jest and vitest at once on a two-core runner produced a dozen unrelated
       # suites failing together while each package passed alone -- a red build
       # that says nothing about the code. Sequential costs about a minute here.
+      #
+      # Unit only. The engine's and the agents' `test` scripts include the
+      # int-tests, which boot Nest against redis and dynamo, and the seed's
+      # only suite verifies a running stack; those run in the job below, after
+      # the stack is up. The first run of this workflow found that out.
       - name: Test
-        run: npx turbo run test --concurrency=1
+        run: |
+          npx turbo run test --concurrency=1             --filter='!@marketplace/engine' --filter='!@marketplace/agents' --filter='!@marketplace/seed'
+          npx turbo run test:unit --concurrency=1
 
   engine-e2e:
     name: Engine end-to-end
@@ -63,6 +70,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The test files import the workspace packages by their built entry
+      # points; without this, ts-jest fails on the first import.
+      - name: Build the packages the tests compile against
+        run: pnpm build
+
       # Deliberately not `pnpm docker:up`: that also starts `agents`, which
       # waits on `ollama-init` finding qwen3.8:27b (17GB) on a shared ollama
       # daemon that a runner does not have. The engine suite needs none of it.
@@ -78,6 +90,13 @@ jobs:
 
       - name: Engine e2e
         run: pnpm --filter @marketplace/engine test:e2e
+
+      # What the seed left behind, and the int-tests that boot Nest against
+      # the same redis, dynamo and cognito -- only meaningful with a stack.
+      - name: Seed verification and engine int-tests
+        run: |
+          pnpm --filter @marketplace/seed test
+          pnpm --filter @marketplace/engine test
 
       - name: Engine logs on failure
         if: failure()
