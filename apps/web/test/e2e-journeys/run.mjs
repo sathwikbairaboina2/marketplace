@@ -1396,6 +1396,25 @@ await journey("a buyer of this shop keeps their session on its host", async () =
   await ctx.close();
 });
 
+await journey('the support box answers on the shop host, not only on the platform host', async () => {
+  // The agents are a second origin-checking service. A shop origin the engine
+  // admits but the agents refuse is a storefront where Ask says "Failed to
+  // fetch" -- found by watching, never by a journey that asked from localhost.
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(`${SHOP_A}/login?next=%2Forders`);
+  await page.getByLabel('Username').fill(A_BUYER);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.waitForURL(/\/orders/, { timeout: 30_000 });
+  await page.getByTestId('support-question').fill('Where is my order?');
+  await page.getByTestId('support-ask').click();
+  await page.getByTestId('support-answer').waitFor({ timeout: 180_000 });
+  const answer = (await page.getByTestId('support-answer').innerText()).trim();
+  must(answer.length > 10 && !/failed to fetch/i.test(answer), `no answer on the shop host: ${answer.slice(0, 120)}`);
+  await ctx.close();
+});
+
 await journey('the public API answers without a token and hides the draft', async () => {
   const list = await fetch(`${ENGINE}/shops/${A}/products?limit=100`);
   must(list.status === 200, `public list answered ${list.status}`);

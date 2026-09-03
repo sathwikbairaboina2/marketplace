@@ -1,5 +1,8 @@
 /**
- * Which browser origins the engine answers.
+ * Which browser origins a service answers. Shared by the engine and the
+ * agents: both are called from the browser, and a shop origin the engine
+ * admits but the agents refuse is a storefront where the support box says
+ * "Failed to fetch" -- which is exactly how this file came to move here.
  *
  * Exact entries match exactly, as they always have. An entry whose host
  * starts with `*.` matches one label in front of the rest -- the

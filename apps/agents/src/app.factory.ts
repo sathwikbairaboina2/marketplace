@@ -1,3 +1,4 @@
+import { originAllowed, parseCorsOrigins } from '@marketplace/auth';
 import 'reflect-metadata';
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -26,10 +27,13 @@ export async function createApp(): Promise<INestApplication> {
   }
 
   if (env.CORS_ORIGINS) {
+    const patterns = parseCorsOrigins(env.CORS_ORIGINS);
     app.enableCors({
-      origin: env.CORS_ORIGINS.split(',')
-        .map((o) => o.trim())
-        .filter(Boolean),
+      // The engine's matcher, not a static list: `http://*.localhost:33002`
+      // admits one shop label per origin, and the support box on a shop host
+      // calls this service from exactly such an origin.
+      origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) =>
+        callback(null, originAllowed(origin, patterns)),
       // The same discipline the engine documents: a method or header a
       // controller answers has to be named here, or the browser refuses
       // before it sends anything, and it works from a terminal and only

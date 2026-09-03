@@ -1,3 +1,4 @@
+import { originAllowed, parseCorsOrigins } from '@marketplace/auth';
 import 'reflect-metadata';
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -7,7 +8,6 @@ import { setupOpenApi } from '@marketplace/openapi';
 import { AppModule } from './app.module';
 import { ProblemFilter } from './common/problem.filter';
 import { ENV, EnvConfig } from './config/env.schema';
-import { originAllowed, parseCorsOrigins } from './common/cors';
 
 /**
  * Everything `bootstrap()` does except `listen`. Kept out of `main.ts` on
@@ -48,7 +48,8 @@ export async function createApp(): Promise<INestApplication> {
     const patterns = parseCorsOrigins(env.CORS_ORIGINS);
     app.enableCors({
       // A function, not a list: `http://*.localhost:3002` admits one shop
-      // label per origin, which a static list cannot express. See cors.ts.
+      // label per origin, which a static list cannot express. See
+      // packages/auth/src/cors.ts.
       origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) =>
         callback(null, originAllowed(origin, patterns)),
       // Listed explicitly rather than reflected back from the request:
