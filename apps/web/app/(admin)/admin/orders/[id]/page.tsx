@@ -17,6 +17,7 @@ import { DetailSkeleton } from '../../../../../components/skeletons';
 import { StageTracker } from '../../../../../components/stage-tracker';
 import { StageThread } from '../../../../../components/stage-thread';
 import { Ref } from '../../../../../components/ref';
+import { ProductName } from '../../../../../components/record-name';
 import { formatDateTime, formatMoney } from '../../../../../lib/format';
 
 /**
@@ -80,8 +81,11 @@ export default function AdminOrderDetailPage() {
               {
                 title: 'Product',
                 dataIndex: 'productId',
+                // The name, as the buyer's page shows it; the ref only until it
+                // resolves. A seller packing "AZ4SRG" has to open it to learn
+                // what it is.
                 render: (productId: string) => (
-                  <Ref value={productId} href={`/admin/products/${productId}/edit`} />
+                  <ProductName id={productId} href={`/admin/products/${productId}/edit`} />
                 ),
               },
               { title: 'Qty', dataIndex: 'quantity', align: 'right', width: 80 },

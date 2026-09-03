@@ -43,7 +43,8 @@ const GROUPS: { label: string; items: Item[] }[] = [
       { href: '/admin/dashboard', label: 'Dashboard', icon: <DashboardOutlined /> },
       // The shop's queue of work, not the signed-in admin's own purchases.
       { href: '/admin/orders', label: 'Orders', icon: <ShoppingCartOutlined /> },
-      { href: '/bookings', label: 'Bookings', icon: <ProfileOutlined /> },
+      // Likewise the shop's attendance list, not the admin's own tickets.
+      { href: '/admin/bookings', label: 'Bookings', icon: <ProfileOutlined /> },
     ],
   },
   {

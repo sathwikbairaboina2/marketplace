@@ -752,6 +752,18 @@ await journey('the bookings page lists what the engine holds for this shopper', 
   must(rows === listed.json.items.length, `page shows ${rows}, engine holds ${listed.json.items.length}`);
 });
 
+await journey('the seller sees every booking the shop has taken', async () => {
+  const listed = await api(tokenAdminA, 'GET', '/bookings/all?limit=100');
+  must(listed.status === 200, `shop-wide list answered ${listed.status}`);
+  must(listed.json.items.length > 0, 'the shop has taken bookings above and the list is empty');
+  await seller.goto(`${WEB}/admin/bookings`);
+  await seller.waitForTimeout(2500);
+  const rows = await seller.locator('.ant-table-tbody tr.ant-table-row').count();
+  must(rows === listed.json.items.length, `cockpit shows ${rows}, engine holds ${listed.json.items.length}`);
+  const refused = await api(tokenBuyerA, 'GET', '/bookings/all');
+  must(refused.status === 403, `a buyer got ${refused.status} from the shop-wide list`);
+});
+
 // ================================================== 5. announcement journeys
 section('The seller speaking to the shop');
 

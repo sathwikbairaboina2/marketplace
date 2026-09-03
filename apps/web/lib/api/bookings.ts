@@ -11,5 +11,10 @@ export const createBooking = (body: CreateBooking, idempotencyKey: string) =>
 export const listBookings = (limit: number, cursor: string | null) =>
   request('/bookings', { query: { limit, cursor: cursor ?? undefined }, schema: Page });
 
+/** Every booking in the shop, newest first. Admin only -- the seller's
+ * attendance list, crossing the per-user scoping `listBookings` applies. */
+export const listAllBookings = (limit: number, cursor: string | null) =>
+  request('/bookings/all', { query: { limit, cursor: cursor ?? undefined }, schema: Page });
+
 export const getBooking = (id: string) =>
   request(`/bookings/${id}`, { schema: BookingResponseSchema });

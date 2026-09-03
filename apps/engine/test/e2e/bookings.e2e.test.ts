@@ -145,7 +145,9 @@ describe('bookings', () => {
   });
 
   it('hides another user booking within the same tenant', async () => {
-    const otherHeaders = await authHeaders('tenant_a', 'dave@example.com');
+    // A buyer, explicitly: an admin of the same tenant may read any booking in
+    // it (the shop-wide list below), so the hiding rule is about other buyers.
+    const otherHeaders = await authHeaders('tenant_a', 'dave@example.com', 'buyer');
     const event = await createEvent(headers, 5);
     const created = await fetch(`${baseUrl}/api/v1/bookings`, {
       method: 'POST',
@@ -159,9 +161,53 @@ describe('bookings', () => {
     const ownerRes = await fetch(`${baseUrl}/api/v1/bookings/${id}`, { headers });
     expect(ownerRes.status).toBe(200);
 
-    // Negative half: a different user in the *same* tenant cannot -- and gets 404, never 403,
+    // Negative half: a different buyer in the *same* tenant cannot -- and gets 404, never 403,
     // so the error channel itself doesn't confirm the booking exists to someone who can't see it.
     const otherRes = await fetch(`${baseUrl}/api/v1/bookings/${id}`, { headers: otherHeaders });
     expect(otherRes.status).toBe(404);
+  });
+
+  // The seller's attendance list. The route crosses the per-user scoping the
+  // plain list applies, so it is admin-gated, and a buyer is told so with a
+  // 403 rather than handed an empty page that looks like "no bookings".
+  describe('the shop-wide list', () => {
+    let buyer: Record<string, string>;
+    let otherBuyer: Record<string, string>;
+    let bookingId: string;
+
+    beforeAll(async () => {
+      buyer = await authHeaders('tenant_a', 'booker@example.com', 'buyer');
+      otherBuyer = await authHeaders('tenant_a', 'other-booker@example.com', 'buyer');
+      const event = await createEvent(headers, 5);
+      const created = await fetch(`${baseUrl}/api/v1/bookings`, {
+        method: 'POST',
+        headers: buyer,
+        body: JSON.stringify({ eventId: event.id, ticketQuantity: 1 }),
+      });
+      expect(created.status).toBe(201);
+      bookingId = ((await created.json()) as { id: string }).id;
+    });
+
+    it('shows an admin every booking in the shop, including a buyer\'s', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/bookings/all?limit=100`, { headers });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { items: { id: string }[] };
+      expect(body.items.map((b) => b.id)).toContain(bookingId);
+    });
+
+    it('refuses the shop-wide list to a buyer', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/bookings/all`, { headers: buyer });
+      expect(res.status).toBe(403);
+    });
+
+    it('lets an admin open a booking another user made', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/bookings/${bookingId}`, { headers });
+      expect(res.status).toBe(200);
+    });
+
+    it('still hides a booking from a buyer who did not make it', async () => {
+      const res = await fetch(`${baseUrl}/api/v1/bookings/${bookingId}`, { headers: otherBuyer });
+      expect(res.status).toBe(404);
+    });
   });
 });

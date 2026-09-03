@@ -207,10 +207,27 @@ export class BookingsService {
     // who isn't allowed to see it. The response is byte-identical to the genuine not-found case
     // (same status, same problem type, no distinguishing detail) so neither channel leaks
     // existence.
-    if (!found || found.userId !== currentPrincipal().userId) {
+    // A tenant admin may read any booking in their own tenant: they run the
+    // event, and the shop-wide list below already shows them every row. Same
+    // shape as orders.
+    const principal = currentPrincipal();
+    if (!found || (found.userId !== principal.userId && principal.role !== 'admin')) {
       throw new ProblemException('not-found', 404, 'Booking not found');
     }
     return toResponse(found);
+  }
+
+  /**
+   * Every booking in the tenant, newest first. Admin only: this is the seller's
+   * attendance list, and it deliberately crosses the per-user scoping that
+   * `listForCurrentUser` applies, so it is gated rather than filtered.
+   */
+  async listForTenant(limit: number, cursor: string | null): Promise<Page<BookingResponse>> {
+    if (currentPrincipal().role !== 'admin') {
+      throw new ProblemException('forbidden', 403, 'Only an admin can list the shop bookings');
+    }
+    const page = await this.repo.queryPrefix<BookingRecord>(skPrefix('Booking'), { limit, cursor });
+    return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
   }
 
   async listForCurrentUser(limit: number, cursor: string | null): Promise<Page<BookingResponse>> {

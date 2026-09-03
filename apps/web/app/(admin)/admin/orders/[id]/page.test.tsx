@@ -17,6 +17,9 @@ vi.mock('../../../../../lib/api/messages', () => ({
   postMessage: vi.fn(),
 }));
 vi.mock('../../../../../lib/problem-notify', () => ({ notifyProblem: vi.fn() }));
+vi.mock('../../../../../components/record-name', () => ({
+  ProductName: ({ id, href }: { id: string; href?: string }) => <a href={href}>{id}</a>,
+}));
 
 const ORDER = {
   entityType: 'Order',
