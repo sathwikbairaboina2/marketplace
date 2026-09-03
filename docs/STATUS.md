@@ -33,11 +33,16 @@ because the agents matched CORS_ORIGINS as a static list while the engine had
 learned the `*.localhost` wildcard (the matcher now lives in
 `@marketplace/auth` and both use it; a 92nd journey asks from the shop host);
 and the seller's order page linked line items to `/admin/products/:id`, a
-route that does not exist (now `/edit`, pinned by a test). Noted, not fixed:
-the cockpit sidebar's Bookings entry reuses the shopper page because no seller
-bookings page exists; seller order lines show a product ref where the buyer
-sees a name; the storefront's dark theme is a header toggle, not
-`prefers-color-scheme`.
+route that does not exist (now `/edit`, pinned by a test). Then fixed as well: the cockpit has a seller bookings page over a new
+admin-gated `GET /bookings/all` (an admin may also open any booking in their
+shop, as with orders), and seller order lines resolve the product name. The
+storefront's light-first theme is a decision the theme context pins with a
+test, not a defect, and stays.
+
+One trap for the record: running an engine e2e suite while the journeys run
+against the same stack turned 13 journeys red with session-loss symptoms;
+the same journeys passed 93/93 alone a minute later. The CLAUDE.md rule about
+parallel runs applies across harnesses, not just within one.
 
 ## 3 September 2026 — roadmap, and a shop a stranger can visit
 
