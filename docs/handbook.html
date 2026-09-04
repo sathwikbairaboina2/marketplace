@@ -1,0 +1,639 @@
+<title>Marketplace Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #f4f4f8;
+    --surface: #ffffff;
+    --surface-2: #f7f7fb;
+    --border: #dcdce6;
+    --divider: #e7e7ef;
+    --text: #191922;
+    --dim: #4f4f5e;
+    --faint: #82828f;
+    --accent: #6247d6;
+    --accent-soft: rgba(98, 71, 214, 0.10);
+    --live: #187a4b;
+    --live-soft: rgba(24, 122, 75, 0.10);
+    --warn: #9a6a10;
+    --warn-soft: rgba(154, 106, 16, 0.10);
+    --code-bg: #f0f0f6;
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0c0c11;
+      --surface: #15151c;
+      --surface-2: #1b1b24;
+      --border: #262630;
+      --divider: #1f1f29;
+      --text: #e9e9ef;
+      --dim: #a2a2b1;
+      --faint: #71717f;
+      --accent: #8b74ff;
+      --accent-soft: rgba(139, 116, 255, 0.16);
+      --live: #3fbf7f;
+      --live-soft: rgba(63, 191, 127, 0.14);
+      --warn: #e0a84a;
+      --warn-soft: rgba(224, 168, 74, 0.14);
+      --code-bg: #101017;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0c0c11;
+    --surface: #15151c;
+    --surface-2: #1b1b24;
+    --border: #262630;
+    --divider: #1f1f29;
+    --text: #e9e9ef;
+    --dim: #a2a2b1;
+    --faint: #71717f;
+    --accent: #8b74ff;
+    --accent-soft: rgba(139, 116, 255, 0.16);
+    --live: #3fbf7f;
+    --live-soft: rgba(63, 191, 127, 0.14);
+    --warn: #e0a84a;
+    --warn-soft: rgba(224, 168, 74, 0.14);
+    --code-bg: #101017;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  .frame {
+    display: grid;
+    grid-template-columns: 218px minmax(0, 1fr);
+    gap: 48px;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+  @media (max-width: 860px) {
+    .frame { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    nav.toc { display: none; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 44px 0 32px;
+    font-size: 12.5px;
+  }
+  nav.toc .brand {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  nav.toc .brand-sub {
+    color: var(--faint);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 24px;
+  }
+  nav.toc a {
+    display: block;
+    color: var(--dim);
+    text-decoration: none;
+    padding: 5px 10px;
+    border-left: 2px solid var(--divider);
+  }
+  nav.toc a:hover, nav.toc a:focus-visible {
+    color: var(--text);
+    border-left-color: var(--accent);
+    outline: none;
+  }
+
+  main { padding-top: 44px; min-width: 0; }
+
+  header.hero { margin-bottom: 56px; }
+  .hero h1 {
+    font-family: var(--display);
+    font-size: clamp(34px, 6vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .hero h1 .dim { color: var(--faint); font-weight: 500; }
+  .hero p.lede {
+    font-size: 17px;
+    color: var(--dim);
+    max-width: 58ch;
+    margin: 0 0 20px;
+  }
+  .hero .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+  }
+  .hero .facts span {
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--dim);
+    background: var(--surface);
+  }
+  .hero .facts span.hot { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  section { margin-bottom: 64px; }
+  h2 {
+    font-family: var(--display);
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 0 0 6px;
+    scroll-margin-top: 24px;
+  }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  h3 {
+    font-family: var(--display);
+    font-size: 16.5px;
+    font-weight: 600;
+    margin: 28px 0 8px;
+  }
+  p { margin: 0 0 14px; max-width: 68ch; }
+  p.note { color: var(--dim); font-size: 13.5px; }
+  a { color: var(--accent); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--code-bg);
+    border: 1px solid var(--divider);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  pre code { background: none; border: 0; padding: 0; }
+
+  .scroll { overflow-x: auto; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13.5px;
+    margin: 10px 0 6px;
+  }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--faint);
+    font-weight: 500;
+    padding: 8px 14px 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 14px 9px 0;
+    border-bottom: 1px solid var(--divider);
+    vertical-align: top;
+  }
+  td.num { font-family: var(--mono); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td strong { font-weight: 600; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin: 14px 0;
+  }
+  .card h4 {
+    margin: 0 0 6px;
+    font-family: var(--display);
+    font-size: 14.5px;
+    font-weight: 600;
+  }
+  .card p { font-size: 13.5px; color: var(--dim); margin: 0; max-width: none; }
+
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 1px 8px;
+    border-radius: 999px;
+    vertical-align: 2px;
+    margin-left: 8px;
+  }
+  .pill.done { background: var(--live-soft); color: var(--live); }
+  .pill.next { background: var(--accent-soft); color: var(--accent); }
+  .pill.block { background: var(--warn-soft); color: var(--warn); }
+  .pill.later { background: var(--code-bg); color: var(--faint); border: 1px solid var(--divider); }
+
+  figure { margin: 22px 0; }
+  figure svg { max-width: 100%; height: auto; display: block; }
+  figcaption {
+    font-size: 12.5px;
+    color: var(--faint);
+    margin-top: 10px;
+    max-width: 70ch;
+  }
+
+  ol.steps { padding-left: 0; margin: 14px 0; list-style: none; counter-reset: step; max-width: 70ch; }
+  ol.steps li {
+    counter-increment: step;
+    position: relative;
+    padding: 0 0 16px 44px;
+  }
+  ol.steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0; top: 1px;
+    width: 26px; height: 26px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  ol.steps li strong { display: block; margin-bottom: 2px; }
+  ol.steps li p { font-size: 13.5px; color: var(--dim); margin: 0; }
+
+  ul.tight { margin: 8px 0 14px; padding-left: 20px; max-width: 68ch; }
+  ul.tight li { margin-bottom: 6px; }
+
+  .callout {
+    border-left: 3px solid var(--warn);
+    background: var(--surface);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: var(--dim);
+    max-width: 70ch;
+    margin: 16px 0;
+  }
+  .callout strong { color: var(--text); }
+</style>
+
+<div class="frame">
+<nav class="toc">
+  <div class="brand">Marketplace</div>
+  <div class="brand-sub">Handbook</div>
+  <a href="#overview">Overview</a>
+  <a href="#flow-tenant">Flow: tenant isolation</a>
+  <a href="#flow-schema">Flow: schema proposal</a>
+  <a href="#flow-order">Flow: order + payment</a>
+  <a href="#flow-media">Flow: product images</a>
+  <a href="#flow-storefront">Flow: storefront</a>
+  <a href="#api">API + Swagger</a>
+  <a href="#invariants">Invariants</a>
+  <a href="#running">Running it</a>
+</nav>
+
+<main>
+<header class="hero">
+  <h1>Marketplace <span class="dim">— multi-tenant commerce, with a schema that talks back</span></h1>
+  <p class="lede">Two services split by an SQS FIFO queue: a deterministic engine that owns all state and enforces tenant isolation, and a conversational layer that turns a chat into a validated schema-change proposal. Nothing an agent proposes ever applies itself.</p>
+  <div class="facts">
+    <span>NestJS ×2 + Next.js</span>
+    <span class="hot">engine :3000</span>
+    <span>agents :3001</span>
+    <span>web :3002</span>
+    <span class="hot">Swagger /api/v1/docs</span>
+    <span>DynamoDB · SQS · Redis · Cognito</span>
+  </div>
+</header>
+
+<section id="overview">
+  <div class="kicker">What it is</div>
+  <h2>Two services, one queue</h2>
+<div class="grid-2">
+  <div class="card">
+    <h4>MarketplaceEngine</h4>
+    <p>The deterministic core: CRUD, tenant isolation, and an <em>enforcing</em> per-tenant
+    dynamic schema registry. Owns every table. Also runs the SQS consumer that turns
+    AI-proposed flows into records.</p>
+  </div>
+  <div class="card">
+    <h4>MarketplaceAgents</h4>
+    <p>The conversational layer: an authenticated WebSocket gateway backed by a LangGraph.js
+    state machine that turns a chat into a validated schema-change proposal and pushes it onto
+    the queue. <strong>It owns no database.</strong></p>
+  </div>
+</div>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Path</th><th>Contents</th></tr></thead>
+  <tbody>
+    <tr><td class="num">apps/engine</td><td>Auth, products, events, orders, bookings, cart, checkout, storefront, flows, and the SQS consumer.</td></tr>
+    <tr><td class="num">apps/agents</td><td>WebSocket gateway + LangGraph state machine; copywriter, support and setup-plan helpers.</td></tr>
+    <tr><td class="num">apps/web</td><td>Next.js console. Forms, filters and detail rows for tenant-defined <code>attributes</code> are <em>generated</em> from the schema registry, not hand-written.</td></tr>
+    <tr><td class="num">packages/contracts</td><td>Zod schemas — the single source of truth for entity shapes.</td></tr>
+    <tr><td class="num">packages/auth</td><td>Shared JWT verifier and tenant context.</td></tr>
+    <tr><td class="num">packages/openapi</td><td>The Swagger wiring, the RFC 9457 problem schema, and the dev-token prefill.</td></tr>
+  </tbody>
+</table>
+</div>
+</section>
+
+<section id="flow-tenant">
+  <div class="kicker">Flow 1 of 5</div>
+  <h2>How a request becomes a tenant</h2>
+<pre><code>Authorization: Bearer &lt;Cognito ID token&gt;
+      │
+      ├─ packages/auth verifies signature, issuer, audience, expiry
+      ├─ claims.ts extracts custom:tenant_id and validates its shape
+      │      an id that fails the pattern is rejected here, once
+      │
+      └─ DynamoRepository builds every partition key from that claim
+             its methods take no tenant argument at all</code></pre>
+
+<p>The tenant comes only from the token claim, and <code>DynamoRepository</code> is the only
+code that builds a partition key. A cross-tenant query is therefore not something you are
+forbidden to write — it is something you <em>cannot</em> write.</p>
+
+<div class="callout"><strong>Cross-tenant reads return 404, never 403.</strong> A 403 confirms
+the resource exists. Asked for another tenant's product by exact id, the engine answers as if
+it does not exist, because for that caller it does not.</div>
+
+<p class="note">Role selects which navigation the console shows and nothing more. It is
+<strong>not</strong> an authorization boundary — the engine enforces tenant isolation on every
+route and enforces nothing about role, so an admin URL typed by hand works fine for a buyer.</p>
+</section>
+
+<section id="flow-schema">
+  <div class="kicker">Flow 2 of 5</div>
+  <h2>A chat becomes a schema change</h2>
+<p>This is the flow the whole architecture exists for, and every step of it is a place where
+an AI could have been allowed to write to a database and deliberately was not.</p>
+
+<pre><code>browser ──WS /agents (socket.io, auth.token = Cognito ID token)──► apps/agents
+   thread.start │ thread.resume │ message │ confirm │ reject
+   ◄── state snapshots, error problem documents ──
+
+   confirm
+      └─► SQS FIFO  { type: PROPOSE_FLOW, ... }   MessageGroupId = tenantId
+                │
+apps/engine/src/messaging (SQS consumer)
+                ├─ re-validate tenantId against the same pattern claims.ts enforces
+                ├─ parse against the contract schema
+                ├─ dedupe on messageId in Redis
+                └─ write Flow { status: 'proposed' }        ← and nothing more
+
+human ──► POST /api/v1/flows/:id/execute
+             └─ applies the diff, raises the registry version (idempotent)</code></pre>
+
+<h3>Why the consumer re-validates what the gateway already checked</h3>
+<p>The consumer is a <em>second, unauthenticated entry point for a tenant id</em>. Unlike every
+HTTP route, there is no JWT behind it. So it re-validates the tenant id against the same
+pattern the auth chokepoint enforces, before that value ever reaches a DynamoDB key.</p>
+
+<h3>What happens to a bad message</h3>
+<ul class="tight">
+  <li>Invalid tenant, failed schema parse, or malformed JSON: the message is left
+  <strong>unacknowledged rather than deleted</strong>, so the redrive policy
+  (<code>maxReceiveCount: 5</code>) moves it to the DLQ for forensics instead of discarding it
+  silently.</li>
+  <li>The queue is FIFO with <code>MessageGroupId</code> set to the tenant id, so a poison
+  message head-of-line-blocks <em>that tenant's</em> queue for up to five receive attempts and
+  then clears. Other tenants' groups are unaffected.</li>
+  <li>Redelivery is deduplicated per <code>messageId</code> in Redis, so a retried message
+  never creates a second Flow.</li>
+</ul>
+
+<h3>Add-only, on purpose</h3>
+<p>There is no backfill, so field removal and type changes are rejected. Attributes added by a
+Flow are absent from records written earlier, and <code>POST /products/search</code> will not
+match those records. Executing a flow raises the registry version; the console re-reads it, so
+a field an agent proposed appears everywhere it belongs with no page reload and no line of UI
+code naming it.</p>
+</section>
+
+<section id="flow-order">
+  <div class="kicker">Flow 3 of 5</div>
+  <h2>Cart, checkout, order, and the pipeline</h2>
+<pre><code>GET  /cart                       the caller's open cart
+PUT  /cart/lines/:productId      set a line quantity
+POST /checkout                   turn the cart into an order
+POST /orders   (Idempotency-Key required)
+       └─ TransactWriteItems: lock unit prices + decrement stock under
+          condition expressions — never read-then-write in app code
+POST /orders/:id/pay
+POST /orders/:id/advance         move it to the next configured stage
+POST /orders/:id/cancel
+GET  /settings/pipeline · PUT /settings/pipeline    the stage list itself</code></pre>
+
+<h3>Idempotency is required, not optional</h3>
+<p>Clients and load balancers retry, and neither double-charging nor double-booking is
+acceptable. The same key twice, same tenant and user, returns the <em>stored response</em> from
+the first request. The same key again while the first is still in flight returns
+<code>409 request-in-progress</code>. Keys are scoped
+<code>idem:&lt;tenantId&gt;:&lt;userId&gt;:&lt;key&gt;</code>, so two users cannot collide on a
+key one of them chose and read each other's response.</p>
+
+<h3>Bookings take the same shape</h3>
+<p><code>POST /bookings</code> enforces event capacity through the same transactional
+condition-expression mechanism. Losers of a race get <code>409</code>, never a corrupted
+counter.</p>
+
+<p>Order threads — the messages between buyer and seller about one order — hang off
+<code>POST /orders/:id/messages</code> and <code>GET /orders/:id/messages</code>, and the agents
+service can read a thread at <code>GET /threads/:id</code>.</p>
+</section>
+
+<section id="flow-media">
+  <div class="kicker">Flow 4 of 5</div>
+  <h2>Product images</h2>
+<ol class="steps">
+  <li><strong>The browser posts the file to the engine</strong>
+    <p><code>POST /api/v1/uploads/product-image</code>, multipart <code>file</code>.</p></li>
+  <li><strong>The engine checks size and magic number</strong>
+    <p>A declared <code>image/png</code> that is really an HTML document is refused. Content
+    type from the client is not evidence.</p></li>
+  <li><strong>It is written to the <code>marketplace-media</code> bucket</strong>
+    <p>Stored objects are <strong>public-read by design</strong>, so an <code>&lt;img&gt;</code>
+    loads one with no credentials and no signing round-trip.</p></li>
+</ol>
+
+<div class="callout"><strong>Tenant isolation does not extend to an image URL.</strong> That is
+the deliberate trade for credential-free <code>&lt;img&gt;</code> loads. Do not put anything in
+that bucket you would not publish.</div>
+
+<p class="note">Images can only be set when a product is created, because the engine has no
+update route for them.</p>
+</section>
+
+<section id="flow-storefront">
+  <div class="kicker">Flow 5 of 5</div>
+  <h2>Storefront and onboarding</h2>
+<p>A tenant's public face is edited as a draft and published atomically.</p>
+
+<pre><code>GET /storefront            the live storefront
+GET /storefront/draft      the working copy
+PUT /storefront/draft      edit it
+POST /storefront/publish   promote draft → live
+POST /storefront/banner-art        generated banner
+GET/PUT /storefront/onboarding     the setup checklist state
+GET/PUT /settings/announcement     the site-wide banner message</code></pre>
+
+<p>The agents service assists here too: <code>POST /copywriter/draft</code> writes product
+copy, <code>POST /setup-plan/apply</code> turns a plan into storefront settings, and
+<code>POST /support/ask</code> answers a buyer's question against the tenant's own data.</p>
+</section>
+
+<section id="api">
+  <div class="kicker">Interface</div>
+  <h2>API reference</h2>
+<p>Every route is under <code>/api/v1</code> and requires a Cognito ID token except
+<code>/health/live</code> and <code>/health/ready</code>. List endpoints take
+<code>?limit=</code> (1–100, default 25) and <code>?cursor=</code> (an opaque base64
+<code>LastEvaluatedKey</code>) and return <code>{ items, nextCursor }</code>.</p>
+
+<h3>Swagger</h3>
+<p>Wired by <code>packages/openapi/src/setup.ts</code>, mounted only when
+<code>DOCS_ENABLED</code> is true, after <code>setGlobalPrefix('api/v1')</code> and before
+<code>listen</code>:</p>
+
+<ul class="tight">
+  <li>UI at <a href="http://localhost:3000/api/v1/docs">:3000/api/v1/docs</a> (engine) and
+  <a href="http://localhost:3001/api/v1/docs">:3001/api/v1/docs</a> (agents); JSON at
+  <code>/api/v1/docs-json</code>.</li>
+  <li>A global <code>bearer</code> security requirement. A route marked <code>@Public()</code>
+  emits an empty operation-level <code>security</code> array, which OpenAPI 3 treats as a full
+  override — never a merge.</li>
+  <li>Every operation gains a <code>default</code> response of
+  <code>application/problem+json</code> (RFC 9457), and every non-public one also gains
+  <code>401</code>.</li>
+  <li><strong>"Try it out" works without a copy-paste.</strong> A small
+  <code>customJsStr</code> waits for <code>window.ui</code>, calls the gated
+  <code>POST ../dev/token</code> on the same origin, and pre-authorizes the result. Failure —
+  flag off, Cognito down, dev-token package absent — is non-fatal by construction: it logs and
+  leaves the Authorize button working normally.</li>
+  <li><code>persistAuthorization</code> is on, so a reload keeps you signed in.</li>
+</ul>
+
+<div class="callout"><code>helmet</code>'s <code>contentSecurityPolicy</code> is deliberately
+off in <code>app.factory.ts</code>. The only HTML this service serves is the Swagger UI, which
+helmet's default policy breaks — it loads its own inline bundle. The CSP that matters belongs
+on the console, which is what actually renders documents.</div>
+
+<h3>Engine routes</h3>
+<div class="scroll">
+<table>
+  <thead><tr><th>Area</th><th>Routes</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Health</strong></td><td class="num">GET /health/live · GET /health/ready</td></tr>
+    <tr><td><strong>Identity</strong></td><td class="num">GET /me</td></tr>
+    <tr><td><strong>Products</strong></td><td class="num">POST /products · POST /products/batch · GET /products · GET /products/:id · PATCH /products/:id · POST /products/search</td></tr>
+    <tr><td><strong>Events</strong></td><td class="num">POST /events · GET /events · GET /events/:id</td></tr>
+    <tr><td><strong>Cart &amp; checkout</strong></td><td class="num">GET /cart · PUT /cart/lines/:productId · DELETE /cart · POST /checkout</td></tr>
+    <tr><td><strong>Orders</strong></td><td class="num">POST /orders · GET /orders · GET /orders/all · GET /orders/:id · POST /orders/:id/pay · POST /orders/:id/advance · POST /orders/:id/cancel · POST/GET /orders/:id/messages</td></tr>
+    <tr><td><strong>Bookings</strong></td><td class="num">POST /bookings · GET /bookings · GET /bookings/:id</td></tr>
+    <tr><td><strong>Flows</strong></td><td class="num">POST /flows · POST /flows/:id/execute · GET /flows · GET /flows/:id</td></tr>
+    <tr><td><strong>Schema registry</strong></td><td class="num">GET /schemas · GET /schemas/:entityType</td></tr>
+    <tr><td><strong>Storefront</strong></td><td class="num">GET /storefront · GET/PUT /storefront/draft · POST /storefront/publish · POST /storefront/banner-art · GET/PUT /storefront/onboarding</td></tr>
+    <tr><td><strong>Settings</strong></td><td class="num">GET/PUT /settings/pipeline · GET/PUT /settings/announcement</td></tr>
+    <tr><td><strong>Stats</strong></td><td class="num">GET /stats/sales</td></tr>
+    <tr><td><strong>Uploads</strong></td><td class="num">POST /uploads/product-image</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Agents routes</h3>
+<p>WebSocket <code>/agents</code> is the main surface; the HTTP side is
+<code>GET /health/live</code>, <code>GET /health/ready</code>,
+<code>POST /copywriter/draft</code>, <code>POST /setup-plan/apply</code>,
+<code>POST /support/ask</code>, <code>GET /threads/:id</code>.</p>
+
+<p class="note">Agents' readiness is only green once Redis answers, the engine reports ready,
+<em>and</em> Ollama has actually pulled the configured model — not merely that Ollama is
+listening.</p>
+</section>
+
+<section id="invariants">
+  <div class="kicker">Guarantees</div>
+  <h2>Five invariants, asserted end to end</h2>
+<p>These are not unit tests. They run against the full Docker stack.</p>
+
+<ol class="steps">
+  <li><strong>Tenant isolation</strong><p>A request for another tenant's resource by exact id returns 404 — never 403, never the resource.</p></li>
+  <li><strong>No oversell (capacity)</strong><p>Concurrent bookings against a capacity-limited event never exceed capacity; losers get 409, not a corrupted counter.</p></li>
+  <li><strong>No oversell (stock)</strong><p>The same guarantee for concurrent orders against limited product stock.</p></li>
+  <li><strong>Idempotency</strong><p>The same key twice produces exactly one order (or booking) and one stock decrement, never two.</p></li>
+  <li><strong>Flow lifecycle</strong><p>A proposed Flow never mutates the registry until a human executes it, and executing it is itself idempotent — re-executing an applied Flow does not bump the version again.</p></li>
+</ol>
+
+<p class="note"><strong>Money is integer minor units plus an ISO-4217 currency.</strong> Never
+floats, anywhere.</p>
+</section>
+
+<section id="running">
+  <div class="kicker">Operations</div>
+  <h2>Running it</h2>
+<pre><code>pnpm install
+pnpm --filter @marketplace/web exec playwright install chromium   # one-time
+pnpm docker:up      # dynamodb-local, localstack (sqs + s3), redis, cognito-local,
+                    # seed, engine, ollama, ollama-init, agents, web
+pnpm test           # unit + integration
+pnpm e2e            # engine, then agents, then web — then tears down
+pnpm docker:down</code></pre>
+
+<p><code>docker:up</code> runs the <code>seed</code> container first: it creates the DynamoDB
+table, the FIFO queue and its DLQ, and a Cognito user pool, then writes the generated
+identifiers to <code>docker/.env.generated</code>, which both services read.</p>
+
+<div class="callout"><strong>The first <code>docker:up</code> on a fresh machine takes
+minutes.</strong> <code>ollama-init</code> pulls <code>qwen2.5:7b-instruct</code> — 4.7 GB.
+Subsequent runs reuse the <code>ollama-models</code> volume and start in seconds.
+<code>docker:down</code> and the e2e teardown <em>never</em> run
+<code>docker compose down -v</code>: that would delete the volume and force a re-download.
+They do wipe everything else, including the Cognito pool, so each run still starts from a
+clean data plane.</div>
+
+<p>Or via the devkit, which is what the rest of this machine uses:</p>
+<pre><code>powershell -File $dk\marketplace\devup.ps1 -CheckOnly -Test</code></pre>
+
+<p class="note">Marketplace owns the base defaults on this machine — 3000-3002, 4566, 6379,
+8000, 9229, 11435. Every other project moved off them. See <code>_devkit/PORTMAP.md</code>.</p>
+</section>
+
+<p class="note">Generated from <code>_devkit/docs/handbook/content/marketplace.mjs</code> by
+<code>_devkit/docs/handbook/build.mjs</code>. Edit the content module, not this file.</p>
+</main>
+</div>

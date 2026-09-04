@@ -606,8 +606,16 @@ await check('a sold-out product cannot be added to the cart', async () => {
   const soldOut = created.find((c) => c.stock === '0');
   await page.goto(`${WEB}/products/${soldOut.id}`);
   await page.waitForTimeout(1500);
-  const disabled = await page.getByRole('button', { name: 'Add to cart' }).isDisabled();
-  must(disabled, 'a sold-out product can be bought');
+  // No Add to cart at all: a sold-out page offers to write when there is
+  // another one, rather than a button that cannot be pressed.
+  must(
+    (await page.getByRole('button', { name: 'Add to cart' }).count()) === 0,
+    'a sold-out product can be bought',
+  );
+  must(
+    (await page.getByRole('button', { name: 'Tell me' }).count()) === 1,
+    'nothing offered on a sold-out page',
+  );
 });
 
 await check('an unknown product id shows a not-found state, not a crash', async () => {

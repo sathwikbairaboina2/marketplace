@@ -369,7 +369,15 @@ await journey('an out-of-stock listing is visible but cannot be bought', async (
   const sold = await createProduct({ status: 'out_of_stock', stock: '0' });
   await shopper.goto(`${WEB}/products/${sold.id}`);
   await shopper.waitForTimeout(1500);
-  must(await shopper.getByRole('button', { name: 'Add to cart' }).isDisabled(), 'it can be bought');
+  // There is no Add to cart button at all now. For a maker of one-of-a-kind
+  // pieces "Sold out" is the shop's normal state rather than an error, so the
+  // page offers to write when there is another one instead of showing a
+  // button that cannot be pressed.
+  must(
+    (await shopper.getByRole('button', { name: 'Add to cart' }).count()) === 0,
+    'a sold-out product still offers Add to cart',
+  );
+  must(/sold out/i.test(await shopper.locator('body').innerText()), 'it does not say sold out');
 });
 
 await journey('two products may share a name and stay distinct records', async () => {
@@ -642,7 +650,10 @@ await journey('buying the last unit turns the listing sold out for the next shop
   must(after.json.stock === 0, `stock is ${after.json.stock}`);
   await shopper.goto(`${WEB}/products/${last.id}`);
   await shopper.waitForTimeout(2000);
-  must(await shopper.getByRole('button', { name: 'Add to cart' }).isDisabled(), 'still buyable at zero stock');
+  must(
+    (await shopper.getByRole('button', { name: 'Add to cart' }).count()) === 0,
+    'still buyable at zero stock',
+  );
 });
 
 await journey('two shoppers racing for one unit produce one sale, not two', async () => {
