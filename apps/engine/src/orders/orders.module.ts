@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SettingsModule } from '../settings/settings.module';
 import { PipelineModule } from '../pipeline/pipeline.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { OrdersController } from './orders.controller';
@@ -8,7 +9,7 @@ import { OrderPaymentService } from './order-payment.service';
 import { OrderLifecycleService } from './order-lifecycle.service';
 
 @Module({
-  imports: [PipelineModule, PaymentsModule],
+  imports: [PipelineModule, PaymentsModule, SettingsModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrderCheckoutService, OrderPaymentService, OrderLifecycleService],
   exports: [OrdersService],

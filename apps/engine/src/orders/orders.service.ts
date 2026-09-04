@@ -54,6 +54,10 @@ export class OrdersService {
     return this.lifecycle.advance(id, expectedStageId);
   }
 
+  settleBalance(id: string): Promise<OrderResponse> {
+    return this.lifecycle.settleBalance(id);
+  }
+
   cancel(id: string, opts: { guestEmail?: string } = {}): Promise<OrderResponse> {
     return this.lifecycle.cancel(id, opts);
   }

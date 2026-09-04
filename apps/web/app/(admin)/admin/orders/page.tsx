@@ -80,7 +80,26 @@ export default function AdminOrdersPage() {
               dataIndex: 'totalAmountMinor',
               className: 'mp-num',
               align: 'right' as const,
-              render: (minor: number, row) => formatPrice(minor, row.currency),
+              render: (minor: number, row) => (
+                <div className="mp-stack-tight" style={{ alignItems: 'flex-end' }}>
+                  <span>{formatPrice(minor, row.currency)}</span>
+                  {/* What she still has to collect in the room. Without it a
+                      deposit order looks paid in full on the queue she works
+                      from. */}
+                  {row.balanceDueMinor > 0 && (
+                    <span className="mp-sub">
+                      {formatPrice(row.balanceDueMinor, row.currency)} due{' '}
+                      {row.fulfilment === 'collection' ? 'on collection' : 'on delivery'}
+                    </span>
+                  )}
+                </div>
+              ),
+            },
+            {
+              title: 'How',
+              dataIndex: 'fulfilment',
+              render: (fulfilment: string) =>
+                fulfilment === 'collection' ? 'Collection' : 'Delivery',
             },
             {
               title: 'Ref',

@@ -37,6 +37,8 @@ const order = {
   currency: 'USD',
   items: [{ productId: product.id, quantity: 2, unitPriceMinor: 1500 }],
   shippingAddress: { line1: '1 Test Street' },
+  fulfilment: 'delivery' as const,
+  balanceDueMinor: 0,
   createdAt: '2026-08-07T00:00:00.000Z',
   attributes: {},
   pipelineVersion: 0,

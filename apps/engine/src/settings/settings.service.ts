@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import {
   Announcement,
+  DEFAULT_DEPOSIT_POLICY,
+  DepositPolicy,
   EMPTY_SHOP_CONTACT,
   ShopContact,
   UpdateAnnouncement,
+  UpdateDepositPolicy,
   UpdateShopContact,
 } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
@@ -12,6 +15,7 @@ import { assertAdmin } from '../common/roles';
 
 const ANNOUNCEMENT_SK = settingsSk('announcement');
 const CONTACT_SK = settingsSk('contact');
+const DEPOSIT_SK = settingsSk('deposit');
 
 @Injectable()
 export class SettingsService {
@@ -45,6 +49,21 @@ export class SettingsService {
   async updateContact(input: UpdateShopContact): Promise<ShopContact> {
     assertAdmin('set the shop contact details');
     await this.repo.put(CONTACT_SK, { ...input });
+    return input;
+  }
+
+  /**
+   * Whether this shop takes a deposit, and how much. Readable by anyone who can
+   * see the shop: the cart has to be able to offer it.
+   */
+  async getDepositPolicy(): Promise<DepositPolicy> {
+    const found = await this.repo.get<DepositPolicy>(DEPOSIT_SK);
+    return found ? { ...DEFAULT_DEPOSIT_POLICY, ...found } : DEFAULT_DEPOSIT_POLICY;
+  }
+
+  async updateDepositPolicy(input: UpdateDepositPolicy): Promise<DepositPolicy> {
+    assertAdmin('set the deposit policy');
+    await this.repo.put(DEPOSIT_SK, { ...input });
     return input;
   }
 }

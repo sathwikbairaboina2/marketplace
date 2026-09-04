@@ -279,8 +279,19 @@ export default function OrderDetailPage() {
             <span>Total</span>
             <span className="mp-num">{money(order.totalAmountMinor)}</span>
           </div>
+          {/* A deposit is a price, so this is the rest of the price rather
+              than a payment state -- and it is given the weight of the total,
+              because it is the number the customer has to bring with them. */}
+          {order.balanceDueMinor > 0 && (
+            <div className="mp-summary-row mp-summary-total mp-balance-due">
+              <span>
+                Due {order.fulfilment === 'collection' ? 'on collection' : 'on delivery'}
+              </span>
+              <span className="mp-num">{money(order.balanceDueMinor)}</span>
+            </div>
+          )}
           <div className="mp-summary-block">
-            <h3>Shipping to</h3>
+            <h3>{order.fulfilment === 'collection' ? 'Collected by' : 'Shipping to'}</h3>
             {/* In the order an address is written, not the order the object's
                 keys happen to iterate: this printed "411004, Pune, 12 Karve
                 Road". Anything the shop asked for that is not one of the known

@@ -64,6 +64,17 @@ export class OrdersController {
     return this.orders.pay(id, body.card);
   }
 
+  /**
+   * The merchant recording that a deposit's balance was handed over in the
+   * room. No money moves through this product; it is a note that it did.
+   */
+  @Post(':id/settle-balance')
+  @HttpCode(200)
+  @Roles('admin')
+  settleBalance(@Param('id') id: string): Promise<OrderResponse> {
+    return this.orders.settleBalance(id);
+  }
+
   @Post(':id/advance')
   // 200, not Nest's default 201: an advance creates nothing, it moves an order
   // that already exists.

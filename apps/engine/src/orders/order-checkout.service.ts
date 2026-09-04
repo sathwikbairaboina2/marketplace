@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   CreateOrder,
+  depositSplit,
   MAX_ORDER_LINE_ITEMS,
   OrderLineItem,
   OrderRecord,
@@ -10,6 +11,7 @@ import {
 } from '@marketplace/contracts';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { PipelineService } from '../pipeline/pipeline.service';
+import { SettingsService } from '../settings/settings.service';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { entitySk, gsi1UserPk, gsi1UserSk, orderRefSk, PIPELINE_SK } from '../persistence/keys';
 import { currentPrincipal } from '../common/tenant-context';
@@ -30,6 +32,7 @@ export class OrderCheckoutService {
     private readonly repo: DynamoRepository,
     private readonly registry: SchemaRegistryService,
     private readonly pipeline: PipelineService,
+    private readonly settings: SettingsService,
   ) {}
 
   async create(
@@ -117,6 +120,14 @@ export class OrderCheckoutService {
     const id = newId();
     const createdAt = new Date().toISOString();
 
+    // A deposit is a price, not a payment state: the buyer pays part now and
+    // the rest in the room, and the order's `status` never learns about it.
+    // The shop's policy decides whether one is on offer and how much -- asking
+    // the client for the amount would let it name its own.
+    const balance = input.deposit
+      ? depositSplit(totalAmountMinor, await this.settings.getDepositPolicy()).balanceDueMinor
+      : 0;
+
     const record: OrderResponse = {
       entityType: 'Order',
       id,
@@ -127,6 +138,11 @@ export class OrderCheckoutService {
       currency: input.currency,
       items: lineItems,
       shippingAddress: input.shippingAddress,
+      fulfilment: input.fulfilment,
+      // What the buyer still owes. The engine works the split out from the
+      // shop's own policy -- the client asks for a deposit, it never names an
+      // amount.
+      balanceDueMinor: balance,
       createdAt,
       attributes,
       pipelineVersion: pipeline.version,

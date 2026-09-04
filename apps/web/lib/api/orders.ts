@@ -24,6 +24,15 @@ export const advanceOrder = (id: string, currentStageId: string) =>
     schema: OrderResponseSchema,
   });
 
+/**
+ * Admin only. The merchant recording that a deposit's balance was handed over
+ * in the room -- no money moves through this product. The engine conditions
+ * the write on the balance still being what the seller read, so two people
+ * settling the same order cannot both succeed.
+ */
+export const settleOrderBalance = (id: string) =>
+  request(`/orders/${id}/settle-balance`, { method: 'POST', schema: OrderResponseSchema });
+
 /** No idempotency key: the engine conditions the cancel on the order still being
  * confirmed and still in the stage it read, so a retry is a clean 409 rather
  * than a replayed success. */

@@ -3,16 +3,20 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button, Form, Input, InputNumber } from 'antd';
+import { Button, Form, Input, InputNumber, Radio } from 'antd';
 import { DeleteOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { useCart } from '../../../lib/cart/cart-context';
 import { useShopCommerce } from '../../../lib/shop/commerce';
+import { useShopReads } from '../../../lib/shop/reads';
+import type { DepositPolicy } from '@marketplace/contracts';
+import { depositSplit } from '@marketplace/contracts';
 import { ProblemError } from '../../../lib/api/http';
 import { notifyProblem } from '../../../lib/problem-notify';
 import { toAttributes, toFormItems } from '../../../lib/schema-fields';
 import { useSchema } from '../../../lib/schemas/schema-cache';
 import { formatPrice } from '../../../lib/format';
 import { placeholderFor } from '../../../lib/placeholder';
+import { CollectionNote } from '../../../components/collection-note';
 import { PageHeader } from '../../../components/page-header';
 import { EmptyState } from '../../../components/empty-state';
 
@@ -27,6 +31,27 @@ export default function CartPage() {
   const router = useRouter();
   const [form] = Form.useForm();
   const [busy, setBusy] = useState(false);
+  const [fulfilment, setFulfilment] = useState<'delivery' | 'collection'>('delivery');
+  const [deposit, setDeposit] = useState(false);
+  const [policy, setPolicy] = useState<DepositPolicy | null>(null);
+  const reads = useShopReads();
+
+  // Whether this shop takes a deposit, and on orders of what size. Asked once:
+  // the answer decides whether the buyer is offered the choice at all.
+  useEffect(() => {
+    let live = true;
+    reads
+      .getDepositPolicy()
+      .then((p) => {
+        if (live) setPolicy(p);
+      })
+      .catch(() => {
+        // A shop whose policy will not load simply does not offer a deposit.
+      });
+    return () => {
+      live = false;
+    };
+  }, [reads]);
 
   // The mobile action bar is fixed, so it is out of flow and the page cannot
   // make room for it on its own. This is the one page that renders one.
@@ -51,15 +76,23 @@ export default function CartPage() {
       // checkout body carries only the facts the cart cannot know.
       const body = {
         currency,
+        fulfilment,
+        deposit,
         shippingAddress: {
           // A name and a phone number, which the buying path did not collect
           // at all: a courier in Pune will not accept a parcel without them,
           // and the merchant's customers expect to be phoned about a delivery.
           name: values.name as string,
           phone: values.phone as string,
-          line1: values.line1 as string,
-          city: values.city as string,
-          postcode: values.postcode as string,
+          // Somebody collecting at the studio has no address to give, and
+          // forcing one meant half this shop's orders carried a fiction.
+          ...(fulfilment === 'delivery'
+            ? {
+                line1: values.line1 as string,
+                city: values.city as string,
+                postcode: values.postcode as string,
+              }
+            : {}),
         },
         attributes: toAttributes(
           schema?.fields ?? {},
@@ -113,6 +146,12 @@ export default function CartPage() {
 
   // The server computes the total over available lines; the page renders it.
   const total = cart.totalMinor;
+  // What the shop would take now if the buyer chose a deposit, and what would
+  // be left. Zero balance means no deposit is on offer for this order.
+  const split =
+    policy && deposit
+      ? depositSplit(total, policy)
+      : { payNowMinor: total, balanceDueMinor: 0 };
   const units = lines.filter((l) => !l.unavailable).reduce((sum, l) => sum + l.qty, 0);
 
   return (
@@ -206,7 +245,19 @@ export default function CartPage() {
                 </Form.Item>
               </>
             )}
-            <h2>Delivery</h2>
+            <h2>How you get it</h2>
+            {/* Half this shop's orders are collected at the studio, and the
+                form used to force a delivery address on them -- so people
+                typed a fake one and the order carried a fiction. */}
+            <Radio.Group
+              value={fulfilment}
+              onChange={(e) => setFulfilment(e.target.value)}
+              style={{ marginBottom: 'var(--mp-space-5)' }}
+            >
+              <Radio.Button value="delivery">Post it to me</Radio.Button>
+              <Radio.Button value="collection">I'll collect it</Radio.Button>
+            </Radio.Group>
+
             <div className="mp-field-row">
               <Form.Item name="name" label="Full name" rules={[{ required: true }]}>
                 <Input placeholder="Priya Deshpande" autoComplete="name" />
@@ -214,23 +265,54 @@ export default function CartPage() {
               <Form.Item
                 name="phone"
                 label="Phone"
-                extra="For the courier, and if we need to ask about the delivery."
-                rules={[{ required: true, message: 'A number the courier can call' }]}
+                extra={
+                  fulfilment === 'collection'
+                    ? 'So the studio can tell you when it is ready.'
+                    : 'For the courier, and if we need to ask about the delivery.'
+                }
+                rules={[{ required: true, message: 'A number we can call' }]}
               >
                 <Input placeholder="+91 98765 43210" autoComplete="tel" inputMode="tel" />
               </Form.Item>
             </div>
-            <Form.Item name="line1" label="Address" rules={[{ required: true }]}>
-              <Input placeholder="12 Karve Road, Kothrud" autoComplete="street-address" />
-            </Form.Item>
-            <div className="mp-field-row">
-              <Form.Item name="city" label="City" rules={[{ required: true }]}>
-                <Input placeholder="Pune" autoComplete="address-level2" />
-              </Form.Item>
-              <Form.Item name="postcode" label="PIN code" rules={[{ required: true }]}>
-                <Input placeholder="411004" autoComplete="postal-code" inputMode="numeric" />
-              </Form.Item>
-            </div>
+            {fulfilment === 'delivery' ? (
+              <>
+                <Form.Item name="line1" label="Address" rules={[{ required: true }]}>
+                  <Input placeholder="12 Karve Road, Kothrud" autoComplete="street-address" />
+                </Form.Item>
+                <div className="mp-field-row">
+                  <Form.Item name="city" label="City" rules={[{ required: true }]}>
+                    <Input placeholder="Pune" autoComplete="address-level2" />
+                  </Form.Item>
+                  <Form.Item name="postcode" label="PIN code" rules={[{ required: true }]}>
+                    <Input placeholder="411004" autoComplete="postal-code" inputMode="numeric" />
+                  </Form.Item>
+                </div>
+              </>
+            ) : (
+              <CollectionNote />
+            )}
+
+            {/* Offered only when the shop offers it, and only on an order big
+                enough for the shop's own threshold. A deposit is a price, not
+                a payment state: the rest is handed over in the room. */}
+            {split.balanceDueMinor > 0 || (policy?.enabled && total >= policy.minOrderMinor) ? (
+              <>
+                <h2>Paying</h2>
+                <Radio.Group
+                  value={deposit ? 'deposit' : 'full'}
+                  onChange={(e) => setDeposit(e.target.value === 'deposit')}
+                  style={{ display: 'flex', flexDirection: 'column', gap: 'var(--mp-space-2)' }}
+                >
+                  <Radio value="full">Pay {formatPrice(total, currency)} now</Radio>
+                  <Radio value="deposit">
+                    Pay {formatPrice(depositSplit(total, policy!).payNowMinor, currency)} now,{' '}
+                    {formatPrice(depositSplit(total, policy!).balanceDueMinor, currency)}{' '}
+                    {fulfilment === 'collection' ? 'when you collect' : 'on delivery'}
+                  </Radio>
+                </Radio.Group>
+              </>
+            ) : null}
             {schema && Object.keys(schema.fields).length > 0 && (
               <>
                 <h2>Order details</h2>
@@ -262,9 +344,18 @@ export default function CartPage() {
               the fold of the only device this shop's customers own. */}
           <div className="mp-action-bar">
             <div className="mp-summary-row mp-summary-total">
-              <span>Total</span>
-              <span className="mp-num">{formatPrice(total, currency)}</span>
+              <span>{split.balanceDueMinor > 0 ? 'Pay now' : 'Total'}</span>
+              <span className="mp-num">{formatPrice(split.payNowMinor, currency)}</span>
             </div>
+            {/* The bar shows what the thumb is about to authorise, and says the
+                rest out loud rather than letting the total quietly change. */}
+            {split.balanceDueMinor > 0 && (
+              <p className="mp-summary-note" style={{ margin: '0 0 var(--mp-space-3)' }}>
+                {formatPrice(split.balanceDueMinor, currency)}{' '}
+                {fulfilment === 'collection' ? 'when you collect' : 'on delivery'} · order total{' '}
+                {formatPrice(total, currency)}
+              </p>
+            )}
             <Button
               type="primary"
               size="large"

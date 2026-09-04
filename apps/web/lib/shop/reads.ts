@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type {
   Announcement,
+  DepositPolicy,
   ShopContact,
   EventResponse,
   Page,
@@ -13,7 +14,7 @@ import type {
 } from '@marketplace/contracts';
 import { getEvent, listEvents } from '../api/events';
 import { getProduct, listProducts, searchProducts } from '../api/products';
-import { getAnnouncement, getShopContact } from '../api/settings';
+import { getAnnouncement, getDepositPolicy, getShopContact } from '../api/settings';
 import { listSchemas } from '../api/schemas';
 import { getPublishedStorefront } from '../api/storefront';
 import * as pub from '../api/shop';
@@ -28,6 +29,7 @@ export interface ShopReads {
   getStorefront(): Promise<StorefrontConfig | null>;
   getAnnouncement(): Promise<Announcement>;
   getContact(): Promise<ShopContact>;
+  getDepositPolicy(): Promise<DepositPolicy>;
   listSchemas(): Promise<SchemaList>;
 }
 
@@ -50,6 +52,7 @@ export function readsFor(shop: Shop | null): ShopReads {
       getStorefront: () => getPublishedStorefront(),
       getAnnouncement: () => getAnnouncement(),
       getContact: () => getShopContact(),
+      getDepositPolicy: () => getDepositPolicy(),
       listSchemas: () => listSchemas(),
     };
   }
@@ -63,6 +66,7 @@ export function readsFor(shop: Shop | null): ShopReads {
     getStorefront: () => pub.publicGetStorefront(t),
     getAnnouncement: () => pub.publicGetAnnouncement(t),
     getContact: () => pub.publicGetContact(t),
+    getDepositPolicy: () => pub.publicGetDepositPolicy(t),
     listSchemas: () => pub.publicListSchemas(t),
   };
 }

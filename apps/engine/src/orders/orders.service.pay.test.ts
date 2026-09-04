@@ -13,6 +13,7 @@ const repo = {
 const registry = { validate: jest.fn() };
 const pipeline = { get: jest.fn() };
 const provider = { charge: jest.fn() };
+const settings = { getDepositPolicy: jest.fn() };
 
 jest.mock('../common/tenant-context', () => ({
   currentPrincipal: jest.fn(() => ({ tenantId: 'acme', userId: 'buyer-1', role: 'buyer' })),
@@ -49,7 +50,7 @@ const awaitingOrder = (over: Record<string, unknown> = {}) => ({
 describe('OrdersService.pay', () => {
   const service = new OrdersService(
     repo as never,
-    new OrderCheckoutService(repo as never, registry as never, pipeline as never),
+    new OrderCheckoutService(repo as never, registry as never, pipeline as never, settings as never),
     new OrderPaymentService(repo as never, provider as never),
     new OrderLifecycleService(repo as never),
   );
@@ -121,7 +122,7 @@ describe('OrdersService.pay', () => {
 describe('OrdersService.cancel from the payment gate', () => {
   const service = new OrdersService(
     repo as never,
-    new OrderCheckoutService(repo as never, registry as never, pipeline as never),
+    new OrderCheckoutService(repo as never, registry as never, pipeline as never, settings as never),
     new OrderPaymentService(repo as never, provider as never),
     new OrderLifecycleService(repo as never),
   );
@@ -190,7 +191,7 @@ describe('OrdersService.cancel from the payment gate', () => {
 describe('a guest proving an order with the email instead of the ticket', () => {
   const service = new OrdersService(
     repo as never,
-    new OrderCheckoutService(repo as never, registry as never, pipeline as never),
+    new OrderCheckoutService(repo as never, registry as never, pipeline as never, settings as never),
     new OrderPaymentService(repo as never, provider as never),
     new OrderLifecycleService(repo as never),
   );
@@ -252,5 +253,60 @@ describe('a guest proving an order with the email instead of the ticket', () => 
     await expect(service.pay('o1', card, { guestEmail: 'her@example.com' })).rejects.toMatchObject({
       status: 404,
     });
+  });
+});
+
+describe('an order taken on a deposit', () => {
+  const service = new OrdersService(
+    repo as never,
+    new OrderCheckoutService(repo as never, registry as never, pipeline as never, settings as never),
+    new OrderPaymentService(repo as never, provider as never),
+    new OrderLifecycleService(repo as never),
+  );
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (currentPrincipal as jest.Mock).mockReturnValue({
+      tenantId: 'acme',
+      userId: 'buyer-1',
+      role: 'buyer',
+    });
+    repo.transactWrite.mockResolvedValue(undefined);
+    pipeline.get.mockResolvedValue(null);
+  });
+
+  it('charges only what is payable now, not the whole total', async () => {
+    // The balance is handed over in the room. Charging the total here would
+    // take the money twice.
+    repo.get.mockResolvedValue(awaitingOrder({ totalAmountMinor: 1_200_000, balanceDueMinor: 600_000 }));
+    provider.charge.mockResolvedValue({
+      id: 'pay_1',
+      paymentId: 'pay_1',
+      last4: '4242',
+      amountMinor: 600_000,
+      currency: 'INR',
+    });
+
+    await service.pay('o1', card);
+
+    expect(provider.charge).toHaveBeenCalledWith(
+      expect.objectContaining({ amountMinor: 600_000 }),
+    );
+  });
+
+  it('charges the full total when nothing is owed', async () => {
+    repo.get.mockResolvedValue(awaitingOrder({ totalAmountMinor: 1_200_000 }));
+    provider.charge.mockResolvedValue({
+      id: 'pay_1',
+      paymentId: 'pay_1',
+      last4: '4242',
+      amountMinor: 1_200_000,
+      currency: 'INR',
+    });
+
+    await service.pay('o1', card);
+
+    expect(provider.charge).toHaveBeenCalledWith(
+      expect.objectContaining({ amountMinor: 1_200_000 }),
+    );
   });
 });

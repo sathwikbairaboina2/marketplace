@@ -3,7 +3,13 @@ import { CheckoutService } from './checkout.service';
 const cart = { get: jest.fn(), clear: jest.fn() };
 const orders = { create: jest.fn() };
 
-const input = { currency: 'INR', shippingAddress: { line1: 'x' }, attributes: {} };
+const input = {
+  currency: 'INR',
+  shippingAddress: { line1: 'x' },
+  fulfilment: 'delivery' as const,
+  deposit: false,
+  attributes: {},
+};
 
 const line = (over: Record<string, unknown> = {}) => ({
   productId: '01ARZ3NDEKTSV4RRFFQ69G5FAV',

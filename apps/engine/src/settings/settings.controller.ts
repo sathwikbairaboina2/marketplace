@@ -1,9 +1,12 @@
 import { Body, Controller, Get, Put } from '@nestjs/common';
 import {
   Announcement,
+  DepositPolicy,
   ShopContact,
   UpdateAnnouncement,
   UpdateAnnouncementSchema,
+  UpdateDepositPolicy,
+  UpdateDepositPolicySchema,
   UpdateShopContact,
   UpdateShopContactSchema,
 } from '@marketplace/contracts';
@@ -43,5 +46,18 @@ export class SettingsController {
     @ZodBody(UpdateShopContactSchema) body: UpdateShopContact,
   ): Promise<ShopContact> {
     return this.settings.updateContact(body);
+  }
+
+  @Get('deposit')
+  getDepositPolicy(): Promise<DepositPolicy> {
+    return this.settings.getDepositPolicy();
+  }
+
+  @Put('deposit')
+  @Roles('admin')
+  updateDepositPolicy(
+    @ZodBody(UpdateDepositPolicySchema) body: UpdateDepositPolicy,
+  ): Promise<DepositPolicy> {
+    return this.settings.updateDepositPolicy(body);
   }
 }

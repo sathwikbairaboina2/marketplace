@@ -44,10 +44,13 @@ export class OrderPaymentService {
       );
     }
 
-    // Amount comes from the order the transaction wrote -- never from the client.
+    // Amount comes from the order the transaction wrote -- never from the
+    // client -- and it is what is payable *now*: an order taken on a deposit
+    // charges the total less the balance the buyer settles in the room.
+    const payableNow = current.totalAmountMinor - current.balanceDueMinor;
     const receipt = await this.provider.charge({
       orderId: id,
-      amountMinor: current.totalAmountMinor,
+      amountMinor: payableNow,
       currency: current.currency,
       card,
     });
@@ -56,7 +59,7 @@ export class OrderPaymentService {
     const payment: Payment = {
       id: receipt.paymentId,
       last4: receipt.last4,
-      amountMinor: current.totalAmountMinor,
+      amountMinor: payableNow,
       at: now,
     };
     const firstStageId = current.stages[0].id;

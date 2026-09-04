@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { AttributesSchema, CurrencySchema, IsoDateTimeSchema, UlidSchema } from './common';
 import { ProductStatusSchema } from './product';
-import { OrderStatusSchema } from './order';
+import { FulfilmentSchema, OrderStatusSchema } from './order';
 import { BookingStatusSchema } from './booking';
 import { PaymentSchema } from './payment';
 import { BlueprintDiffSchema, FlowStatusSchema } from './flow';
@@ -84,6 +84,8 @@ export const OrderResponseSchema = z
     currency: CurrencySchema,
     items: z.array(OrderLineItemSchema),
     shippingAddress: z.record(z.string(), z.string()),
+    fulfilment: FulfilmentSchema,
+    balanceDueMinor: z.number().int().nonnegative(),
     createdAt: IsoDateTimeSchema,
     attributes: AttributesSchema,
     // The stage list this order was placed under, copied at write time. A later

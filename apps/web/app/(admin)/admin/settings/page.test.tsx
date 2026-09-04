@@ -20,6 +20,11 @@ vi.mock('../../../../lib/api/settings', () => ({
   putAnnouncement: (body: unknown) => putAnnouncement(body),
   getShopContact: () => Promise.resolve(EMPTY_CONTACT),
   putShopContact: (body: unknown) => Promise.resolve(body),
+  // The deposit card sits on this page too; these cases are about the
+  // announcement, and it only needs to load without throwing.
+  getDepositPolicy: () =>
+    Promise.resolve({ enabled: false, percent: 50, minOrderMinor: 500_000 }),
+  putDepositPolicy: (body: unknown) => Promise.resolve(body),
 }));
 vi.mock('../../../../lib/problem-notify', () => ({ notifyProblem: vi.fn() }));
 

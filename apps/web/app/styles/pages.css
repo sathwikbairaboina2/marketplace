@@ -766,3 +766,83 @@
 .mp-dashboard-tables h2 {
   margin-bottom: var(--mp-space-3);
 }
+
+/* ==========================================================================
+   The product gallery
+   ========================================================================== */
+
+/* A scroll-snap strip, so the swipe is the browser's own. Only ever rendered
+   for two photographs or more: at one, every affordance is a promise of a
+   picture the maker does not have. */
+.mp-gallery {
+  position: relative;
+  border-radius: var(--mp-radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--mp-line);
+  background: var(--mp-surface-sunken);
+}
+
+.mp-gallery-strip {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  aspect-ratio: 5 / 4;
+}
+
+.mp-gallery-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.mp-gallery-strip img {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  scroll-snap-align: center;
+}
+
+/* Over the image. Dots in the flow pushed the price down the page on a phone,
+   and the price is the one thing that must not move. */
+.mp-gallery-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--mp-space-3);
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+
+.mp-gallery-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 55%);
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 18%);
+  cursor: pointer;
+  transition: background 0.16s ease, width 0.16s ease;
+}
+
+.mp-gallery-dots button[data-active] {
+  width: 18px;
+  background: #fff;
+}
+
+.mp-gallery-count {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: var(--mp-text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What is still owed on a deposit. The colour of a fact, not of a warning:
+   nothing has gone wrong, the customer simply brings the rest with them. */
+.mp-balance-due {
+  color: var(--mp-primary-text);
+}

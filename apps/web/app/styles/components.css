@@ -1227,3 +1227,9 @@
   margin: 0 0 var(--mp-space-4);
   color: var(--mp-muted);
 }
+
+.mp-cover-badge {
+  font-size: var(--mp-text-xs);
+  font-weight: 620;
+  color: var(--mp-primary-text);
+}

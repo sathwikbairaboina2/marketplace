@@ -46,3 +46,50 @@ export const EMPTY_SHOP_CONTACT: ShopContact = {
 
 export const UpdateShopContactSchema = ShopContactSchema;
 export type UpdateShopContact = ShopContact;
+
+/**
+ * Whether the shop will take part of the money now and the rest in the room.
+ *
+ * A deposit is a *price*, not a second payment: the order is paid in full for
+ * the deposit, the remainder is recorded on the order, and the merchant
+ * collects it on the QR code she already has. Making it a payment state would
+ * multiply the order state space and, as it turns out, silently drop half-paid
+ * orders out of revenue.
+ *
+ * `percent` is what the buyer pays now; `minOrderMinor` keeps it off a mug.
+ */
+export const DepositPolicySchema = z
+  .object({
+    enabled: z.boolean(),
+    percent: z.number().int().min(10).max(90),
+    minOrderMinor: z.number().int().nonnegative(),
+  })
+  .strict();
+export type DepositPolicy = z.infer<typeof DepositPolicySchema>;
+
+export const DEFAULT_DEPOSIT_POLICY: DepositPolicy = {
+  enabled: false,
+  percent: 50,
+  minOrderMinor: 500_000,
+};
+
+export const UpdateDepositPolicySchema = DepositPolicySchema;
+export type UpdateDepositPolicy = DepositPolicy;
+
+/**
+ * What the buyer pays now, in minor units. The remainder is what they owe.
+ *
+ * The buyer pays the *larger* half of an odd total, so the amount collected in
+ * the room is the rounder number and the merchant carries no fraction: the one
+ * who is owed money should not also be owed a paisa.
+ */
+export function depositSplit(
+  totalMinor: number,
+  policy: DepositPolicy,
+): { payNowMinor: number; balanceDueMinor: number } {
+  if (!policy.enabled || totalMinor < policy.minOrderMinor) {
+    return { payNowMinor: totalMinor, balanceDueMinor: 0 };
+  }
+  const payNowMinor = Math.ceil((totalMinor * policy.percent) / 100);
+  return { payNowMinor, balanceDueMinor: totalMinor - payNowMinor };
+}

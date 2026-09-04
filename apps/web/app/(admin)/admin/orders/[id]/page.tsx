@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { Alert, Button, Descriptions, Popconfirm, Table } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import type { MessageResponse, OrderResponse } from '@marketplace/contracts';
-import { advanceOrder, cancelOrder, getOrder } from '../../../../../lib/api/orders';
+import { advanceOrder, cancelOrder, getOrder, settleOrderBalance } from '../../../../../lib/api/orders';
 import { listWholeThread } from '../../../../../lib/api/messages';
 import { ProblemError } from '../../../../../lib/api/http';
 import { notifyProblem } from '../../../../../lib/problem-notify';
@@ -44,6 +44,19 @@ export default function AdminOrderDetailPage() {
   const index = order.stages.findIndex((stage) => stage.id === order.currentStageId);
   const next = order.stages[index + 1];
   const money = (minor: number) => formatPrice(minor, order.currency);
+
+  const settle = async () => {
+    try {
+      await settleOrderBalance(order.id);
+      retry();
+    } catch (err) {
+      // Somebody else may have settled it between this page rendering and the
+      // click; the engine conditions on the balance and refuses. Reload and
+      // show what actually happened rather than replaying.
+      notifyProblem(err);
+      retry();
+    }
+  };
 
   const advance = async () => {
     // An awaiting_payment order has no stage to advance from; the button is
@@ -99,8 +112,36 @@ export default function AdminOrderDetailPage() {
             ]}
           />
 
+          {/* The balance she still has to take in the room. Pinned above the
+              address because it is the thing she must not forget when the
+              customer is standing there. */}
+          {order.balanceDueMinor > 0 && (
+            <Alert
+              type="warning"
+              showIcon
+              style={{ marginBottom: 'var(--mp-space-5)' }}
+              message={`${formatPrice(order.balanceDueMinor, order.currency)} still to collect`}
+              description={
+                order.fulfilment === 'collection'
+                  ? 'Taken as a deposit. Collect the rest when they pick it up.'
+                  : 'Taken as a deposit. Collect the rest on delivery.'
+              }
+              action={
+                <Popconfirm
+                  title="Mark the balance collected?"
+                  description="Only do this once the money is actually in hand."
+                  okText="Collected"
+                  cancelText="Not yet"
+                  onConfirm={settle}
+                >
+                  <Button size="small">Mark collected</Button>
+                </Popconfirm>
+              }
+            />
+          )}
+
           <div className="mp-detail-specs">
-            <h2>Shipping to</h2>
+            <h2>{order.fulfilment === 'collection' ? 'Collected by' : 'Shipping to'}</h2>
             <Descriptions
               column={1}
               size="small"

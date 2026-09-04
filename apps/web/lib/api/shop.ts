@@ -1,6 +1,7 @@
 import {
   AnnouncementSchema,
   BookingResponseSchema,
+  DepositPolicySchema,
   ShopContactSchema,
   type Card,
   CartResponseSchema,
@@ -155,3 +156,6 @@ export const guestGetBooking = (tenantId: string, guest: string, id: string) =>
 
 export const publicGetContact = (tenantId: string) =>
   request(`${base(tenantId)}/contact`, { schema: ShopContactSchema });
+
+export const publicGetDepositPolicy = (tenantId: string) =>
+  request(`${base(tenantId)}/deposit`, { schema: DepositPolicySchema });

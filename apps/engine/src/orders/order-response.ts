@@ -29,6 +29,10 @@ export function toResponse(record: OrderRecord): OrderResponse {
     // would have been given. It has no pointer item, so it is findable by its
     // id and not by its reference -- true of every order placed before today.
     reference: rest.reference ?? orderReferenceFrom(rest.id),
+    // Orders placed before collection existed were deliveries, and orders
+    // placed before deposits owed nothing.
+    fulfilment: rest.fulfilment ?? 'delivery',
+    balanceDueMinor: rest.balanceDueMinor ?? 0,
     pipelineVersion: rest.pipelineVersion ?? DEFAULT_PIPELINE.version,
     stages: rest.stages ?? DEFAULT_PIPELINE.stages,
     // `!== undefined`, not `??`: an awaiting_payment order legitimately stores

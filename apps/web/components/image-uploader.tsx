@@ -72,7 +72,7 @@ export function ImageUploader({ value, onChange }: Props) {
       {error && <Alert type="error" message={error} closable onClose={() => setError(null)} />}
 
       <Space wrap>
-        {value.map((url) => (
+        {value.map((url, index) => (
           <Space key={url} direction="vertical" align="center">
             {/* Plain img, not next/image: the optimiser needs a remotePatterns
                 allow-list that fails confusingly for user-supplied hosts, and
@@ -82,8 +82,26 @@ export function ImageUploader({ value, onChange }: Props) {
               alt=""
               width={96}
               height={96}
-              style={{ objectFit: 'cover', borderRadius: 6, border: '1px solid #eee' }}
+              style={{
+                objectFit: 'cover',
+                borderRadius: 6,
+                border: index === 0 ? '2px solid var(--mp-primary)' : '1px solid #eee',
+              }}
             />
+            {/* The first image is the cover: it is the shop tile, the cart
+                line and the cross-sell. Until now its only author was the
+                order the file picker happened to hand the files over in. */}
+            {index === 0 ? (
+              <span className="mp-cover-badge">Cover</span>
+            ) : (
+              <Button
+                size="small"
+                type="link"
+                onClick={() => onChange([url, ...value.filter((u) => u !== url)])}
+              >
+                Make cover
+              </Button>
+            )}
             <Button size="small" onClick={() => onChange(value.filter((u) => u !== url))}>
               Remove
             </Button>

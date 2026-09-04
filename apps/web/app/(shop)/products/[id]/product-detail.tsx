@@ -21,6 +21,7 @@ import { ErrorPanel } from '../../../../components/error-panel';
 import { ProblemError } from '../../../../lib/api/http';
 import { DetailSkeleton } from '../../../../components/skeletons';
 import { MoreFromShop } from '../../../../components/more-from-shop';
+import { ProductGallery } from '../../../../components/product-gallery';
 
 const LOW_STOCK = 5;
 
@@ -65,7 +66,6 @@ export default function ProductDetail() {
   if (error) return <ErrorPanel error={error} onRetry={retry} />;
   if (!product) return null;
 
-  const image = product.images[0];
   const { gradient, initials } = placeholderFor(product.id, product.name);
   const soldOut = product.stock === 0;
   const attributeRows = schema ? toDescriptionRows(schema.fields, product.attributes) : [];
@@ -80,15 +80,11 @@ export default function ProductDetail() {
           decision. Previously this was a 160px thumbnail above a flat list in
           which the price had the same weight as `assemblyRequired`. */}
       <div className="mp-detail">
-        <div className="mp-detail-media">
-          {image ? (
-            <img src={image} alt={product.name} />
-          ) : (
-            <span className="mp-detail-placeholder" style={{ background: gradient }}>
-              {initials}
-            </span>
-          )}
-        </div>
+        <ProductGallery images={product.images} alt={product.name}>
+          <span className="mp-detail-placeholder" style={{ background: gradient }}>
+            {initials}
+          </span>
+        </ProductGallery>
 
         <div className="mp-detail-buy">
           <span className="mp-card-cat">{product.category}</span>

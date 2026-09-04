@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import {
   Announcement,
+  DepositPolicy,
   ShopContact,
   DynamicEntityTypeSchema,
   Page,
@@ -53,6 +54,13 @@ export class ShopsController {
   @Public()
   getContact(@Param('tenantId') tenantId: string): Promise<ShopContact> {
     return this.scope.run(tenantId, () => this.settings.getContact());
+  }
+
+  /** The cart has to know whether this shop offers a deposit before it can offer one. */
+  @Get('deposit')
+  @Public()
+  getDepositPolicy(@Param('tenantId') tenantId: string): Promise<DepositPolicy> {
+    return this.scope.run(tenantId, () => this.settings.getDepositPolicy());
   }
 
   /** The filter rail renders the tenant's own fields; they are part of the shop window. */

@@ -7,13 +7,32 @@ export type OrderStatus = z.infer<typeof OrderStatusSchema>;
 
 export const MAX_ORDER_LINE_ITEMS = 50;
 
+/**
+ * How the goods reach the buyer. Half this merchant's orders are collected at
+ * the studio, and checkout used to force a delivery address on them -- so they
+ * typed a fake one, and the address on the order was a lie.
+ */
+export const FulfilmentSchema = z.enum(['delivery', 'collection']);
+export type Fulfilment = z.infer<typeof FulfilmentSchema>;
+
 export const CreateOrderSchema = z
   .object({
     items: z
       .array(z.object({ productId: UlidSchema, quantity: QuantitySchema }))
       .min(1),
     currency: CurrencySchema,
+    // Still a bare record, and `shippingAddress` still required in shape: a
+    // `.superRefine` here would return a ZodEffects, and `CheckoutRequestSchema`
+    // is built by `.omit()` on this object -- which ZodEffects does not have.
+    // A collection order sends the buyer's name and number and no address.
     shippingAddress: z.record(z.string(), z.string()),
+    fulfilment: FulfilmentSchema.default('delivery'),
+    /**
+     * The buyer asking to pay a deposit now and the balance on collection or
+     * delivery. Honoured only if the shop offers one for an order this size;
+     * the engine decides the amount, never the client.
+     */
+    deposit: z.boolean().default(false),
     attributes: AttributesSchema.default({}),
   })
   .strict();
@@ -88,6 +107,15 @@ export interface OrderRecord {
   currency: string;
   items: OrderLineItem[];
   shippingAddress: Record<string, string>;
+  /** Absent on orders placed before collection existed: they were deliveries. */
+  fulfilment?: Fulfilment;
+  /**
+   * What is still owed, in minor units, when the shop took a deposit. Zero or
+   * absent on an ordinary order. The order's `status` is deliberately
+   * untouched: `partly_paid` would reach thirteen readers of the enum and four
+   * of them fail silently -- revenue would quietly lose the order.
+   */
+  balanceDueMinor?: number;
   createdAt: string;
   attributes: Record<string, unknown>;
   /** Present on a guest's order only: the address they gave to find it again. */

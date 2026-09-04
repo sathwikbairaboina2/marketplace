@@ -271,4 +271,38 @@ export class OrderLifecycleService {
       );
     }
   }
+
+  /**
+   * The merchant marking a deposit's balance as collected. Admin only, and it
+   * is a record of something that happened in a room -- no money moves through
+   * this product. Conditioned on the balance still being what the seller saw,
+   * so two people settling the same order cannot both succeed.
+   */
+  async settleBalance(id: string): Promise<OrderResponse> {
+    assertAdmin('settle an order balance');
+    const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
+    if (!found) throw new ProblemException('not-found', 404, 'Order not found');
+    const current = toResponse(found);
+    if (current.balanceDueMinor === 0) {
+      throw new ProblemException(
+        'order-not-cancellable',
+        409,
+        'Nothing is owed on this order',
+        'the balance has already been settled, or the order never had one',
+      );
+    }
+    await this.repo.transactWrite([
+      {
+        Update: {
+          TableName: this.repo.tableName,
+          Key: this.repo.key(entitySk('Order', id)),
+          UpdateExpression: 'SET #balance = :zero',
+          ConditionExpression: '#balance = :expected',
+          ExpressionAttributeNames: { '#balance': 'balanceDueMinor' },
+          ExpressionAttributeValues: { ':zero': 0, ':expected': current.balanceDueMinor },
+        },
+      },
+    ]);
+    return { ...current, balanceDueMinor: 0 };
+  }
 }

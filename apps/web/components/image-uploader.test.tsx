@@ -82,4 +82,32 @@ describe('ImageUploader', () => {
     });
     expect(onChange).toHaveBeenCalledWith([]);
   });
+
+  it('promotes a chosen image to the cover, because the first one is the shop tile', async () => {
+    // `images[0]` is the grid tile, the cart line and the cross-sell, and its
+    // only author was the order the file picker handed the files over in.
+    const onChange = vi.fn();
+    render(
+      <ImageUploader
+        value={['https://media.test/a.jpg', 'https://media.test/b.jpg']}
+        onChange={onChange}
+      />,
+    );
+
+    await act(async () => {
+      screen.getByRole('button', { name: 'Make cover' }).click();
+    });
+
+    expect(onChange).toHaveBeenCalledWith([
+      'https://media.test/b.jpg',
+      'https://media.test/a.jpg',
+    ]);
+  });
+
+  it('offers no Make cover on the image that already is one', () => {
+    render(<ImageUploader value={['https://media.test/a.jpg']} onChange={vi.fn()} />);
+
+    expect(screen.getByText('Cover')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Make cover' })).not.toBeInTheDocument();
+  });
 });

@@ -100,7 +100,7 @@ describe('commerceFor', () => {
     localStorage.setItem('marketplace.guest.acme', 't1.mac');
     pub.guestCheckout.mockResolvedValue({ id: 'o1' });
     const c = commerceFor({ tenantId: 'acme' }, false);
-    const body = { currency: 'USD', shippingAddress: { line1: 'x' }, attributes: {} };
+    const body = { currency: 'USD', shippingAddress: { line1: 'x' }, fulfilment: 'delivery' as const, deposit: false, attributes: {} };
 
     await expect(c.checkout(body, 'key')).rejects.toThrow(/email/);
     await c.checkout(body, 'key', 'a@b.co');

@@ -13,6 +13,7 @@ import { PageHeader } from '../../../../components/page-header';
 import { notifyProblem } from '../../../../lib/problem-notify';
 import { StageEditor } from './stage-editor';
 import { ShopContactCard } from './shop-contact-card';
+import { DepositCard } from './deposit-card';
 
 export default function AdminSettingsPage() {
   const [form] = Form.useForm();
@@ -52,6 +53,7 @@ export default function AdminSettingsPage() {
         </Link>
       </Card>
       <ShopContactCard />
+      <DepositCard />
       <StageEditor />
       <Card className="mp-form-card" title="Announcement">
         <Form
