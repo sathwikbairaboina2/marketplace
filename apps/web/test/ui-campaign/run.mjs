@@ -730,6 +730,8 @@ await check('the payment page shows the amount and the simulation notice', async
   await page.waitForTimeout(1500);
   const text = await page.locator('body').innerText();
   must(/pay/i.test(text) && /simulated/i.test(text), 'no amount or simulation notice');
+  // UPI leads; the campaign photographs the card form, so choose it.
+  await page.locator('label.ant-radio-button-wrapper', { hasText: 'Card' }).click();
   must((await page.getByTestId('card-number').count()) === 1, 'no card form');
 });
 

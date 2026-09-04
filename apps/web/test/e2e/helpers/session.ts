@@ -74,8 +74,20 @@ export async function clearServerCart(page: Page): Promise<void> {
  * Completes the payment page a successful checkout lands on. `4242…` is the
  * fake provider's success number; the page redirects to the order tracker.
  */
+/**
+ * Puts the pay page on its card tab. UPI leads now -- nobody in this market
+ * pays for a mug by card -- so every card path has to choose it first.
+ *
+ * Clicks the label, not the radio: antd hides the input behind it, and a
+ * hidden element is not clickable. A person clicks the label too.
+ */
+export async function chooseCardTab(page: Page): Promise<void> {
+  await page.locator('label.ant-radio-button-wrapper', { hasText: 'Card' }).click();
+}
+
 export async function payWithCard(page: Page, number = '4242 4242 4242 4242'): Promise<void> {
   await expect(page).toHaveURL(/\/orders\/[0-9A-Z]{26}\/pay/);
+  await chooseCardTab(page);
   await page.getByTestId('card-number').fill(number);
   await page.getByTestId('card-month').fill('12');
   await page.getByTestId('card-year').fill('2030');

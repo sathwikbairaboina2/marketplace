@@ -280,6 +280,8 @@ async function createProduct(over = {}) {
 
 /** Fills the payment page a successful checkout lands on. 4242… succeeds. */
 async function payOnPayPage(page, number = '4242 4242 4242 4242') {
+  // UPI leads on the pay page now; the card form has to be chosen first.
+  await page.locator('label.ant-radio-button-wrapper', { hasText: 'Card' }).click();
   await page.getByTestId('card-number').fill(number);
   await page.getByTestId('card-month').fill('12');
   await page.getByTestId('card-year').fill('2030');
@@ -1529,6 +1531,7 @@ await journey('a stranger buys a mug on the shop host without ever signing in', 
   await page.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
   guestOrderId = page.url().match(/orders\/([0-9A-Z]{26})/)[1];
 
+  await page.locator('label.ant-radio-button-wrapper', { hasText: 'Card' }).click();
   await page.getByLabel('Card number').fill('4242424242424242');
   await page.getByLabel('Month').fill('12');
   await page.getByLabel('Year').fill('2030');
