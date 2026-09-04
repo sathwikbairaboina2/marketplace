@@ -37,6 +37,14 @@ const ENV_FILE = fileURLToPath(new URL('../../../../docker/.env.generated', impo
 const PASSWORD = 'Passw0rd!';
 
 const RUN = Date.now().toString(36);
+
+/**
+ * What `createProduct` prices in, and therefore what an order placed through
+ * the API must be denominated in: the engine throws `mixed-currency-order`
+ * when they differ, so a hardcoded 'USD' here turns every stock and race
+ * assertion into a 422 about currency.
+ */
+const CURRENCY = 'INR';
 const A = `jt-${RUN}-a`;
 const B = `jt-${RUN}-b`;
 const A_ADMIN = `${A}-admin`;
@@ -438,7 +446,7 @@ await journey('paging through a large catalogue returns every product exactly on
       name: `bulk-${RUN}-${String(i).padStart(2, '0')}`,
       description: 'paging fixture',
       priceMinor: 100 + i,
-      currency: 'USD',
+      currency: CURRENCY,
       category: 'bulk',
       stock: 3,
       images: [],
@@ -595,7 +603,7 @@ await journey('a shopper cannot buy more than the shop has left', async () => {
   const scarce = await createProduct({ stock: '2', price: '1.00' });
   const res = await api(tokenBuyerA, 'POST', '/orders', {
     items: [{ productId: scarce.id, quantity: 5 }],
-    currency: 'USD',
+    currency: CURRENCY,
     shippingAddress: { line1: '1', city: 'T', postcode: 'T1' },
     attributes: {},
   });
@@ -618,7 +626,7 @@ await journey('two shoppers racing for one unit produce one sale, not two', asyn
   const contested = await createProduct({ stock: '1', price: '2.00' });
   const body = {
     items: [{ productId: contested.id, quantity: 1 }],
-    currency: 'USD',
+    currency: CURRENCY,
     shippingAddress: { line1: '1', city: 'T', postcode: 'T1' },
     attributes: {},
   };
@@ -636,7 +644,7 @@ await journey('a resubmitted checkout does not charge the shopper twice', async 
   const p = await createProduct({ stock: '8', price: '4.00' });
   const body = {
     items: [{ productId: p.id, quantity: 2 }],
-    currency: 'USD',
+    currency: CURRENCY,
     shippingAddress: { line1: '1', city: 'T', postcode: 'T1' },
     attributes: {},
   };
@@ -740,7 +748,7 @@ await journey('concurrent bookings never oversell an event', async () => {
     startDate: '2026-12-02T10:00:00.000Z',
     endDate: '2026-12-02T18:00:00.000Z',
     basePriceMinor: 500,
-    currency: 'USD',
+    currency: CURRENCY,
     attributes: {},
   });
   const id = created.json.id;
@@ -783,9 +791,9 @@ await journey('an announcement saved in the cockpit is stored by the engine', as
   await seller.goto(`${WEB}/admin/settings`);
   await seller.waitForTimeout(2000);
   await seller.getByLabel('Announcement').fill(NOTICE);
-  const toggle = seller.getByRole('switch');
+  const toggle = seller.getByLabel('Show it');
   if ((await toggle.getAttribute('aria-checked')) !== 'true') await toggle.click();
-  await seller.getByRole('button', { name: 'Save' }).click();
+  await seller.getByRole('button', { name: 'Save announcement' }).click();
   await seller.getByText('Announcement saved').waitFor({ timeout: 20_000 });
   const got = await api(tokenAdminA, 'GET', '/settings/announcement');
   must(got.json.text === NOTICE, `engine holds "${got.json.text}"`);
@@ -801,8 +809,8 @@ await journey("the announcement reaches a shopper's storefront", async () => {
 await journey('turning the announcement off removes it from the shop', async () => {
   await seller.goto(`${WEB}/admin/settings`);
   await seller.waitForTimeout(2000);
-  await seller.getByRole('switch').click();
-  await seller.getByRole('button', { name: 'Save' }).click();
+  await seller.getByLabel('Show it').click();
+  await seller.getByRole('button', { name: 'Save announcement' }).click();
   await seller.getByText('Announcement saved').waitFor({ timeout: 20_000 });
   await shopper.goto(`${WEB}/products`);
   await shopper.waitForTimeout(2500);
@@ -813,8 +821,8 @@ await journey('the announcement text survives being switched off and on again', 
   await seller.goto(`${WEB}/admin/settings`);
   await seller.waitForTimeout(2000);
   must((await seller.getByLabel('Announcement').inputValue()) === NOTICE, 'the text was lost');
-  await seller.getByRole('switch').click();
-  await seller.getByRole('button', { name: 'Save' }).click();
+  await seller.getByLabel('Show it').click();
+  await seller.getByRole('button', { name: 'Save announcement' }).click();
   await seller.getByText('Announcement saved').waitFor({ timeout: 20_000 });
   await shopper.goto(`${WEB}/products`);
   await shopper.waitForTimeout(2500);
@@ -887,7 +895,7 @@ await journey(
       name: `no-colour-${RUN}`,
       description: 'missing the required attribute',
       priceMinor: 100,
-      currency: 'USD',
+      currency: CURRENCY,
       category: 'journeys',
       stock: 1,
       images: [],
@@ -966,7 +974,7 @@ await journey('a shopper cannot list goods, in the browser or against the API', 
     name: `buyer-made-${RUN}`,
     description: 'should not exist',
     priceMinor: 100,
-    currency: 'USD',
+    currency: CURRENCY,
     category: 'journeys',
     stock: 1,
     images: [],
@@ -1546,8 +1554,18 @@ await journey('a stranger who then signs in keeps the cart they built', async ()
   await page.waitForURL(/\/cart/, { timeout: 30_000 });
   await page.waitForTimeout(2000);
   must((await page.getByText(openMug.name).count()) > 0, 'the cart emptied on sign-in');
+  // The ticket is deliberately KEPT. It used to be spent here, and that was
+  // the guest lockout: a guest's principal *is* their ticket, paying requires
+  // that principal, and the brightest button above the fold -- present on the
+  // pay page -- destroyed it. An unpaid order then had no route that could pay
+  // it and no route the shopper could cancel it by, with its stock reserved.
   const ticket = await page.evaluate((t) => localStorage.getItem(`marketplace.guest.${t}`), A);
-  must(ticket === null, 'the guest ticket survived sign-in');
+  must(ticket !== null, 'the guest ticket was spent on sign-in');
+  // And keeping it leaks nothing: the merge empties the guest cart on the
+  // engine, so the next stranger in this browser inherits an empty one.
+  const guestCart = await fetch(`${ENGINE}/shops/${A}/cart`, { headers: { 'x-guest': ticket } });
+  const guestBody = await guestCart.json();
+  must(guestBody.lines.length === 0, `the guest cart still holds ${guestBody.lines.length} lines`);
   await ctx.close();
   // Leave the buyer's cart as it was for the journeys that follow.
   const own = await api(tokenBuyerA, 'GET', '/cart');

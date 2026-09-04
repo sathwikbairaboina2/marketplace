@@ -961,9 +961,9 @@ await check('typing immediately after opening is not overwritten by the fetch', 
 });
 
 await check('the announcement saves', async () => {
-  const toggle = page.getByRole('switch');
+  const toggle = page.getByLabel('Show it');
   if ((await toggle.getAttribute('aria-checked')) !== 'true') await toggle.click();
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save announcement' }).click();
   await page.getByText('Announcement saved').waitFor({ timeout: 20_000 });
 });
 
@@ -990,9 +990,9 @@ await check('the announcement field is capped at 140 characters', async () => {
 await check('turning the announcement off removes the strip', async () => {
   await page.goto(`${WEB}/admin/settings`);
   await page.waitForTimeout(2000);
-  const toggle = page.getByRole('switch');
+  const toggle = page.getByLabel('Show it');
   if ((await toggle.getAttribute('aria-checked')) === 'true') await toggle.click();
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save announcement' }).click();
   await page.getByText('Announcement saved').waitFor({ timeout: 20_000 });
   await page.goto(`${WEB}/products`);
   await page.waitForTimeout(2000);
@@ -1002,8 +1002,8 @@ await check('turning the announcement off removes the strip', async () => {
 await check('turning it back on restores it', async () => {
   await page.goto(`${WEB}/admin/settings`);
   await page.waitForTimeout(2000);
-  await page.getByRole('switch').click();
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByLabel('Show it').click();
+  await page.getByRole('button', { name: 'Save announcement' }).click();
   await page.getByText('Announcement saved').waitFor({ timeout: 20_000 });
   await page.goto(`${WEB}/products`);
   await page.waitForTimeout(2000);
@@ -1248,7 +1248,7 @@ await check('a buyer cannot set the announcement', async () => {
   await page.waitForTimeout(2000);
   if ((await page.getByLabel('Announcement').count()) === 0) return;
   await page.getByLabel('Announcement').fill('buyer wrote this');
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save announcement' }).click();
   await page.waitForTimeout(2500);
   must(!(await page.getByText('Announcement saved').count()), 'a buyer saved an announcement');
 });
