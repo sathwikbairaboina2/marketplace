@@ -41,9 +41,18 @@ export class SettingsService {
   async getContact(): Promise<ShopContact> {
     const found = await this.repo.get<ShopContact>(CONTACT_SK);
     if (!found) return EMPTY_SHOP_CONTACT;
-    // Field by field: a record written before a field existed must not come
-    // back with `undefined` where the contract promises a string.
-    return { ...EMPTY_SHOP_CONTACT, ...found };
+    // Field by field, and *only* the declared fields. A stored item carries the
+    // single table's `PK` and `SK`, and spreading it puts the key scheme on the
+    // wire -- which this codebase forbids, and which a `.strict()` contract on
+    // the browser side rejects outright.
+    return {
+      email: found.email ?? EMPTY_SHOP_CONTACT.email,
+      phone: found.phone ?? EMPTY_SHOP_CONTACT.phone,
+      whatsapp: found.whatsapp ?? EMPTY_SHOP_CONTACT.whatsapp,
+      address: found.address ?? EMPTY_SHOP_CONTACT.address,
+      delivery: found.delivery ?? EMPTY_SHOP_CONTACT.delivery,
+      returns: found.returns ?? EMPTY_SHOP_CONTACT.returns,
+    };
   }
 
   async updateContact(input: UpdateShopContact): Promise<ShopContact> {
@@ -58,7 +67,16 @@ export class SettingsService {
    */
   async getDepositPolicy(): Promise<DepositPolicy> {
     const found = await this.repo.get<DepositPolicy>(DEPOSIT_SK);
-    return found ? { ...DEFAULT_DEPOSIT_POLICY, ...found } : DEFAULT_DEPOSIT_POLICY;
+    if (!found) return DEFAULT_DEPOSIT_POLICY;
+    // Named fields, not a spread: see `getContact`. Spreading the stored item
+    // put `PK` and `SK` on the wire, and because this contract is `.strict()`
+    // the browser refused the whole response -- so the cart quietly stopped
+    // offering a deposit at all.
+    return {
+      enabled: found.enabled ?? DEFAULT_DEPOSIT_POLICY.enabled,
+      percent: found.percent ?? DEFAULT_DEPOSIT_POLICY.percent,
+      minOrderMinor: found.minOrderMinor ?? DEFAULT_DEPOSIT_POLICY.minOrderMinor,
+    };
   }
 
   async updateDepositPolicy(input: UpdateDepositPolicy): Promise<DepositPolicy> {
