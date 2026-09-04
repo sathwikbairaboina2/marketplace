@@ -25,6 +25,7 @@ function makeEnv(overrides: Partial<EnvConfig> = {}): EnvConfig {
     JWT_ISSUER: 'http://localhost:9229/pool',
     JWT_AUDIENCE: 'client',
     GUEST_SECRET: 'a-fixture-secret-long-enough',
+    PAYMENT_WEBHOOK_SECRET: 'a-fixture-webhook-secret-long-enough',
     LOG_LEVEL: 'info',
     SQS_CONSUMER_ENABLED: true,
     DOCS_ENABLED: false,

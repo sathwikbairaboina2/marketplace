@@ -30,6 +30,22 @@ export type ProblemType =
   | 'insufficient-funds'
   // Pay was called on an order that is not awaiting payment.
   | 'order-not-payable'
+  // A webhook arrived whose signature does not verify. Never retried, never
+  // explained: an attacker learns nothing from this beyond "not accepted".
+  | 'payment-signature-invalid'
+  // A webhook's amount disagrees with the order it names. The order is the
+  // truth; the message is refused rather than reconciled.
+  | 'payment-amount-mismatch'
+  // A payment attempt was named that this shop has no record of.
+  | 'payment-intent-not-found'
+  // The customer has not finished approving in their banking app. Not an
+  // error the shopper caused, and not a reason to start a second attempt.
+  | 'payment-pending'
+  // The gateway could not be reached at all. Distinct from a decline: nothing
+  // was attempted, so a retry is the right advice.
+  | 'payment-provider-unavailable'
+  // The customer never approved and the attempt has timed out.
+  | 'payment-expired'
   | 'transaction-conflict'
   | 'request-in-progress'
   // Upload rejected on inspection: either the declared type is not accepted, or

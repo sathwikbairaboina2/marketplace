@@ -4,6 +4,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
   TransactWriteCommand,
   TransactWriteCommandInput,
 } from '@aws-sdk/lib-dynamodb';
@@ -195,6 +196,39 @@ export class DynamoRepository {
       items: (out.Items ?? []) as T[],
       nextCursor: out.LastEvaluatedKey ? encodeCursor(out.LastEvaluatedKey) : null,
     };
+  }
+
+  /**
+   * Every unpaid order in the table, across tenants. The one read here that is
+   * not scoped to a partition, and the only caller is the abandoned-order
+   * sweeper.
+   *
+   * It is a Scan because that is genuinely what the question is -- "which
+   * orders anywhere are holding stock nobody has paid for" -- and no access
+   * pattern answers it: an order's partition is its tenant and its sort key is
+   * its id, so there is nothing to query on. It is safe where an unscoped read
+   * on a request path would not be, because no caller supplies any part of it:
+   * there are no parameters, it runs on a timer in the background, and what it
+   * returns is fed to a per-tenant scope before anything is written.
+   *
+   * Filtered server-side so the table's size, not the shop's, is what this
+   * costs -- and paged, so one enormous tenant cannot starve the rest.
+   */
+  async scanUnpaidOrders(limit = 200): Promise<Array<Record<string, unknown>>> {
+    const out = await this.doc.send(
+      new ScanCommand({
+        TableName: this.tableName,
+        FilterExpression: '#entityType = :order AND (#status = :awaiting OR #status = :pending)',
+        ExpressionAttributeNames: { '#entityType': 'entityType', '#status': 'status' },
+        ExpressionAttributeValues: {
+          ':order': 'Order',
+          ':awaiting': 'awaiting_payment',
+          ':pending': 'payment_pending',
+        },
+        Limit: limit,
+      }),
+    );
+    return (out.Items ?? []) as Array<Record<string, unknown>>;
   }
 
   async transactWrite(items: TransactItems): Promise<void> {

@@ -4,6 +4,9 @@ import {
   AdvanceOrderSchema,
   CustomerLookup,
   CustomerLookupSchema,
+  PaymentIntentResponse,
+  StartPayment,
+  StartPaymentSchema,
   CreateOrder,
   CreateOrderSchema,
   Page,
@@ -15,10 +18,14 @@ import { ListQuery, ListQuerySchema } from '../common/list-query.schema';
 import { IdempotencyInterceptor } from '../idempotency/idempotency.interceptor';
 import { Roles } from '../auth/roles.decorator';
 import { OrdersService, OrderResponse } from './orders.service';
+import { PaymentsService } from '../payments/payments.service';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly orders: OrdersService) {}
+  constructor(
+    private readonly orders: OrdersService,
+    private readonly payments: PaymentsService,
+  ) {}
 
   @Post()
   @UseInterceptors(IdempotencyInterceptor)
@@ -81,6 +88,16 @@ export class OrdersController {
     @ZodBody(CustomerLookupSchema) body: CustomerLookup,
   ): Promise<OrderResponse[]> {
     return this.orders.historyFor(body);
+  }
+
+  /** Start a UPI payment on an order this caller owns. */
+  @Post(':id/payments')
+  @HttpCode(200)
+  startPayment(
+    @Param('id') id: string,
+    @ZodBody(StartPaymentSchema) body: StartPayment,
+  ): Promise<PaymentIntentResponse> {
+    return this.payments.start(id, body);
   }
 
   @Post(':id/settle-balance')

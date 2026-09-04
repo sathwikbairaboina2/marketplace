@@ -16,7 +16,12 @@ import { ENV, EnvConfig } from './config/env.schema';
  * by importing the module.
  */
 export async function createApp(): Promise<INestApplication> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // `rawBody` keeps the exact bytes of the request alongside the parsed body.
+  // A webhook signature is computed over what was *sent*; a body that has been
+  // parsed and re-serialised is a different string, and verifying against it
+  // would either reject every genuine message or, worse, be quietly loosened
+  // until it accepted forged ones.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
   app.useLogger(app.get(Logger));
 
   // Sensible defaults for an API: nosniff, no framing, a referrer policy, and

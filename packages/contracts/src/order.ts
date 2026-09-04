@@ -2,7 +2,21 @@ import { z } from 'zod';
 import { AttributesSchema, CurrencySchema, QuantitySchema, UlidSchema } from './common';
 import type { Stage } from './pipeline';
 
-export const OrderStatusSchema = z.enum(['pending', 'confirmed', 'cancelled', 'awaiting_payment']);
+/**
+ * `payment_pending` is the one UPI forces. A card charge is synchronous -- the
+ * shopper is on the page when it settles -- but a UPI collect request is not:
+ * the customer approves in their own banking app, seconds or minutes later,
+ * and the truth arrives by webhook. Between those two moments the order is
+ * neither awaiting payment nor confirmed, and pretending otherwise means
+ * either taking money twice or losing it.
+ */
+export const OrderStatusSchema = z.enum([
+  'pending',
+  'confirmed',
+  'cancelled',
+  'awaiting_payment',
+  'payment_pending',
+]);
 export type OrderStatus = z.infer<typeof OrderStatusSchema>;
 
 export const MAX_ORDER_LINE_ITEMS = 50;

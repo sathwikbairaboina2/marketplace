@@ -15,6 +15,7 @@ describe('CORS', () => {
       'http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/q.fifo';
     process.env.REDIS_URL ??= 'redis://localhost:36379';
     process.env.GUEST_SECRET ??= 'local-guest-secret-not-for-prod';
+    process.env.PAYMENT_WEBHOOK_SECRET ??= 'local-webhook-secret-not-for-prod';
     process.env.JWKS_URI ??= 'http://localhost:39229/pool/.well-known/jwks.json';
     process.env.JWT_ISSUER ??= 'http://localhost:39229/pool';
     process.env.JWT_AUDIENCE ??= 'client-id';

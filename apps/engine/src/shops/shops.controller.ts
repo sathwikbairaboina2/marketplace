@@ -2,6 +2,9 @@ import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import {
   Announcement,
   DepositPolicy,
+  GuestStartPayment,
+  GuestStartPaymentSchema,
+  PaymentIntentResponse,
   ShopContact,
   WaitlistRequest,
   WaitlistRequestSchema,
@@ -19,6 +22,9 @@ import { ListQuery, ListQuerySchema } from '../common/list-query.schema';
 import { EventResponse, EventsService } from '../events/events.service';
 import { ProductResponse, ProductsService } from '../products/products.service';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
+import { PaymentsService } from '../payments/payments.service';
+import { GuestGuard } from '../guest/guest.guard';
+import { UseGuards } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
 import { StorefrontService } from '../storefront/storefront.service';
 import { ShopScope } from './shop-scope';
@@ -37,6 +43,7 @@ export class ShopsController {
     private readonly storefront: StorefrontService,
     private readonly settings: SettingsService,
     private readonly registry: SchemaRegistryService,
+    private readonly payments: PaymentsService,
   ) {}
 
   /** Enveloped for the same reason `GET /storefront` is: a bare null is an empty body. */
@@ -75,6 +82,41 @@ export class ShopsController {
   ): Promise<{ waiting: true }> {
     await this.scope.run(tenantId, () => this.products.joinWaitlist(id, body.email));
     return { waiting: true };
+  }
+
+  /**
+   * What the shopper's waiting page asks while a UPI payment is in flight, and
+   * what the reconciliation poll asks when a webhook never arrives.
+   *
+   * Public, and on the shop surface because the tenant has to come from the
+   * address: every read in this engine is scoped to a partition. The intent id
+   * is an unguessable token the shopper was handed; it names no order and no
+   * customer, and the answer is a state and an amount.
+   */
+  @Get('payments/:intentId')
+  @Public()
+  @Throttle({ default: { limit: 120, ttl: 60_000 } })
+  paymentStatus(
+    @Param('tenantId') tenantId: string,
+    @Param('intentId') intentId: string,
+  ): Promise<PaymentIntentResponse> {
+    return this.scope.run(tenantId, () => this.payments.status(intentId));
+  }
+
+  /**
+   * Starting a UPI payment as a stranger, on the ticket they checked out with
+   * or the email they can prove the order by.
+   */
+  @Post('orders/:id/payments')
+  @Public()
+  @UseGuards(GuestGuard)
+  @HttpCode(200)
+  startGuestPayment(
+    @Param('id') id: string,
+    @ZodBody(GuestStartPaymentSchema) body: GuestStartPayment,
+  ): Promise<PaymentIntentResponse> {
+    const { email, ...input } = body;
+    return this.payments.start(id, input, { guestEmail: email });
   }
 
   /** The cart has to know whether this shop offers a deposit before it can offer one. */

@@ -2,7 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { MAGIC_CARD } from '@marketplace/contracts';
 import { randomUUID } from 'node:crypto';
 import { ProblemException } from '../common/problem';
-import { ChargeInput, ChargeResult, PaymentProvider } from './payment.provider';
+import {
+  ChargeInput,
+  ChargeResult,
+  IntentInput,
+  IntentResult,
+  PaymentEvent,
+  PaymentProvider,
+} from './payment.provider';
 
 /**
  * Deterministic, offline, Stripe-shaped. The card number selects the outcome;
@@ -30,5 +37,27 @@ export class FakeCardProvider implements PaymentProvider {
       );
     }
     return { paymentId: `fake_${randomUUID()}`, last4: number.slice(-4) };
+  }
+
+  /**
+   * Cards only. A provider that cannot collect asynchronously says so rather
+   * than pretending to start something nobody will ever settle -- 502, because
+   * nothing was attempted and a retry elsewhere is the honest advice.
+   */
+  async createIntent(_input: IntentInput): Promise<IntentResult> {
+    throw new ProblemException(
+      'payment-provider-unavailable',
+      502,
+      'UPI is not available',
+      'this shop is configured for card payments only',
+    );
+  }
+
+  verifyWebhook(_raw: string, _signature: string | undefined): PaymentEvent | null {
+    return null;
+  }
+
+  async getIntent(_intentId: string): Promise<PaymentEvent | null> {
+    return null;
   }
 }

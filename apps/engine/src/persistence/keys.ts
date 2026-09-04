@@ -64,6 +64,23 @@ export function waitlistPrefix(productId: string): string {
   return `WAITLIST#${productId}#`;
 }
 
+/**
+ * A payment attempt. Written when the collect request goes out and read by
+ * the webhook, which knows the gateway's intent id and nothing else.
+ */
+export function paymentIntentSk(intentId: string): string {
+  return `PAYINTENT#${intentId}`;
+}
+
+/**
+ * One webhook delivery, claimed before it is acted on. A gateway delivers at
+ * least once, so this is what makes a replay a no-op rather than a second
+ * confirmation.
+ */
+export function paymentEventSk(eventId: string): string {
+  return `PAYEVENT#${eventId}`;
+}
+
 /** The shop's outbox: what it said to a customer, and when. */
 export function mailSk(id: string): string {
   return `MAIL#${id}`;

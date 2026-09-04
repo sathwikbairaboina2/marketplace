@@ -13,6 +13,17 @@ export const EnvSchema = z.object({
   JWT_AUDIENCE: z.string().min(1),
   /** Signs guest tickets (see guest/guest-token.ts). Required: an unsigned guest is anybody's cart. */
   GUEST_SECRET: z.string().min(16),
+  /**
+   * Verifies payment webhooks. Required, and never optional: a webhook route
+   * that accepts unsigned bodies is a route that marks any order paid.
+   *
+   * The local provider signs with the same secret, so the whole verification
+   * path runs in a local stack rather than being skipped there.
+   */
+  PAYMENT_WEBHOOK_SECRET: z.string().min(16),
+  /** Set only where a real gateway is configured; the local one runs otherwise. */
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   SQS_CONSUMER_ENABLED: z
     .enum(['true', 'false'])

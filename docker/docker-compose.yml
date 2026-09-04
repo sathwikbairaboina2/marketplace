@@ -123,6 +123,7 @@ services:
       # Signs guest tickets. A fixture value: this file never runs anywhere
       # but a laptop, and a deployment supplies its own.
       GUEST_SECRET: local-guest-secret-not-for-prod
+      PAYMENT_WEBHOOK_SECRET: local-webhook-secret-not-for-prod
       S3_ENDPOINT: http://localstack:4566
       # Host-facing on purpose -- this is the endpoint presigned URLs are signed
       # against, and the browser is what redeems them. S3_BUCKET arrives from

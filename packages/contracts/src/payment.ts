@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoDateTimeSchema, TotalMinorAmountSchema } from './common';
+import { CurrencySchema, IsoDateTimeSchema, TotalMinorAmountSchema } from './common';
 
 export const normalizeCardNumber = (raw: string): string => raw.replace(/[\s-]/g, '');
 
@@ -76,3 +76,52 @@ export const PaymentSchema = z.object({
   at: IsoDateTimeSchema,
 });
 export type Payment = z.infer<typeof PaymentSchema>;
+
+/**
+ * How a customer is paying. Cards were the only option and are the wrong one
+ * for this market: nobody in Pune pays for a ₹1,400 mug by card.
+ */
+export const PAYMENT_METHODS = ['upi', 'card'] as const;
+export const PaymentMethodSchema = z.enum(PAYMENT_METHODS);
+export type PaymentMethod = z.infer<typeof PaymentMethodSchema>;
+
+/**
+ * Starting a UPI payment. The customer's own app does the approving, so this
+ * answers with somewhere to send them and an id to ask about afterwards --
+ * never with a result.
+ */
+export const StartPaymentSchema = z
+  .object({
+    method: PaymentMethodSchema.default('upi'),
+    /** Where the shopper types their UPI id, when the shop collects it. */
+    vpa: z.string().trim().max(120).optional(),
+    email: z.string().trim().toLowerCase().email().max(254).optional(),
+  })
+  .strict();
+export type StartPayment = z.infer<typeof StartPaymentSchema>;
+
+export const PAYMENT_INTENT_STATES = ['pending', 'paid', 'failed', 'expired'] as const;
+export const PaymentIntentStateSchema = z.enum(PAYMENT_INTENT_STATES);
+export type PaymentIntentState = z.infer<typeof PaymentIntentStateSchema>;
+
+export const PaymentIntentResponseSchema = z
+  .object({
+    intentId: z.string(),
+    state: PaymentIntentStateSchema,
+    amountMinor: TotalMinorAmountSchema,
+    currency: CurrencySchema,
+    /**
+     * Where to send the customer to approve. In production this is the
+     * gateway's page; locally it is a page in this app that stands in for a
+     * banking app, so the whole asynchronous path runs in Docker.
+     */
+    approvalUrl: z.string().optional(),
+  })
+  .strict();
+export type PaymentIntentResponse = z.infer<typeof PaymentIntentResponseSchema>;
+
+/** A stranger starting a payment: the same facts plus how they prove the order. */
+export const GuestStartPaymentSchema = StartPaymentSchema.extend({
+  email: z.string().trim().toLowerCase().email().max(254).optional(),
+}).strict();
+export type GuestStartPayment = z.infer<typeof GuestStartPaymentSchema>;

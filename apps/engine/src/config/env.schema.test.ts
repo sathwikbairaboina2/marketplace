@@ -7,6 +7,7 @@ const REQUIRED_ENV = {
   JWT_ISSUER: 'http://localhost:9229/pool',
   JWT_AUDIENCE: 'client-id',
   GUEST_SECRET: 'a-fixture-secret-long-enough',
+  PAYMENT_WEBHOOK_SECRET: 'a-fixture-webhook-secret-long-enough',
 };
 
 describe('EnvSchema docs configuration', () => {

@@ -3,6 +3,8 @@ import { EventsModule } from '../events/events.module';
 import { ProductsModule } from '../products/products.module';
 import { SettingsModule } from '../settings/settings.module';
 import { StorefrontModule } from '../storefront/storefront.module';
+import { PaymentsModule } from '../payments/payments.module';
+import { GuestGuard } from '../guest/guest.guard';
 import { ShopScope } from './shop-scope';
 import { ShopsController } from './shops.controller';
 
@@ -12,8 +14,8 @@ import { ShopsController } from './shops.controller';
  * request with no token name a tenant.
  */
 @Module({
-  imports: [ProductsModule, EventsModule, StorefrontModule, SettingsModule],
+  imports: [ProductsModule, EventsModule, StorefrontModule, SettingsModule, PaymentsModule],
   controllers: [ShopsController],
-  providers: [ShopScope],
+  providers: [ShopScope, GuestGuard],
 })
 export class ShopsModule {}
