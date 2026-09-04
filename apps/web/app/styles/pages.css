@@ -877,3 +877,46 @@
 .mp-restock-row .ant-input {
   flex: 1 1 200px;
 }
+
+/* ==========================================================================
+   The shop's front door
+   ========================================================================== */
+
+.mp-home-band {
+  margin-top: var(--mp-space-10);
+}
+
+.mp-home-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mp-space-4);
+  margin-bottom: var(--mp-space-5);
+}
+
+.mp-home-head h2 {
+  font-family: var(--mp-font-heading);
+  font-size: var(--mp-text-xl);
+  margin: 0;
+}
+
+/* The About page is the one screen of this product that sounds like a person,
+   and it was three clicks from the front door. */
+.mp-home-story {
+  padding: var(--mp-space-8);
+  border-radius: var(--mp-radius-lg);
+  background: var(--mp-surface-sunken);
+  border: 1px solid var(--mp-line);
+}
+
+.mp-home-story h2 {
+  font-family: var(--mp-font-heading);
+  font-size: var(--mp-text-xl);
+  margin: 0 0 var(--mp-space-4);
+}
+
+.mp-home-story p {
+  max-width: 62ch;
+  margin: 0 0 var(--mp-space-5);
+  color: var(--mp-ink-soft);
+}
