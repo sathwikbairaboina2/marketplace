@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from 'antd';
 import type { ProductResponse, SearchProducts } from '@marketplace/contracts';
@@ -19,7 +20,46 @@ import { EmptyState } from '../../../components/empty-state';
 import { ErrorPanel } from '../../../components/error-panel';
 import { GridSkeleton } from '../../../components/skeletons';
 
-type Filters = Pick<SearchProducts, 'text' | 'priceMinorMin' | 'priceMinorMax' | 'attributes'>;
+type Filters = Pick<
+  SearchProducts,
+  'text' | 'category' | 'priceMinorMin' | 'priceMinorMax' | 'attributes'
+>;
+
+/**
+ * The filters, in the URL. They lived in `useState` alone, which meant the
+ * front door, the grid and a search for "bowl" were the same address and
+ * three byte-identical screenshots -- and a merchant whose whole distribution
+ * is one Instagram link had no link narrower than the entire shop.
+ */
+function filtersFromParams(params: URLSearchParams): Filters | null {
+  const text = params.get('q')?.trim();
+  const category = params.get('category')?.trim();
+  const min = params.get('min');
+  const max = params.get('max');
+  const filters: Filters = {
+    text: text || undefined,
+    category: category || undefined,
+    priceMinorMin: min ? Number(min) : undefined,
+    priceMinorMax: max ? Number(max) : undefined,
+    attributes: {},
+  };
+  const set =
+    filters.text ||
+    filters.category ||
+    filters.priceMinorMin !== undefined ||
+    filters.priceMinorMax !== undefined;
+  return set ? filters : null;
+}
+
+function paramsFromFilters(filters: Filters | null): string {
+  if (!filters) return '';
+  const params = new URLSearchParams();
+  if (filters.text) params.set('q', filters.text);
+  if (filters.category) params.set('category', filters.category);
+  if (filters.priceMinorMin !== undefined) params.set('min', String(filters.priceMinorMin));
+  if (filters.priceMinorMax !== undefined) params.set('max', String(filters.priceMinorMax));
+  return params.toString();
+}
 
 const PAGE = 25;
 
@@ -51,7 +91,22 @@ export default function ProductsPage() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
-  const [filters, setFilters] = useState<Filters | null>(null);
+  // The URL is the state. A shopper can bookmark a filtered shop, a merchant
+  // can link to one category from a story, and the back button works.
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const filters = useMemo(
+    () => filtersFromParams(new URLSearchParams(searchParams.toString())),
+    [searchParams],
+  );
+  const setFilters = useCallback(
+    (next: Filters | null) => {
+      const query = paramsFromFilters(next);
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router],
+  );
 
   // Unfiltered browsing uses GET /products; the moment any filter is set it
   // switches to POST /products/search, the only endpoint that can match on
@@ -100,6 +155,9 @@ export default function ProductsPage() {
     const text = typeof values.text === 'string' ? values.text.trim() : '';
     setFilters({
       text: text.length > 0 ? text : undefined,
+      // The rail does not offer category; a category chip on a card does, and
+      // an applied search should not silently drop it.
+      category: filters?.category,
       priceMinorMin: values.priceMinorMin as number | undefined,
       priceMinorMax: values.priceMinorMax as number | undefined,
       attributes: attributes as SearchProducts['attributes'],

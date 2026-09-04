@@ -4,6 +4,7 @@ import {
   BookingResponse,
   CreateBooking,
   EventRecord,
+  orderReferenceFrom as bookingReferenceFrom,
   Page,
 } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
@@ -28,7 +29,9 @@ export type { BookingResponse };
 
 function toResponse(record: BookingRecord): BookingResponse {
   const { PK: _pk, SK: _sk, GSI1PK: _gsi1pk, GSI1SK: _gsi1sk, ...rest } = record;
-  return rest;
+  // Derived for a booking written before references existed, the same way an
+  // order's is: the function is pure over the id.
+  return { ...rest, reference: rest.reference ?? bookingReferenceFrom(rest.id) };
 }
 
 // Transaction item index 0 is always the event's capacity claim below; item 1 is always the
@@ -45,7 +48,10 @@ export class BookingsService {
     private readonly registry: SchemaRegistryService,
   ) {}
 
-  async create(input: CreateBooking): Promise<BookingResponse> {
+  async create(
+    input: CreateBooking,
+    opts: { guestEmail?: string } = {},
+  ): Promise<BookingResponse> {
     const event = await this.repo.get<EventRecord>(entitySk('Event', input.eventId));
     if (!event) {
       throw new ProblemException('invalid-request', 422, 'Unknown event', `no event ${input.eventId}`, {
@@ -66,6 +72,11 @@ export class BookingsService {
       userId: principal.userId,
       status: 'confirmed',
       ticketQuantity: input.ticketQuantity,
+      // The number a shopper reads back, and the address a stranger finds it
+      // with -- both the same shape as an order's, because they are the same
+      // problem: a booking outlives the browser that made it.
+      reference: bookingReferenceFrom(id),
+      ...(opts.guestEmail ? { guestEmail: opts.guestEmail } : {}),
       createdAt,
       attributes,
     };

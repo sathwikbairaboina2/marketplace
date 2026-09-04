@@ -149,3 +149,21 @@ export function formatRelative(value: string | null | undefined, now = Date.now(
 export const SELLABLE_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'] as const;
 export const DEFAULT_CURRENCY = 'INR';
 export const currencyOptions = SELLABLE_CURRENCIES.map((value) => ({ value }));
+
+/**
+ * A shipping address in the order a person writes one. `Object.values(...)`
+ * printed "411004, Pune, 12 Karve Road" on the order page, because a record's
+ * keys iterate in insertion order and nothing guarantees that is postal order.
+ *
+ * The known lines come first, in order; anything else the shop asked for
+ * follows, so a tenant's own field is never silently dropped.
+ */
+const ADDRESS_ORDER = ['name', 'line1', 'line2', 'city', 'state', 'postcode', 'country'];
+
+export function formatAddress(address: Record<string, string>): string {
+  const known = ADDRESS_ORDER.filter((key) => address[key]).map((key) => address[key]);
+  const rest = Object.entries(address)
+    .filter(([key, value]) => value && !ADDRESS_ORDER.includes(key))
+    .map(([, value]) => value);
+  return [...known, ...rest].join(', ');
+}

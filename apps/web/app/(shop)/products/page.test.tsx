@@ -14,6 +14,15 @@ vi.mock('../../../lib/auth/auth-context', () => ({
 }));
 vi.mock('../../../lib/problem-notify', () => ({ notifyProblem: vi.fn() }));
 
+// The grid keeps its filters in the URL, so a shopper can bookmark a filtered
+// shop and a merchant can link to one category. These tests browse unfiltered.
+const replace = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace, push: vi.fn() }),
+  usePathname: () => '/products',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 const product = (over: Record<string, unknown>) => ({
   entityType: 'Product',
   id: '01ARZ3NDEKTSV4RRFFQ69G5FAV',

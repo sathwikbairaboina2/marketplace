@@ -1,8 +1,11 @@
 import { Body, Controller, Get, Put } from '@nestjs/common';
 import {
   Announcement,
+  ShopContact,
   UpdateAnnouncement,
   UpdateAnnouncementSchema,
+  UpdateShopContact,
+  UpdateShopContactSchema,
 } from '@marketplace/contracts';
 import { ZodBody } from '../common/zod-validation.pipe';
 import { Roles } from '../auth/roles.decorator';
@@ -27,5 +30,18 @@ export class SettingsController {
     @ZodBody(UpdateAnnouncementSchema) body: UpdateAnnouncement,
   ): Promise<Announcement> {
     return this.settings.updateAnnouncement(body);
+  }
+
+  @Get('contact')
+  getContact(): Promise<ShopContact> {
+    return this.settings.getContact();
+  }
+
+  @Put('contact')
+  @Roles('admin')
+  updateContact(
+    @ZodBody(UpdateShopContactSchema) body: UpdateShopContact,
+  ): Promise<ShopContact> {
+    return this.settings.updateContact(body);
   }
 }

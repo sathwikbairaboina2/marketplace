@@ -1,10 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { Announcement, UpdateAnnouncement } from '@marketplace/contracts';
+import {
+  Announcement,
+  EMPTY_SHOP_CONTACT,
+  ShopContact,
+  UpdateAnnouncement,
+  UpdateShopContact,
+} from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
 import { settingsSk } from '../persistence/keys';
 import { assertAdmin } from '../common/roles';
 
 const ANNOUNCEMENT_SK = settingsSk('announcement');
+const CONTACT_SK = settingsSk('contact');
 
 @Injectable()
 export class SettingsService {
@@ -20,6 +27,24 @@ export class SettingsService {
   async updateAnnouncement(input: UpdateAnnouncement): Promise<Announcement> {
     assertAdmin('set the announcement');
     await this.repo.put(ANNOUNCEMENT_SK, { text: input.text, enabled: input.enabled });
+    return input;
+  }
+
+  /**
+   * How to reach the shop, for the footer. Readable by anyone who can see the
+   * shop -- it is printed on every page of it.
+   */
+  async getContact(): Promise<ShopContact> {
+    const found = await this.repo.get<ShopContact>(CONTACT_SK);
+    if (!found) return EMPTY_SHOP_CONTACT;
+    // Field by field: a record written before a field existed must not come
+    // back with `undefined` where the contract promises a string.
+    return { ...EMPTY_SHOP_CONTACT, ...found };
+  }
+
+  async updateContact(input: UpdateShopContact): Promise<ShopContact> {
+    assertAdmin('set the shop contact details');
+    await this.repo.put(CONTACT_SK, { ...input });
     return input;
   }
 }

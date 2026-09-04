@@ -101,7 +101,10 @@ export default function ProductDetail() {
           <p className="mp-detail-desc">{product.description}</p>
 
           <div className="mp-detail-avail">
-            <StatusTag status={product.status} />
+            {/* No StatusTag. "active" is the seller's word for a listing, and
+                it was being shown to shoppers beside the price, where it reads
+                as a claim about the object. Availability is the next line, and
+                it is the only part of this a customer needs. */}
             <span
               className="mp-card-stock"
               data-low={soldOut || product.stock <= LOW_STOCK || undefined}

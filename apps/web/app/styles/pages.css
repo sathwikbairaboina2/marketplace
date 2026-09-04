@@ -110,9 +110,35 @@
   min-width: 0;
 }
 
+/* A photograph of the class, on the panel that had none. 3:2 rather than the
+   product grid's 5:4: a room with people in it is a wider picture than an
+   object on a table. */
+.mp-event-media {
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: var(--mp-radius-lg);
+  border: 1px solid var(--mp-line);
+  background: var(--mp-surface-sunken);
+  margin-bottom: var(--mp-space-5);
+}
+
+.mp-event-media img,
+.mp-event-media .mp-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mp-event-desc {
+  margin-top: var(--mp-space-4);
+  max-width: 60ch;
+  color: var(--mp-ink-soft);
+  white-space: pre-line;
+}
+
 .mp-event-head h1 {
   font-family: var(--mp-font-heading);
-  font-size: var(--mp-text-xxl);
+  font-size: var(--mp-text-display, var(--mp-text-xxl));
   line-height: 1.12;
   margin-bottom: var(--mp-space-4);
 }
@@ -381,6 +407,25 @@
   }
   .mp-summary {
     position: static;
+    /* Room for the bar that now sits over the bottom of the page. */
+    padding-bottom: var(--mp-space-3);
+  }
+  /* The total and its button, stuck to the bottom of the screen. The card
+     itself cannot be: on the order page it carries an address and a reference
+     as well, and a sticky block that tall would leave nothing to scroll. */
+  .mp-action-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin: 0 calc(var(--mp-space-5) * -1) calc(var(--mp-space-5) * -1);
+    padding: var(--mp-space-4) var(--mp-space-5) calc(var(--mp-space-4) + env(safe-area-inset-bottom));
+    background: var(--mp-surface-raised);
+    border-top: 1px solid var(--mp-line);
+    border-radius: 0 0 var(--mp-radius-lg) var(--mp-radius-lg);
+    box-shadow: 0 -6px 16px rgb(0 0 0 / 6%);
+  }
+  .mp-action-bar .mp-summary-total {
+    margin-bottom: var(--mp-space-3);
   }
   .mp-detail-buy {
     order: 2 !important;

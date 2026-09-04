@@ -5,9 +5,21 @@ import AdminSettingsPage from './page';
 
 const getAnnouncement = vi.fn();
 const putAnnouncement = vi.fn();
+// The page also carries the contact card, whose own behaviour is not what
+// these cases are about: it needs to load without throwing.
+const EMPTY_CONTACT = {
+  email: '',
+  phone: '',
+  whatsapp: '',
+  address: '',
+  delivery: '',
+  returns: '',
+};
 vi.mock('../../../../lib/api/settings', () => ({
   getAnnouncement: () => getAnnouncement(),
   putAnnouncement: (body: unknown) => putAnnouncement(body),
+  getShopContact: () => Promise.resolve(EMPTY_CONTACT),
+  putShopContact: (body: unknown) => Promise.resolve(body),
 }));
 vi.mock('../../../../lib/problem-notify', () => ({ notifyProblem: vi.fn() }));
 

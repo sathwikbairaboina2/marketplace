@@ -21,6 +21,7 @@ const product = {
   category: 'tools',
   stock: 10,
   images: [],
+  pinned: false,
   createdAt: '2026-08-07T00:00:00.000Z',
   updatedAt: '2026-08-07T00:00:00.000Z',
   attributes: { colour: 'red' },
@@ -70,6 +71,7 @@ describe('response schemas', () => {
     const event = {
       entityType: 'Event' as const,
       id: '01J0000000000000000000000C',
+      images: [],
       title: 'Launch',
       capacity: 100,
       bookedCount: 4,
@@ -115,6 +117,7 @@ describe('response schemas', () => {
     const booking = {
       entityType: 'Booking' as const,
       id: '01J0000000000000000000000E',
+      reference: '0000-000E',
       eventId: '01J0000000000000000000000C',
       userId: 'u1',
       status: 'confirmed' as const,

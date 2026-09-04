@@ -18,6 +18,9 @@ import {
   GuestTokenResponse,
   OrderLookup,
   OrderLookupSchema,
+  BookingResponse,
+  GuestBooking,
+  GuestBookingSchema,
   GuestCancelRequest,
   GuestCancelRequestSchema,
   GuestPayRequest,
@@ -32,6 +35,7 @@ import { ENV, EnvConfig } from '../config/env.schema';
 import { IdempotencyInterceptor } from '../idempotency/idempotency.interceptor';
 import { CartService } from '../cart/cart.service';
 import { CheckoutService } from '../checkout/checkout.service';
+import { BookingsService } from '../bookings/bookings.service';
 import { OrdersService } from '../orders/orders.service';
 import { ShopScope } from '../shops/shop-scope';
 import { GuestGuard } from './guest.guard';
@@ -55,6 +59,7 @@ export class GuestController {
     private readonly cart: CartService,
     private readonly checkout: CheckoutService,
     private readonly orders: OrdersService,
+    private readonly bookings: BookingsService,
   ) {}
 
   /** A fresh ticket for this shop. Free to mint: a ticket with no cart is nothing. */
@@ -140,6 +145,31 @@ export class GuestController {
     @ZodBody(GuestCancelRequestSchema) body: GuestCancelRequest,
   ): Promise<OrderResponse> {
     return this.orders.cancel(id, { guestEmail: body.email });
+  }
+
+  /**
+   * A stranger booking a class. The wedge this product is sold on, and until
+   * this route existed it converted at exactly zero: "Sign in to book" led to
+   * a login page in an app that has no sign-up route at all.
+   *
+   * The same shape as guest checkout -- the capacity claim, the overselling
+   * guard and the booking record are the service's, unchanged, because it keys
+   * on the principal and never asks where it came from.
+   */
+  @Post('bookings')
+  @Public()
+  @UseGuards(GuestGuard)
+  @UseInterceptors(IdempotencyInterceptor)
+  guestBook(@ZodBody(GuestBookingSchema) body: GuestBooking): Promise<BookingResponse> {
+    const { email, ...input } = body;
+    return this.bookings.create(input, { guestEmail: email });
+  }
+
+  @Get('bookings/:id')
+  @Public()
+  @UseGuards(GuestGuard)
+  getBooking(@Param('id') id: string): Promise<BookingResponse> {
+    return this.bookings.get(id);
   }
 
   /**

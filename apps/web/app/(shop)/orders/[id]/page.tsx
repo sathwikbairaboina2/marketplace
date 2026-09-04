@@ -24,7 +24,7 @@ import { PageHeader } from '../../../../components/page-header';
 import { EmptyState } from '../../../../components/empty-state';
 import { ErrorPanel } from '../../../../components/error-panel';
 import { DetailSkeleton } from '../../../../components/skeletons';
-import { formatDateTime, formatPrice } from '../../../../lib/format';
+import { formatAddress, formatDateTime, formatPrice } from '../../../../lib/format';
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -285,7 +285,11 @@ export default function OrderDetailPage() {
           </div>
           <div className="mp-summary-block">
             <h3>Shipping to</h3>
-            <p>{Object.values(order.shippingAddress).join(', ')}</p>
+            {/* In the order an address is written, not the order the object's
+                keys happen to iterate: this printed "411004, Pune, 12 Karve
+                Road". Anything the shop asked for that is not one of the known
+                lines still follows, so a tenant's own field is never dropped. */}
+            <p>{formatAddress(order.shippingAddress)}</p>
           </div>
           <div className="mp-summary-block">
             <h3>Order number</h3>

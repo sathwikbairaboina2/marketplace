@@ -1,9 +1,17 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { Card, CartResponse, CheckoutRequest, OrderResponse } from '@marketplace/contracts';
+import type {
+  BookingResponse,
+  Card,
+  CartResponse,
+  CheckoutRequest,
+  CreateBooking,
+  OrderResponse,
+} from '@marketplace/contracts';
 import { clearCart, getCart, mergeGuestCart, putCartLine } from '../api/cart';
 import { checkout, payOrder } from '../api/checkout';
+import { createBooking, getBooking } from '../api/bookings';
 import { cancelOrder, getOrder } from '../api/orders';
 import * as pub from '../api/shop';
 import { useAuth } from '../auth/auth-context';
@@ -37,6 +45,13 @@ export interface ShopCommerce {
   /** `email` is the lookup key, for a shopper who no longer holds the ticket. */
   payOrder(id: string, card: Card, email?: string): Promise<OrderResponse>;
   cancelOrder(id: string, email?: string): Promise<OrderResponse>;
+  /**
+   * Booking a class. `email` is required of a stranger and ignored for a
+   * signed-in buyer, whose account already carries one -- the page asks for it
+   * only when `guest` is true, exactly as the cart does.
+   */
+  book(body: CreateBooking, idempotencyKey: string, email?: string): Promise<BookingResponse>;
+  getBooking(id: string): Promise<BookingResponse>;
 }
 
 const EMPTY: CartResponse = { lines: [], totalMinor: 0 };
@@ -72,6 +87,8 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
       getOrder: (id) => getOrder(id),
       payOrder: (id, card) => payOrder(id, card),
       cancelOrder: (id) => cancelOrder(id),
+      book: (body, key) => createBooking(body, key),
+      getBooking: (id) => getBooking(id),
     };
   }
   const t = shop.tenantId;
@@ -106,6 +123,11 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
     getOrder: async (id) => pub.guestGetOrder(t, await ensure(), id),
     payOrder: async (id, card, email) => pub.guestPayOrder(t, await ensure(), id, card, email),
     cancelOrder: async (id, email) => pub.guestCancelOrder(t, await ensure(), id, email),
+    book: async (body, key, email) => {
+      if (!email) throw new Error('a guest booking needs an email');
+      return pub.guestBook(t, await ensure(), { ...body, email }, key);
+    },
+    getBooking: async (id) => pub.guestGetBooking(t, await ensure(), id),
   };
 }
 

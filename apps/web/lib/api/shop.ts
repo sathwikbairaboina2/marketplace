@@ -1,7 +1,10 @@
 import {
   AnnouncementSchema,
+  BookingResponseSchema,
+  ShopContactSchema,
   type Card,
   CartResponseSchema,
+  type CreateBooking,
   EventResponseSchema,
   type GuestCheckoutRequest,
   GuestTokenResponseSchema,
@@ -131,3 +134,24 @@ export const lookupOrder = (tenantId: string, orderId: string, email: string) =>
     body: { orderId, email },
     schema: OrderResponseSchema,
   });
+
+/** A stranger booking a class on the shop's own route, on their ticket. */
+export const guestBook = (
+  tenantId: string,
+  guest: string,
+  body: CreateBooking & { email: string },
+  idempotencyKey: string,
+) =>
+  request(`${base(tenantId)}/bookings`, {
+    method: 'POST',
+    body,
+    schema: BookingResponseSchema,
+    guest,
+    idempotencyKey,
+  });
+
+export const guestGetBooking = (tenantId: string, guest: string, id: string) =>
+  request(`${base(tenantId)}/bookings/${id}`, { schema: BookingResponseSchema, guest });
+
+export const publicGetContact = (tenantId: string) =>
+  request(`${base(tenantId)}/contact`, { schema: ShopContactSchema });

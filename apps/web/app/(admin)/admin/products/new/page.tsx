@@ -2,7 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AutoComplete, Button, Card, Form, Input, InputNumber, Select, message } from 'antd';
+import {
+  AutoComplete,
+  Button,
+  Card,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Switch,
+  message,
+} from 'antd';
 import { ThunderboltOutlined } from '@ant-design/icons';
 import { ImageUploader } from '../../../../../components/image-uploader';
 import { createProduct } from '../../../../../lib/api/products';
@@ -59,6 +69,7 @@ export default function NewProductPage() {
         stock: values.stock as number,
         images,
         status: values.status as 'active' | 'draft' | 'archived' | 'out_of_stock',
+        pinned: Boolean(values.pinned),
         attributes: toAttributes(
           schema?.fields ?? {},
           (values.attributes ?? {}) as Record<string, unknown>,
@@ -83,7 +94,7 @@ export default function NewProductPage() {
           form={form}
           layout="vertical"
           onFinish={submit}
-          initialValues={{ currency: DEFAULT_CURRENCY, stock: 0, status: 'active' }}
+          initialValues={{ currency: DEFAULT_CURRENCY, stock: 0, status: 'active', pinned: false }}
         >
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
             <Input />
@@ -144,6 +155,17 @@ export default function NewProductPage() {
               />
             </Form.Item>
           </div>
+          {/* The one lever a merchant has over the order of their own shop.
+              The grid is otherwise the ULID descending -- when they happened
+              to type something in -- and the single link they own opens it. */}
+          <Form.Item
+            name="pinned"
+            label="Show first in the shop"
+            valuePropName="checked"
+            extra="Pinned products lead the grid, ahead of everything else in stock."
+          >
+            <Switch />
+          </Form.Item>
           <Form.Item label="Images">
             <ImageUploader value={images} onChange={setImages} />
           </Form.Item>

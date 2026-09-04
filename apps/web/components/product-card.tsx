@@ -34,7 +34,15 @@ export function ProductCard({ product }: { product: ProductResponse }) {
       </Link>
 
       <div className="mp-card-body">
-        <span className="mp-card-cat">{product.category}</span>
+        {/* A link, not a label. The category is already a public server-side
+            filter and was printed on every card as dead text: there was no URL
+            anywhere between "the whole shop" and "one product". */}
+        <Link
+          href={`/products?category=${encodeURIComponent(product.category)}`}
+          className="mp-card-cat mp-card-cat-link"
+        >
+          {product.category}
+        </Link>
 
         {/* Plain visible text inside the link: catalogue.spec and
             isolation.spec both assert getByText(name). */}

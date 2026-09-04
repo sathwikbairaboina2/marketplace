@@ -256,7 +256,7 @@ export class OrderCheckoutService {
           'not-found',
           404,
           'Product no longer exists',
-          `product ${item.productId} was removed before the order could be completed`,
+          `one of the items in your basket was removed before the order could be completed`,
           { productId: item.productId },
         );
       }
@@ -270,7 +270,7 @@ export class OrderCheckoutService {
           'price-changed',
           409,
           'Product price changed',
-          `product ${item.productId} is now priced at ${current.priceMinor}`,
+          `${current.name} is now priced at ${current.priceMinor}`,
           {
             productId: item.productId,
             expectedPriceMinor: expected.priceMinor,
@@ -283,7 +283,11 @@ export class OrderCheckoutService {
         'insufficient-stock',
         409,
         'Insufficient stock',
-        `product ${item.productId} has ${current.stock} in stock, ${item.quantity} requested`,
+        // The shopper reads this one. A ULID tells them nothing about which of
+        // the things in their basket went out of stock.
+        current.stock === 0
+          ? `${current.name} sold out while it was in your basket`
+          : `only ${current.stock} of ${current.name} left, ${item.quantity} requested`,
         { productId: item.productId, available: current.stock, requested: item.quantity },
       );
     }

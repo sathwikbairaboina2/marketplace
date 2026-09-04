@@ -28,6 +28,7 @@ const PRODUCT = {
   description: 'A kettle of copper',
   priceMinor: 12900,
   currency: 'USD',
+  pinned: false,
   category: 'coffee',
   stock: 5,
   images: ['https://example.test/kettle.png'],

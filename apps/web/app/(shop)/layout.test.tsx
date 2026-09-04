@@ -15,8 +15,21 @@ vi.mock('../../lib/auth/auth-context', () => ({
   useAuth: () => ({ principal, ready: true, signOut }),
 }));
 vi.mock('../../lib/shop/shop-context', () => ({ useShop: () => shop }));
+// The footer asks for the shop's contact details; a shell test cares only
+// that neither call throws.
+const EMPTY_CONTACT = {
+  email: '',
+  phone: '',
+  whatsapp: '',
+  address: '',
+  delivery: '',
+  returns: '',
+};
 vi.mock('../../lib/shop/reads', () => ({
-  useShopReads: () => ({ getStorefront: () => Promise.resolve(null) }),
+  useShopReads: () => ({
+    getStorefront: () => Promise.resolve(null),
+    getContact: () => Promise.resolve(EMPTY_CONTACT),
+  }),
 }));
 vi.mock('../../lib/api/http', () => ({ onUnauthorized: () => () => {} }));
 vi.mock('../../lib/theme/theme-context', () => ({ useTheme: () => ({ mode: 'light' }) }));

@@ -12,6 +12,7 @@ const shop = { tenantId: 'acme', name: 'Acme Homeware', origin: 'http://acme.loc
 
 const product = {
   entityType: 'Product' as const,
+  pinned: false,
   id: '01KZERNS77Z1E2HB509WV80MN6',
   name: 'Steel Pour-Over Kettle',
   description: 'Stainless gooseneck kettle, stovetop safe, 1.2L.',
@@ -29,6 +30,7 @@ const product = {
 const event = {
   entityType: 'Event' as const,
   id: '01KZERNS77Z1E2HB509WV80MN7',
+  images: [],
   title: 'Glaze & Fire Workshop',
   capacity: 24,
   bookedCount: 2,

@@ -1,8 +1,11 @@
 import { contrastRatio, type StorefrontConfig } from '@marketplace/contracts';
-import { cssVars, type Mode } from './tokens';
-import { FONT_STACKS, PRESETS, RADIUS_VALUES } from './presets';
+import { cssVars, fontSize, space, type Mode } from './tokens';
+import { FONT_STACKS, PRESETS, RADIUS_VALUES, type Preset } from './presets';
 
 const DEFAULT_FONTS = FONT_STACKS.inter;
+
+/** A storefront's body size. 14px is the cockpit's, on a page shoppers read. */
+const SHOP_BODY_PX = 16;
 
 /**
  * One function from tenant choice to CSS variables. Null config = today's
@@ -63,6 +66,48 @@ export function resolveTheme(config: StorefrontConfig | null, mode: Mode): Recor
     '--mp-radius-xl': `${radius.xl}px`,
     '--mp-font-heading': fonts.heading,
     '--mp-font-body': fonts.body,
+    ...scaleVars(preset),
+  };
+}
+
+/**
+ * The shop's own rhythm and type ladder. `--mp-space-*` and `--mp-text-*` are
+ * emitted once for the whole app and were never overridden, so every preset
+ * shared one measure and one ladder -- `artisan` and `editorial` rendered the
+ * same About page to the pixel, and the only thing separating five presets was
+ * colour.
+ *
+ * Multipliers rather than five hand-written scales: the base scale is already
+ * a considered ratio, and what a preset wants is to be more or less generous
+ * with it, not to redraw it. Rounded to whole pixels so nothing lands on a
+ * half-pixel border.
+ */
+function scaleVars(preset: Preset): Record<string, string> {
+  const px = (value: number, factor: number) => `${Math.round(value * factor)}px`;
+  const d = preset.density;
+  const t = preset.typeScale;
+  return {
+    '--mp-space-1': px(space[1], d),
+    '--mp-space-2': px(space[2], d),
+    '--mp-space-3': px(space[3], d),
+    '--mp-space-4': px(space[4], d),
+    '--mp-space-5': px(space[5], d),
+    '--mp-space-6': px(space[6], d),
+    '--mp-space-8': px(space[8], d),
+    '--mp-space-10': px(space[10], d),
+    '--mp-space-12': px(space[12], d),
+    // The body size is the shop's, not the cockpit's 14px, and it does not
+    // scale with the preset: 16px is the floor for a page read on a phone.
+    '--mp-text-xs': px(fontSize.xs, 1),
+    '--mp-text-sm': px(fontSize.sm, 1),
+    '--mp-text-base': px(fontSize.base, 1),
+    '--mp-text-md': `${SHOP_BODY_PX}px`,
+    '--mp-text-lg': px(fontSize.lg, t),
+    '--mp-text-xl': px(fontSize.xl, t),
+    '--mp-text-xxl': px(fontSize.xxl, t),
+    // The step above the ladder's ceiling, which nothing had: a hero headline
+    // and a page title were the same 32px as a section heading.
+    '--mp-text-display': `${preset.display}px`,
   };
 }
 

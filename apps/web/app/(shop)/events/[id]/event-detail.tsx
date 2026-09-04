@@ -3,12 +3,17 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { Button, Descriptions, Form, InputNumber, Progress, message } from 'antd';
-import { ArrowLeftOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Button, Descriptions, Form, Input, InputNumber, Progress, message } from 'antd';
+import {
+  ArrowLeftOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  EnvironmentOutlined,
+} from '@ant-design/icons';
 import type { EventResponse } from '@marketplace/contracts';
-import { createBooking } from '../../../../lib/api/bookings';
-import { useAuth } from '../../../../lib/auth/auth-context';
+import { useShopCommerce } from '../../../../lib/shop/commerce';
 import { useShopReads } from '../../../../lib/shop/reads';
+import { placeholderFor } from '../../../../lib/placeholder';
 import { toAttributes, toDescriptionRows, toFormItems } from '../../../../lib/schema-fields';
 import { useSchema } from '../../../../lib/schemas/schema-cache';
 import { ProblemError } from '../../../../lib/api/http';
@@ -27,7 +32,7 @@ export default function EventDetail() {
   const router = useRouter();
   const eventSchema = useSchema('Event');
   const bookingSchema = useSchema('Booking');
-  const { principal } = useAuth();
+  const commerce = useShopCommerce();
   const reads = useShopReads();
   const [busy, setBusy] = useState(false);
 
@@ -48,6 +53,8 @@ export default function EventDetail() {
   const attributeRows = eventSchema
     ? toDescriptionRows(eventSchema.fields, event.attributes)
     : [];
+  const image = event.images[0];
+  const { gradient, initials } = placeholderFor(event.id, event.title);
 
   const submit = async (values: Record<string, unknown>) => {
     setBusy(true);
@@ -63,7 +70,11 @@ export default function EventDetail() {
 
       for (let attempt = 0; ; attempt++) {
         try {
-          const booking = await createBooking(body, idempotencyKey.current);
+          const booking = await commerce.book(
+            body,
+            idempotencyKey.current,
+            (values.email as string | undefined)?.trim(),
+          );
           void message.success('Booked');
           router.push(`/bookings/${booking.id}`);
           return;
@@ -107,15 +118,10 @@ export default function EventDetail() {
             </span>
           </div>
 
-          {/* A stranger sees the price and the places left, and one button
-              that takes them to sign in and straight back here. */}
-          {!principal ? (
-            <Link href={`/login?next=${encodeURIComponent(`/events/${event.id}`)}`}>
-              <Button type="primary" size="large" block disabled={soldOut}>
-                {soldOut ? 'Sold out' : 'Sign in to book'}
-              </Button>
-            </Link>
-          ) : (
+          {/* No sign-in wall. This was "Sign in to book", which led to a
+              login page in an app with no sign-up route: the class path, the
+              product's stated wedge, converted at exactly zero. A stranger
+              books the way they buy -- on a ticket, with an email. */}
           <Form layout="vertical" onFinish={submit} initialValues={{ ticketQuantity: 1 }}>
             {/* CreateBookingSchema caps ticketQuantity at 100; capacity is
                 enforced transactionally server-side, so this bound is a
@@ -128,6 +134,16 @@ export default function EventDetail() {
                 style={{ width: '100%' }}
               />
             </Form.Item>
+            {commerce.guest && (
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[{ required: true, type: 'email' }]}
+                extra="No account needed. Your booking number comes back on this page."
+              >
+                <Input placeholder="you@example.com" autoComplete="email" />
+              </Form.Item>
+            )}
             {bookingSchema ? toFormItems(bookingSchema.fields) : null}
             <Button
               type="primary"
@@ -140,13 +156,27 @@ export default function EventDetail() {
               {soldOut ? 'Sold out' : 'Book'}
             </Button>
           </Form>
-          )}
         </div>
 
         {/* Not `mp-detail-media`: that carries a 5:4 aspect ratio for a
             product photograph, which around four lines of text was a tall
             empty box with a border round it. */}
         <div className="mp-event-panel">
+          {/* A class is a place you go to and a thing you do, and this page
+              showed neither: no photograph, no address, no description. It was
+              the least-finished screen in the product, on the highest-margin
+              line in the shop. */}
+          <div className="mp-event-media">
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt={event.title} />
+            ) : (
+              <div className="mp-placeholder" style={{ background: gradient }} aria-hidden="true">
+                <span>{initials}</span>
+              </div>
+            )}
+          </div>
+
           <div className="mp-event-head">
             <h1>{event.title}</h1>
             <div className="mp-event-facts">
@@ -156,7 +186,14 @@ export default function EventDetail() {
               <span>
                 <ClockCircleOutlined /> ends {formatDateTime(event.endDate)}
               </span>
+              {event.location && (
+                <span>
+                  <EnvironmentOutlined /> {event.location}
+                </span>
+              )}
             </div>
+
+            {event.description && <p className="mp-event-desc">{event.description}</p>}
 
             {attributeRows.length > 0 && (
               <div className="mp-detail-specs">

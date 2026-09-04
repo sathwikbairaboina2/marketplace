@@ -1,67 +1,92 @@
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from 'antd';
 import type { EventResponse } from '@marketplace/contracts';
 import { useShopReads } from '../../../lib/shop/reads';
-import { formatDateTime, formatPrice } from '../../../lib/format';
-import { CursorTable } from '../../../components/cursor-table';
+import { notifyProblem } from '../../../lib/problem-notify';
+import { EventCard } from '../../../components/event-card';
 import { EmptyState } from '../../../components/empty-state';
+import { ErrorPanel } from '../../../components/error-panel';
+import { GridSkeleton } from '../../../components/skeletons';
 import { PageHeader } from '../../../components/page-header';
 
+const PAGE = 24;
+
+/**
+ * The shop's classes. Cards, not the table this was: at 390px the table put
+ * the price and every action off the right edge behind a horizontal scroll
+ * with nothing to say so, and it published "22 of 24 places left" — scarcity
+ * read backwards on the highest-margin line in the shop.
+ */
 export default function EventsPage() {
   const reads = useShopReads();
+  const [items, setItems] = useState<EventResponse[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+
+  const fetchPage = useCallback(
+    async (from: string | null, append: boolean) => {
+      setLoading(true);
+      try {
+        const page = await reads.listEvents(PAGE, from);
+        setItems((prev) => (append ? [...prev, ...page.items] : page.items));
+        setCursor(page.nextCursor);
+        setDone(page.nextCursor === null);
+        setError(null);
+      } catch (err) {
+        setError(err);
+        notifyProblem(err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [reads],
+  );
+
+  useEffect(() => {
+    void fetchPage(null, false);
+  }, [fetchPage]);
+
   return (
     <>
-      <PageHeader title="Events" subtitle="Sessions you can book a place at." />
-      <div className="mp-list-measure">
-      <CursorTable<EventResponse>
-          rowKey="id"
-          caption="Scheduled events"
-          noun={{ one: 'event', many: 'events' }}
-          load={(cursor) => reads.listEvents(25, cursor)}
-          empty={
-            <EmptyState
-              title="Nothing scheduled"
-              description="No events on sale yet. The shop's products are still open."
-              action={
-                <Link href="/products">
-                  <Button type="primary">Browse products</Button>
-                </Link>
-              }
-            />
+      <PageHeader title="Classes and events" subtitle="Sessions you can book a place at." />
+
+      {error && items.length === 0 ? (
+        <ErrorPanel error={error} onRetry={() => void fetchPage(null, false)} />
+      ) : loading && items.length === 0 ? (
+        <GridSkeleton />
+      ) : items.length === 0 ? (
+        <EmptyState
+          title="Nothing scheduled"
+          description="No classes on sale yet. The shop's products are still open."
+          action={
+            <Link href="/products">
+              <Button type="primary">Browse products</Button>
+            </Link>
           }
-          columns={[
-            {
-              title: 'Title',
-              dataIndex: 'title',
-              render: (title: string, row) => <Link href={`/events/${row.id}`}>{title}</Link>,
-            },
-            {
-              title: 'Starts',
-              dataIndex: 'startDate',
-              render: (at: string) => formatDateTime(at),
-            },
-            {
-              title: 'Booked',
-              // `bookedCount`, not `booked` -- EventRecord and ProductRecord are
-              // not symmetrical.
-              dataIndex: 'bookedCount',
-              className: 'mp-num',
-              align: 'right' as const,
-              // One fact, one column: how full the session is.
-              render: (booked: number, row) => `${booked} of ${row.capacity}`,
-            },
-            {
-              title: 'Price',
-              dataIndex: 'basePriceMinor',
-              className: 'mp-num',
-              align: 'right' as const,
-              render: (minor: number, row) => formatPrice(minor, row.currency),
-            },
-          ]}
         />
-      </div>
+      ) : (
+        <>
+          <div className="mp-grid">
+            {items.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+          {!done && (
+            <Button
+              style={{ marginTop: 'var(--mp-space-6)' }}
+              loading={loading}
+              onClick={() => void fetchPage(cursor, true)}
+            >
+              Load more
+            </Button>
+          )}
+        </>
+      )}
     </>
   );
 }

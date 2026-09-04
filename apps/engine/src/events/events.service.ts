@@ -19,7 +19,8 @@ export type { EventResponse };
 
 function toResponse(record: EventRecord): EventResponse {
   const { PK: _pk, SK: _sk, ...rest } = record;
-  return rest;
+  // Events written before an event could carry a photograph have no `images`.
+  return { ...rest, images: rest.images ?? [] };
 }
 
 @Injectable()
@@ -47,6 +48,12 @@ export class EventsService {
       endDate: input.endDate,
       basePriceMinor: input.basePriceMinor,
       currency: input.currency,
+      // What a class is, where it is, and what it looks like. Spread
+      // conditionally so an event created without them carries no
+      // `description: undefined` for DynamoDB to refuse.
+      ...(input.description ? { description: input.description } : {}),
+      ...(input.location ? { location: input.location } : {}),
+      images: input.images ?? [],
       createdAt: new Date().toISOString(),
       attributes,
     };

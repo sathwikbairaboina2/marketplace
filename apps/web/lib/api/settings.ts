@@ -1,4 +1,9 @@
-import { AnnouncementSchema, type Announcement } from '@marketplace/contracts';
+import {
+  AnnouncementSchema,
+  ShopContactSchema,
+  type Announcement,
+  type ShopContact,
+} from '@marketplace/contracts';
 import { request } from './http';
 
 export const getAnnouncement = () =>
@@ -6,3 +11,8 @@ export const getAnnouncement = () =>
 
 export const putAnnouncement = (body: Announcement) =>
   request('/settings/announcement', { method: 'PUT', body, schema: AnnouncementSchema });
+
+export const getShopContact = () => request('/settings/contact', { schema: ShopContactSchema });
+
+export const putShopContact = (body: ShopContact) =>
+  request('/settings/contact', { method: 'PUT', body, schema: ShopContactSchema });

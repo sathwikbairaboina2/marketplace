@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BookingsModule } from '../bookings/bookings.module';
 import { CartModule } from '../cart/cart.module';
 import { CheckoutModule } from '../checkout/checkout.module';
 import { OrdersModule } from '../orders/orders.module';
@@ -12,7 +13,7 @@ import { GuestGuard } from './guest.guard';
  * guest principal unchanged.
  */
 @Module({
-  imports: [CartModule, CheckoutModule, OrdersModule],
+  imports: [BookingsModule, CartModule, CheckoutModule, OrdersModule],
   controllers: [GuestController],
   providers: [GuestGuard, ShopScope],
 })

@@ -61,6 +61,20 @@ export interface Preset {
   heroBg: { light: string; dark: string };
   defaultRadius: RadiusScale;
   defaultFontPairing: FontPairing;
+  /**
+   * How much air the shop is given, and how far its headings are allowed to
+   * rise above its body text. Without these the five presets were five
+   * colourways: the same measure, the same gaps and the same type ladder, so
+   * `studio` and `market` — meant to be different densities — had no way to
+   * ask for one.
+   *
+   * `density` multiplies the spacing scale; `typeScale` multiplies the sizes
+   * above the body; `display` is the step a hero and a page title get, which
+   * a 32px ceiling denied them entirely.
+   */
+  density: number;
+  typeScale: number;
+  display: number;
 }
 
 export const PRESETS: Record<PresetId, Preset> = {
@@ -87,6 +101,9 @@ export const PRESETS: Record<PresetId, Preset> = {
     },
     defaultRadius: 'sharp',
     defaultFontPairing: 'fraunces',
+    density: 1.05,
+    typeScale: 1.06,
+    display: 44,
   },
   tech: {
     id: 'tech',
@@ -113,6 +130,9 @@ export const PRESETS: Record<PresetId, Preset> = {
     },
     defaultRadius: 'soft',
     defaultFontPairing: 'inter',
+    density: 0.95,
+    typeScale: 1,
+    display: 38,
   },
   editorial: {
     id: 'editorial',
@@ -134,6 +154,9 @@ export const PRESETS: Record<PresetId, Preset> = {
     heroBg: { light: '#f5f4f2', dark: '#141414' },
     defaultRadius: 'sharp',
     defaultFontPairing: 'playfair',
+    density: 1.15,
+    typeScale: 1.14,
+    display: 52,
   },
   market: {
     id: 'market',
@@ -158,6 +181,9 @@ export const PRESETS: Record<PresetId, Preset> = {
     },
     defaultRadius: 'round',
     defaultFontPairing: 'nunito',
+    density: 0.9,
+    typeScale: 0.98,
+    display: 36,
   },
   studio: {
     id: 'studio',
@@ -182,5 +208,8 @@ export const PRESETS: Record<PresetId, Preset> = {
     },
     defaultRadius: 'soft',
     defaultFontPairing: 'inter',
+    density: 1.2,
+    typeScale: 1.08,
+    display: 46,
   },
 };

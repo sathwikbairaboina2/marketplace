@@ -18,6 +18,12 @@ export const CreateEventSchema = z
     endDate: IsoDateTimeSchema,
     basePriceMinor: MinorAmountSchema,
     currency: CurrencySchema,
+    // What a class is, where it happens and what it looks like. Optional so
+    // every event written before today still parses: a class with none of
+    // these renders exactly as it did.
+    description: z.string().max(2000).optional(),
+    location: z.string().max(200).optional(),
+    images: z.array(z.string().url()).max(20).optional(),
     attributes: AttributesSchema.default({}),
   })
   .strict()
@@ -39,6 +45,9 @@ export interface EventRecord {
   endDate: string;
   basePriceMinor: number;
   currency: string;
+  description?: string;
+  location?: string;
+  images?: string[];
   createdAt: string;
   attributes: Record<string, unknown>;
 }

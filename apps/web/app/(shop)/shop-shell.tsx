@@ -13,6 +13,7 @@ import { resolveAntdAccent, resolveTheme } from '../../lib/theme/resolve';
 import { useTheme } from '../../lib/theme/theme-context';
 import { ShopHeader } from '../../components/shop-header';
 import { AnnouncementBar } from '../../components/announcement-bar';
+import { ShopFooter } from '../../components/shop-footer';
 
 // What still needs a session on a shop host: a booking is somebody's. The
 // cart, an order and its payment are a stranger's too now (lib/shop/commerce)
@@ -84,6 +85,7 @@ export default function ShopShell({ children }: { children: React.ReactNode }) {
       <main className="mp-shop-main" id="main" tabIndex={-1}>
         {children}
       </main>
+      <ShopFooter />
     </div>
     </StorefrontConfigProvider>
   );

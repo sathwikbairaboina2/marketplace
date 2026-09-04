@@ -43,6 +43,11 @@ export default function CartPage() {
       const body = {
         currency,
         shippingAddress: {
+          // A name and a phone number, which the buying path did not collect
+          // at all: a courier in Pune will not accept a parcel without them,
+          // and the merchant's customers expect to be phoned about a delivery.
+          name: values.name as string,
+          phone: values.phone as string,
           line1: values.line1 as string,
           city: values.city as string,
           postcode: values.postcode as string,
@@ -193,15 +198,28 @@ export default function CartPage() {
               </>
             )}
             <h2>Delivery</h2>
+            <div className="mp-field-row">
+              <Form.Item name="name" label="Full name" rules={[{ required: true }]}>
+                <Input placeholder="Priya Deshpande" autoComplete="name" />
+              </Form.Item>
+              <Form.Item
+                name="phone"
+                label="Phone"
+                extra="For the courier, and if we need to ask about the delivery."
+                rules={[{ required: true, message: 'A number the courier can call' }]}
+              >
+                <Input placeholder="+91 98765 43210" autoComplete="tel" inputMode="tel" />
+              </Form.Item>
+            </div>
             <Form.Item name="line1" label="Address" rules={[{ required: true }]}>
-              <Input placeholder="42 Harbour Road" />
+              <Input placeholder="12 Karve Road, Kothrud" autoComplete="street-address" />
             </Form.Item>
             <div className="mp-field-row">
               <Form.Item name="city" label="City" rules={[{ required: true }]}>
-                <Input placeholder="Bristol" />
+                <Input placeholder="Pune" autoComplete="address-level2" />
               </Form.Item>
-              <Form.Item name="postcode" label="Postcode" rules={[{ required: true }]}>
-                <Input placeholder="BS1 4TR" />
+              <Form.Item name="postcode" label="PIN code" rules={[{ required: true }]}>
+                <Input placeholder="411004" autoComplete="postal-code" inputMode="numeric" />
               </Form.Item>
             </div>
             {schema && Object.keys(schema.fields).length > 0 && (
@@ -223,29 +241,33 @@ export default function CartPage() {
               {formatPrice(total, currency)}
             </span>
           </div>
-          <div className="mp-summary-row mp-summary-total">
-            <span>Total</span>
-            <span className="mp-num">
-              {formatPrice(total, currency)}
-            </span>
-          </div>
           {/* Indicative only: POST /orders locks unit prices server-side at
               order time, so a stale cached price is a display concern and never
               a correctness one. */}
           <p className="mp-summary-note">
             Prices are confirmed when the order is placed.
           </p>
-          <Button
-            type="primary"
-            size="large"
-            block
-            htmlType="submit"
-            form="checkout-form"
-            loading={busy}
-            disabled={busy}
-          >
-            Checkout
-          </Button>
+          {/* The total and the action travel together, and on a phone they
+              stick to the bottom of the screen. `.mp-summary` is sticky on
+              desktop and static below 991px, which left Checkout 178px under
+              the fold of the only device this shop's customers own. */}
+          <div className="mp-action-bar">
+            <div className="mp-summary-row mp-summary-total">
+              <span>Total</span>
+              <span className="mp-num">{formatPrice(total, currency)}</span>
+            </div>
+            <Button
+              type="primary"
+              size="large"
+              block
+              htmlType="submit"
+              form="checkout-form"
+              loading={busy}
+              disabled={busy}
+            >
+              Checkout
+            </Button>
+          </div>
         </aside>
       </div>
     </>

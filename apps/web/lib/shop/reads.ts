@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type {
   Announcement,
+  ShopContact,
   EventResponse,
   Page,
   ProductResponse,
@@ -12,7 +13,7 @@ import type {
 } from '@marketplace/contracts';
 import { getEvent, listEvents } from '../api/events';
 import { getProduct, listProducts, searchProducts } from '../api/products';
-import { getAnnouncement } from '../api/settings';
+import { getAnnouncement, getShopContact } from '../api/settings';
 import { listSchemas } from '../api/schemas';
 import { getPublishedStorefront } from '../api/storefront';
 import * as pub from '../api/shop';
@@ -26,6 +27,7 @@ export interface ShopReads {
   getEvent(id: string): Promise<EventResponse>;
   getStorefront(): Promise<StorefrontConfig | null>;
   getAnnouncement(): Promise<Announcement>;
+  getContact(): Promise<ShopContact>;
   listSchemas(): Promise<SchemaList>;
 }
 
@@ -47,6 +49,7 @@ export function readsFor(shop: Shop | null): ShopReads {
       getEvent: (id) => getEvent(id),
       getStorefront: () => getPublishedStorefront(),
       getAnnouncement: () => getAnnouncement(),
+      getContact: () => getShopContact(),
       listSchemas: () => listSchemas(),
     };
   }
@@ -59,6 +62,7 @@ export function readsFor(shop: Shop | null): ShopReads {
     getEvent: (id) => pub.publicGetEvent(t, id),
     getStorefront: () => pub.publicGetStorefront(t),
     getAnnouncement: () => pub.publicGetAnnouncement(t),
+    getContact: () => pub.publicGetContact(t),
     listSchemas: () => pub.publicListSchemas(t),
   };
 }

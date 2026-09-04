@@ -1,6 +1,7 @@
 import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import {
   Announcement,
+  ShopContact,
   DynamicEntityTypeSchema,
   Page,
   SchemaList,
@@ -45,6 +46,13 @@ export class ShopsController {
   @Public()
   getAnnouncement(@Param('tenantId') tenantId: string): Promise<Announcement> {
     return this.scope.run(tenantId, () => this.settings.getAnnouncement());
+  }
+
+  /** The footer prints these on every page of the shop, so a stranger may read them. */
+  @Get('contact')
+  @Public()
+  getContact(@Param('tenantId') tenantId: string): Promise<ShopContact> {
+    return this.scope.run(tenantId, () => this.settings.getContact());
   }
 
   /** The filter rail renders the tenant's own fields; they are part of the shop window. */

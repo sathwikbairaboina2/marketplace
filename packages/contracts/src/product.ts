@@ -17,6 +17,14 @@ export const CreateProductSchema = z
     stock: StockSchema,
     images: z.array(z.string().url()).max(20).default([]),
     status: ProductStatusSchema.default('draft'),
+    /**
+     * Pinned to the front of the shop. The grid is otherwise the ULID
+     * descending -- newest listed first -- which is a timestamp, not a
+     * decision: a merchant had no way at all to arrange their own shop
+     * window, and the single link they own opened a page ordered by when
+     * they happened to type things in.
+     */
+    pinned: z.boolean().default(false),
     attributes: AttributesSchema.default({}),
   })
   .strict();
@@ -35,10 +43,11 @@ export type CreateProduct = z.infer<typeof CreateProductSchema>;
  * field name, or a form that submitted nothing -- and answering 200 hides it.
  */
 export const UpdateProductSchema = CreateProductSchema
-  .omit({ images: true, status: true, attributes: true })
+  .omit({ images: true, status: true, pinned: true, attributes: true })
   .extend({
     images: z.array(z.string().url()).max(20),
     status: ProductStatusSchema,
+    pinned: z.boolean(),
     attributes: AttributesSchema,
   })
   .partial()
@@ -91,6 +100,8 @@ export interface ProductRecord {
   category: string;
   stock: number;
   images: string[];
+  /** Optional on the record: products written before the pin existed have none. */
+  pinned?: boolean;
   createdAt: string;
   updatedAt: string;
   attributes: Record<string, unknown>;

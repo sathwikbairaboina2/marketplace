@@ -26,8 +26,45 @@ describe('resolveTheme', () => {
     const keys = Object.keys(resolveTheme(null, 'light')).sort();
     for (const id of PRESET_IDS) {
       for (const mode of ['light', 'dark'] as const) {
-        expect(Object.keys(resolveTheme(baseConfig(id), mode)).sort()).toEqual(keys);
+        // A superset, not an equality: a preset also emits `--mp-text-display`,
+        // the step above the ladder's ceiling, which the default palette
+        // deliberately does not have -- the CSS falls back to `--mp-text-xxl`
+        // when a shop has no preset. Nothing may go *missing*, which is what
+        // this test exists to catch.
+        expect(Object.keys(resolveTheme(baseConfig(id), mode)).sort()).toEqual(
+          expect.arrayContaining(keys),
+        );
       }
+    }
+  });
+
+  it('a preset adds the display step and nothing else beyond the defaults', () => {
+    const keys = new Set(Object.keys(resolveTheme(null, 'light')));
+    for (const id of PRESET_IDS) {
+      const extra = Object.keys(resolveTheme(baseConfig(id), 'light')).filter((k) => !keys.has(k));
+      expect(extra).toEqual(['--mp-text-display']);
+    }
+  });
+
+  it('gives each preset its own rhythm and ladder', () => {
+    // Five colourways were not five presets: the spacing scale and the type
+    // ladder were emitted once for the whole app and never overridden, so
+    // `artisan` and `editorial` rendered the same page to the pixel.
+    const spacings = new Set(
+      PRESET_IDS.map((id) => resolveTheme(baseConfig(id), 'light')['--mp-space-6']),
+    );
+    const displays = new Set(
+      PRESET_IDS.map((id) => resolveTheme(baseConfig(id), 'light')['--mp-text-display']),
+    );
+    expect(spacings.size).toBeGreaterThan(1);
+    expect(displays.size).toBeGreaterThan(1);
+  });
+
+  it('holds the shop body size at 16px whatever the preset', () => {
+    // 14px is the cockpit's size. Every preset scales its headings; none of
+    // them shrinks the text a shopper reads on a phone.
+    for (const id of PRESET_IDS) {
+      expect(resolveTheme(baseConfig(id), 'light')['--mp-text-md']).toBe('16px');
     }
   });
 

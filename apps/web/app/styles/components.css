@@ -363,7 +363,9 @@
 
 .mp-hero h1 {
   color: var(--mp-hero-ink);
-  font-size: var(--mp-text-xxl);
+  /* The step above the ladder, which the presets now set for themselves. A
+     hero headline was the same size as a section heading. */
+  font-size: var(--mp-text-display, var(--mp-text-xxl));
   line-height: 1.1;
   letter-spacing: -0.03em;
   margin: 0;
@@ -400,7 +402,7 @@
 }
 
 .mp-about h1 {
-  font-size: var(--mp-text-xxl);
+  font-size: var(--mp-text-display, var(--mp-text-xxl));
   color: var(--mp-ink);
   letter-spacing: -0.02em;
   margin: 0 0 var(--mp-space-6);
@@ -1111,4 +1113,77 @@
 
 .mp-sidebar-shoplink:hover {
   color: var(--mp-accent);
+}
+
+/* The bottom of every shop page. Not a design flourish: a stranger asked for
+   money by a shop they have never heard of needs to see that it is a real
+   place with a way to reach it. */
+.mp-shop-footer {
+  margin-top: var(--mp-space-10);
+  padding: var(--mp-space-8) var(--mp-space-6) var(--mp-space-6);
+  border-top: 1px solid var(--mp-line);
+  background: var(--mp-surface-sunken);
+  color: var(--mp-ink-soft);
+  font-size: var(--mp-text-base);
+}
+
+.mp-shop-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--mp-space-6);
+}
+
+.mp-footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mp-footer-name {
+  font-family: var(--mp-font-heading);
+  font-weight: 640;
+  font-size: var(--mp-text-lg);
+  color: var(--mp-ink);
+}
+
+.mp-footer-head {
+  font-family: var(--mp-font-heading);
+  font-size: var(--mp-text-xs);
+  font-weight: 640;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mp-muted);
+  margin-bottom: 2px;
+}
+
+.mp-footer-line {
+  margin: 0;
+  color: var(--mp-ink-soft);
+}
+
+.mp-shop-footer a {
+  color: var(--mp-ink-soft);
+}
+
+.mp-shop-footer a:hover {
+  color: var(--mp-primary-text);
+}
+
+.mp-footer-fine {
+  max-width: 1200px;
+  margin: var(--mp-space-7) auto 0;
+  padding-top: var(--mp-space-4);
+  border-top: 1px solid var(--mp-line);
+  color: var(--mp-muted);
+  font-size: var(--mp-text-xs);
+}
+
+/* A category is a place you can go, so it looks like one on hover. Muted by
+   default: it sits above the product's name and must not compete with it. */
+.mp-card-cat-link:hover {
+  color: var(--mp-primary-text);
+  text-decoration: underline;
 }

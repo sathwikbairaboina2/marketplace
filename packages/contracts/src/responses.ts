@@ -29,6 +29,7 @@ export const ProductResponseSchema = z
     category: z.string(),
     stock: z.number().int(),
     images: z.array(z.string()),
+    pinned: z.boolean(),
     createdAt: IsoDateTimeSchema,
     updatedAt: IsoDateTimeSchema,
     attributes: AttributesSchema,
@@ -49,6 +50,9 @@ export const EventResponseSchema = z
     endDate: IsoDateTimeSchema,
     basePriceMinor: z.number().int(),
     currency: CurrencySchema,
+    description: z.string().optional(),
+    location: z.string().optional(),
+    images: z.array(z.string()),
     createdAt: IsoDateTimeSchema,
     attributes: AttributesSchema,
   })
@@ -103,6 +107,8 @@ export const BookingResponseSchema = z
     userId: z.string(),
     status: BookingStatusSchema,
     ticketQuantity: z.number().int(),
+    guestEmail: z.string().optional(),
+    reference: z.string(),
     createdAt: IsoDateTimeSchema,
     attributes: AttributesSchema,
   })
