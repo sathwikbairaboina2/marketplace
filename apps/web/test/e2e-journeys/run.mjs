@@ -176,6 +176,27 @@ const PNG = Buffer.from(
   'base64',
 );
 
+/**
+ * A browser context with room to make its first connection.
+ *
+ * Measured on this machine: the shop host answers in ~20ms over curl and ~90ms
+ * in a warm browser, and yet a *first* navigation to an origin a context has
+ * not used before intermittently overran Playwright's 30s default -- landing
+ * on a different journey each run (76, 80, 83, 84), always the first time some
+ * context met some host. `*.localhost` resolves to ::1 first and Docker
+ * Desktop's IPv6 loopback proxy is not always listening for a name it has not
+ * been asked for; curl falls back to IPv4 and Chromium does not.
+ *
+ * Ninety seconds, so that stall is slow rather than a failure. A real
+ * regression still fails, because everything inside a journey keeps its own
+ * much shorter timeout.
+ */
+async function freshContext(options = {}) {
+  const ctx = await browser.newContext(options);
+  ctx.setDefaultNavigationTimeout(90_000);
+  return ctx;
+}
+
 // ------------------------------------------------------------------ browsers
 const tokenAdminA = await mint(A, A_ADMIN, 'admin');
 const tokenBuyerA = await mint(A, A_BUYER, 'buyer');
@@ -189,8 +210,8 @@ await api(tokenAdminA, 'PUT', '/storefront/onboarding', { dismissed: true });
 await api(tokenAdminB, 'PUT', '/storefront/onboarding', { dismissed: true });
 
 const browser = await chromium.launch();
-const sellerCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
-const shopperCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const sellerCtx = await freshContext({ viewport: { width: 1440, height: 900 } });
+const shopperCtx = await freshContext({ viewport: { width: 1440, height: 900 } });
 const seller = await sellerCtx.newPage();
 const shopper = await shopperCtx.newPage();
 
@@ -935,7 +956,7 @@ await journey(
 section('Two shops that must not meet');
 
 await journey("another tenant's product is unreachable even by pasting its URL", async () => {
-  const outsider = await browser.newContext({ viewport: { width: 1200, height: 800 } });
+  const outsider = await freshContext({ viewport: { width: 1200, height: 800 } });
   const page = await outsider.newPage();
   await signIn(page, B_ADMIN);
   await page.goto(`${WEB}/products/${first.id}`);
@@ -1027,7 +1048,7 @@ await journey('a shopper may still shop', async () => {
 section('When things go wrong or sideways');
 
 await journey('signing out ends the session for the protected pages', async () => {
-  const ctx = await browser.newContext();
+  const ctx = await freshContext();
   const page = await ctx.newPage();
   await signIn(page, A_BUYER);
   await page.getByRole('button', { name: 'Sign out' }).click();
@@ -1236,7 +1257,7 @@ const tokenAdminC = await mint(C, `${C}-admin`, 'admin');
 const tokenBuyerC = await mint(C, `${C}-buyer`, 'buyer');
 await mint(D, `${D}-admin`, 'admin');
 
-const ownerCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const ownerCtx = await freshContext({ viewport: { width: 1440, height: 900 } });
 const owner = await ownerCtx.newPage();
 owner.on('response', (r) => {
   if (r.status() >= 500) serverErrors.push(`${r.status()} ${r.url()}`);
@@ -1297,7 +1318,7 @@ await journey('publishing puts the generated storefront in front of customers', 
   must(published?.config?.presetId, 'nothing was published');
 
   const buyerC = await (
-    await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    await freshContext({ viewport: { width: 1440, height: 900 } })
   ).newPage();
   await signIn(buyerC, `${C}-buyer`);
   await buyerC.waitForTimeout(1000);
@@ -1319,7 +1340,7 @@ await journey('publishing puts the generated storefront in front of customers', 
 });
 
 await journey('the published storefront is on the shop host for a stranger with no session', async () => {
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const ctx = await freshContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
   await page.goto(`http://${C}.localhost:33002/products`);
   await page.locator('.mp-banner[data-slot="hero"] h1').first().waitFor({ timeout: 30_000 });
@@ -1360,7 +1381,7 @@ section('A stranger at the door');
 const SHOP_A = `http://${A}.localhost:33002`;
 const SHOP_B = `http://${B}.localhost:33002`;
 // A context of its own with no session in it: that is the whole point.
-const strangerCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+const strangerCtx = await freshContext({ viewport: { width: 1440, height: 900 } });
 const stranger = await strangerCtx.newPage();
 stranger.on('response', (r) => {
   if (r.status() >= 500) serverErrors.push(`${r.status()} ${r.url()}`);
@@ -1410,7 +1431,7 @@ await journey("the other shop's host shows none of this shop's products", async 
 });
 
 await journey("a buyer from another shop is signed out on this shop's host", async () => {
-  const ctx = await browser.newContext();
+  const ctx = await freshContext();
   const page = await ctx.newPage();
   await page.goto(`${SHOP_A}/login`);
   await page.getByLabel('Username').fill(B_ADMIN);
@@ -1423,7 +1444,7 @@ await journey("a buyer from another shop is signed out on this shop's host", asy
 });
 
 await journey("a buyer of this shop keeps their session on its host", async () => {
-  const ctx = await browser.newContext();
+  const ctx = await freshContext();
   const page = await ctx.newPage();
   await page.goto(`${SHOP_A}/login`);
   await page.getByLabel('Username').fill(A_BUYER);
@@ -1439,7 +1460,7 @@ await journey('the support box answers on the shop host, not only on the platfor
   // The agents are a second origin-checking service. A shop origin the engine
   // admits but the agents refuse is a storefront where Ask says "Failed to
   // fetch" -- found by watching, never by a journey that asked from localhost.
-  const ctx = await browser.newContext();
+  const ctx = await freshContext();
   const page = await ctx.newPage();
   await page.goto(`${SHOP_A}/login?next=%2Forders`);
   await page.getByLabel('Username').fill(A_BUYER);
@@ -1456,7 +1477,7 @@ await journey('the support box answers on the shop host, not only on the platfor
 
 await journey('a crawler on the shop host gets a title, JSON-LD, robots and a sitemap', async () => {
   // A stranger's browser again: nothing here may depend on a session.
-  const ctx = await browser.newContext();
+  const ctx = await freshContext();
   const page = await ctx.newPage();
   await page.goto(`${SHOP_A}/products/${openMug.id}`);
   await page.waitForTimeout(1500);
@@ -1487,7 +1508,7 @@ await journey('a crawler on the shop host gets a title, JSON-LD, robots and a si
 let guestOrderId;
 const GUEST_EMAIL = `stranger-${RUN}@example.com`;
 await journey('a stranger buys a mug on the shop host without ever signing in', async () => {
-  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const ctx = await freshContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
   page.on('response', (r) => {
     if (r.status() >= 500) serverErrors.push(`${r.status()} ${r.url()}`);
@@ -1525,7 +1546,7 @@ await journey('a stranger buys a mug on the shop host without ever signing in', 
 });
 
 await journey('a stranger in a fresh browser finds that order with its number and email', async () => {
-  const ctx = await browser.newContext();
+  const ctx = await freshContext();
   const page = await ctx.newPage();
   await page.goto(`${SHOP_A}/orders`);
   await page.getByLabel('Order number').fill(guestOrderId);
@@ -1541,7 +1562,7 @@ await journey('a stranger in a fresh browser finds that order with its number an
 });
 
 await journey('a stranger who then signs in keeps the cart they built', async () => {
-  const ctx = await browser.newContext();
+  const ctx = await freshContext();
   const page = await ctx.newPage();
   await page.goto(`${SHOP_A}/products/${openMug.id}`);
   await page.getByRole('button', { name: /add to cart/i }).click();
