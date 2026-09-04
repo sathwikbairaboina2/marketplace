@@ -93,3 +93,27 @@ export function depositSplit(
   const payNowMinor = Math.ceil((totalMinor * policy.percent) / 100);
   return { payNowMinor, balanceDueMinor: totalMinor - payNowMinor };
 }
+
+/**
+ * A message the shop sent, kept so the merchant can answer "did she get it?"
+ * and so the whole path is assertable in a local stack. `to` is stored because
+ * a customer's address is the only handle a guest order has.
+ */
+export const MAIL_KINDS = ['order-confirmation', 'booking-confirmation', 'back-in-stock'] as const;
+export const MailKindSchema = z.enum(MAIL_KINDS);
+export type MailKind = z.infer<typeof MailKindSchema>;
+
+export const MailMessageSchema = z
+  .object({
+    entityType: z.literal('Mail'),
+    id: z.string(),
+    kind: MailKindSchema,
+    to: z.string(),
+    subject: z.string(),
+    body: z.string(),
+    sentAt: z.string(),
+    /** What it was about: an order reference, a booking reference, a product id. */
+    about: z.string().optional(),
+  })
+  .strict();
+export type MailMessage = z.infer<typeof MailMessageSchema>;

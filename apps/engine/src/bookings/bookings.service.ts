@@ -14,6 +14,9 @@ import { currentPrincipal } from '../common/tenant-context';
 import { newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
 import { assertAdmin } from '../common/roles';
+import { NotificationsService } from '../notifications/notifications.service';
+import { bookingConfirmation } from '../notifications/messages';
+import { StorefrontService } from '../storefront/storefront.service';
 import { conflictedTransactionIndexes, failedTransactionIndexes } from '../common/transaction-errors';
 
 // The HTTP-facing shape of a booking. `BookingRecord` (from @marketplace/contracts) mirrors
@@ -46,6 +49,8 @@ export class BookingsService {
   constructor(
     private readonly repo: DynamoRepository,
     private readonly registry: SchemaRegistryService,
+    private readonly notifications: NotificationsService,
+    private readonly storefront: StorefrontService,
   ) {}
 
   async create(
@@ -139,6 +144,27 @@ export class BookingsService {
     } catch (err) {
       await this.explainFailure(err, input, id);
       throw err;
+    }
+
+    // The class is a place and a time, and until now a stranger who booked one
+    // got a web page and nothing else. Best effort by construction.
+    if (opts.guestEmail) {
+      const shopName = (await this.storefront.getPublished())?.businessProfile?.name ??
+        currentPrincipal().tenantId;
+      const { subject, body } = bookingConfirmation(
+        record,
+        event.title,
+        new Date(event.startDate).toUTCString(),
+        event.location,
+        shopName,
+      );
+      await this.notifications.send({
+        kind: 'booking-confirmation',
+        to: opts.guestEmail,
+        subject,
+        body,
+        about: record.reference,
+      });
     }
 
     return record;

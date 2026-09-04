@@ -10,6 +10,7 @@ import {
   DashboardOutlined,
   LogoutOutlined,
   NodeIndexOutlined,
+  MailOutlined,
   ProfileOutlined,
   SettingOutlined,
   ShopOutlined,
@@ -47,6 +48,9 @@ const GROUPS: { label: string; items: Item[] }[] = [
       { href: '/admin/orders', label: 'Orders', icon: <ShoppingCartOutlined /> },
       // Likewise the shop's attendance list, not the admin's own tickets.
       { href: '/admin/bookings', label: 'Bookings', icon: <ProfileOutlined /> },
+      // What the shop has said to customers, so "I never got anything" has an
+      // answer that is not a guess.
+      { href: '/admin/outbox', label: 'Sent messages', icon: <MailOutlined /> },
     ],
   },
   {

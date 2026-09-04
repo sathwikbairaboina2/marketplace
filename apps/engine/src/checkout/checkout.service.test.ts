@@ -2,6 +2,8 @@ import { CheckoutService } from './checkout.service';
 
 const cart = { get: jest.fn(), clear: jest.fn() };
 const orders = { create: jest.fn() };
+const notifications = { send: jest.fn() };
+const storefront = { getPublished: jest.fn() };
 
 const input = {
   currency: 'INR',
@@ -24,7 +26,7 @@ const line = (over: Record<string, unknown> = {}) => ({
 });
 
 describe('CheckoutService', () => {
-  const service = new CheckoutService(cart as never, orders as never);
+  const service = new CheckoutService(cart as never, orders as never, notifications as never, storefront as never);
   beforeEach(() => jest.clearAllMocks());
 
   it('refuses an empty cart and creates nothing', async () => {

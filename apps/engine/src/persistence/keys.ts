@@ -1,4 +1,11 @@
-export type KeyedEntityType = 'Product' | 'Order' | 'Event' | 'Booking' | 'Flow' | 'Message';
+export type KeyedEntityType =
+  | 'Product'
+  | 'Order'
+  | 'Event'
+  | 'Booking'
+  | 'Flow'
+  | 'Message'
+  | 'Mail';
 
 export const SK_PREFIX: Record<KeyedEntityType, string> = {
   Product: 'PRODUCT#',
@@ -7,6 +14,7 @@ export const SK_PREFIX: Record<KeyedEntityType, string> = {
   Booking: 'BOOKING#',
   Flow: 'FLOW#',
   Message: 'MESSAGE#',
+  Mail: 'MAIL#',
 };
 
 export function tenantPk(tenantId: string): string {
@@ -23,6 +31,11 @@ export function entitySk(type: KeyedEntityType, id: string): string {
 
 export function schemaSk(entityType: string): string {
   return `SCHEMA#${entityType}`;
+}
+
+/** The shop's outbox: what it said to a customer, and when. */
+export function mailSk(id: string): string {
+  return `MAIL#${id}`;
 }
 
 /**

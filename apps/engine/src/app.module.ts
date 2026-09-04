@@ -16,6 +16,7 @@ import { EventsModule } from './events/events.module';
 import { OrdersModule } from './orders/orders.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { FlowsModule } from './flows/flows.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { SettingsModule } from './settings/settings.module';
 import { StorefrontModule } from './storefront/storefront.module';
 import { ShopsModule } from './shops/shops.module';
@@ -64,6 +65,7 @@ import { StatsModule } from './stats/stats.module';
     OrdersModule,
     BookingsModule,
     FlowsModule,
+    NotificationsModule,
     SettingsModule,
     StorefrontModule,
     ShopsModule,
