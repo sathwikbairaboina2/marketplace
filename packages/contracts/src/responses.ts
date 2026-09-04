@@ -108,6 +108,8 @@ export const BookingResponseSchema = z
     status: BookingStatusSchema,
     ticketQuantity: z.number().int(),
     guestEmail: z.string().optional(),
+    attendeeName: z.string().optional(),
+    attendeePhone: z.string().optional(),
     reference: z.string(),
     createdAt: IsoDateTimeSchema,
     attributes: AttributesSchema,

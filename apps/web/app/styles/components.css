@@ -1046,6 +1046,16 @@
 @media (max-width: 767px) {
   .mp-shop-layout {
     flex-direction: column;
+    /* The row's `align-items: flex-start` becomes a *cross-axis* rule once
+       this turns to a column, so both children shrink to their content. The
+       rail was patched with `width: 100%` and the results column never was: a
+       two-product shop drew its cards in 203 of 390px, hard against the left,
+       with half the screen empty -- which is exactly the new merchant with
+       three products that every plan claims to serve. */
+    align-items: stretch;
+  }
+  .mp-shop-results {
+    width: 100%;
   }
   .mp-rail {
     width: 100%;
@@ -1186,4 +1196,34 @@
 .mp-card-cat-link:hover {
   color: var(--mp-primary-text);
   text-decoration: underline;
+}
+
+/* antd puts its toasts at the top of the window. On a phone that is roughly
+   700px above the thumb that just pressed Add to cart -- over the announcement
+   bar, where a shopper looking at the button never sees the confirmation of
+   pressing it. Brought down to the hand on small screens; unchanged on
+   desktop, where the pointer is already near the top of the page. */
+@media (max-width: 767px) {
+  .ant-message {
+    top: auto !important;
+    bottom: calc(var(--mp-space-6) + env(safe-area-inset-bottom));
+  }
+}
+
+/* A cell that carries a person: a name over the ways to reach them. */
+.mp-stack-tight {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mp-stack-tight .mp-sub {
+  font-size: var(--mp-text-xs);
+  color: var(--mp-muted);
+}
+
+.mp-muted-line {
+  margin: 0 0 var(--mp-space-4);
+  color: var(--mp-muted);
 }

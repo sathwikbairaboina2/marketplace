@@ -206,6 +206,14 @@ export class OrderCheckoutService {
         // same reason: `explainFailure` maps a failed index back to a line item
         // by position, so nothing may go ahead of the stock updates.
         //
+        // BEFORE YOU APPEND ANOTHER ITEM HERE: `explainFailure` filters
+        // `i < input.items.length`, so a *condition failure on an appended
+        // item is invisible to it* and reaches the problem filter as a 500.
+        // This Put is conditioned and safe only because a ULID's random tail
+        // does not repeat. An appended item whose key can legitimately already
+        // exist -- a per-customer pointer, say -- must be an unconditioned Put
+        // or an Update, or every returning customer's second order 500s.
+        //
         // In the transaction rather than after it, so an order can never exist
         // with a reference printed on it that nothing can resolve. Conditioned
         // on the reference being free: on the vanishing chance of a collision

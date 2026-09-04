@@ -161,8 +161,12 @@ export class GuestController {
   @UseGuards(GuestGuard)
   @UseInterceptors(IdempotencyInterceptor)
   guestBook(@ZodBody(GuestBookingSchema) body: GuestBooking): Promise<BookingResponse> {
-    const { email, ...input } = body;
-    return this.bookings.create(input, { guestEmail: email });
+    const { email, name, phone, ...input } = body;
+    return this.bookings.create(input, {
+      guestEmail: email,
+      attendeeName: name,
+      attendeePhone: phone,
+    });
   }
 
   @Get('bookings/:id')

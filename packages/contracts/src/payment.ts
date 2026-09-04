@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoDateTimeSchema, MinorAmountSchema } from './common';
+import { IsoDateTimeSchema, TotalMinorAmountSchema } from './common';
 
 export const normalizeCardNumber = (raw: string): string => raw.replace(/[\s-]/g, '');
 
@@ -67,7 +67,12 @@ export type GuestCancelRequest = z.infer<typeof GuestCancelRequestSchema>;
 export const PaymentSchema = z.object({
   id: z.string(),
   last4: z.string().regex(/^\d{4}$/),
-  amountMinor: MinorAmountSchema,
+  // The order total, not a line-item price: `MinorAmountSchema` caps at
+  // MAX_MINOR_AMOUNT (1e10) while a total may legitimately reach 5e15 by the
+  // arithmetic set out in common.ts. The engine could write a payment its own
+  // strict response schema then refused to parse -- a paid order whose page
+  // breaks. Bounded by what the total is bounded by.
+  amountMinor: TotalMinorAmountSchema,
   at: IsoDateTimeSchema,
 });
 export type Payment = z.infer<typeof PaymentSchema>;

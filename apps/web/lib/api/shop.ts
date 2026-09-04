@@ -139,7 +139,7 @@ export const lookupOrder = (tenantId: string, orderId: string, email: string) =>
 export const guestBook = (
   tenantId: string,
   guest: string,
-  body: CreateBooking & { email: string },
+  body: CreateBooking & { email: string; name: string; phone: string },
   idempotencyKey: string,
 ) =>
   request(`${base(tenantId)}/bookings`, {

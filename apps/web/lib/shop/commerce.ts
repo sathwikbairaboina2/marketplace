@@ -50,7 +50,13 @@ export interface ShopCommerce {
    * signed-in buyer, whose account already carries one -- the page asks for it
    * only when `guest` is true, exactly as the cart does.
    */
-  book(body: CreateBooking, idempotencyKey: string, email?: string): Promise<BookingResponse>;
+  book(
+    body: CreateBooking,
+    idempotencyKey: string,
+    email?: string,
+    name?: string,
+    phone?: string,
+  ): Promise<BookingResponse>;
   getBooking(id: string): Promise<BookingResponse>;
 }
 
@@ -123,9 +129,11 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
     getOrder: async (id) => pub.guestGetOrder(t, await ensure(), id),
     payOrder: async (id, card, email) => pub.guestPayOrder(t, await ensure(), id, card, email),
     cancelOrder: async (id, email) => pub.guestCancelOrder(t, await ensure(), id, email),
-    book: async (body, key, email) => {
-      if (!email) throw new Error('a guest booking needs an email');
-      return pub.guestBook(t, await ensure(), { ...body, email }, key);
+    book: async (body, key, email, name, phone) => {
+      if (!email || !name || !phone) {
+        throw new Error('a guest booking needs a name, a phone number and an email');
+      }
+      return pub.guestBook(t, await ensure(), { ...body, email, name, phone }, key);
     },
     getBooking: async (id) => pub.guestGetBooking(t, await ensure(), id),
   };

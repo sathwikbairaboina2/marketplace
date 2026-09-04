@@ -74,6 +74,8 @@ export default function EventDetail() {
             body,
             idempotencyKey.current,
             (values.email as string | undefined)?.trim(),
+            (values.name as string | undefined)?.trim(),
+            (values.phone as string | undefined)?.trim(),
           );
           void message.success('Booked');
           router.push(`/bookings/${booking.id}`);
@@ -135,14 +137,29 @@ export default function EventDetail() {
               />
             </Form.Item>
             {commerce.guest && (
-              <Form.Item
-                name="email"
-                label="Email"
-                rules={[{ required: true, type: 'email' }]}
-                extra="No account needed. Your booking number comes back on this page."
-              >
-                <Input placeholder="you@example.com" autoComplete="email" />
-              </Form.Item>
+              <>
+                <Form.Item name="name" label="Your name" rules={[{ required: true }]}>
+                  <Input placeholder="Priya Deshpande" autoComplete="name" />
+                </Form.Item>
+                {/* The merchant runs a six-person class in a room and has to be
+                    able to ring whoever has not arrived. Booking shipped
+                    without ever asking. */}
+                <Form.Item
+                  name="phone"
+                  label="Phone"
+                  rules={[{ required: true, message: 'A number the studio can reach you on' }]}
+                >
+                  <Input placeholder="+91 98765 43210" autoComplete="tel" inputMode="tel" />
+                </Form.Item>
+                <Form.Item
+                  name="email"
+                  label="Email"
+                  rules={[{ required: true, type: 'email' }]}
+                  extra="No account needed. Your booking number comes back on this page."
+                >
+                  <Input placeholder="you@example.com" autoComplete="email" />
+                </Form.Item>
+              </>
             )}
             {bookingSchema ? toFormItems(bookingSchema.fields) : null}
             <Button

@@ -19,6 +19,20 @@ export const MAX_MINOR_AMOUNT = 10_000_000_000;
 export const MAX_QUANTITY = 10_000;
 
 export const MinorAmountSchema = z.number().int().nonnegative().max(MAX_MINOR_AMOUNT);
+
+/**
+ * An order *total*, which is not bounded by what one line item may cost: the
+ * worked example above is exactly this number, MAX_MINOR_AMOUNT * MAX_QUANTITY
+ * * MAX_ORDER_LINE_ITEMS. A total was being validated against the line-item
+ * bound in one place -- the stored payment -- so an order the engine would
+ * happily accept produced a payment record its own response schema refused.
+ */
+export const MAX_TOTAL_MINOR_AMOUNT = 5_000_000_000_000_000;
+export const TotalMinorAmountSchema = z
+  .number()
+  .int()
+  .nonnegative()
+  .max(MAX_TOTAL_MINOR_AMOUNT);
 export const QuantitySchema = z.number().int().positive().max(MAX_QUANTITY);
 export const StockSchema = z.number().int().nonnegative().max(MAX_QUANTITY);
 export const IsoDateTimeSchema = z.string().datetime();

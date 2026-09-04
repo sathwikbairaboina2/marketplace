@@ -26,6 +26,23 @@ export default function AdminOrdersPage() {
           caption="Shop orders"
           noun={{ one: 'order', many: 'orders' }}
           load={(cursor) => listAllOrders(25, cursor)}
+          search={{
+            placeholder: 'Find an order by name, phone, email or number',
+            matches: (row, q) => {
+              const needle = q.toLowerCase();
+              const digits = q.replace(/\D/g, '');
+              const address = Object.values(row.shippingAddress ?? {}).join(' ');
+              return (
+                (row.reference ?? '').toLowerCase().includes(needle) ||
+                (row.guestEmail ?? '').toLowerCase().includes(needle) ||
+                address.toLowerCase().includes(needle) ||
+                // The customer's number is on the order, inside the address the
+                // checkout collects. A number is written a dozen ways; compare
+                // the digits.
+                (digits.length >= 4 && address.replace(/\D/g, '').includes(digits))
+              );
+            },
+          }}
           empty={
             <EmptyState
               title="No orders yet"

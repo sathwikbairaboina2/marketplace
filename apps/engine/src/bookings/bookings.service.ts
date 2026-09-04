@@ -50,7 +50,7 @@ export class BookingsService {
 
   async create(
     input: CreateBooking,
-    opts: { guestEmail?: string } = {},
+    opts: { guestEmail?: string; attendeeName?: string; attendeePhone?: string } = {},
   ): Promise<BookingResponse> {
     const event = await this.repo.get<EventRecord>(entitySk('Event', input.eventId));
     if (!event) {
@@ -77,6 +77,9 @@ export class BookingsService {
       // problem: a booking outlives the browser that made it.
       reference: bookingReferenceFrom(id),
       ...(opts.guestEmail ? { guestEmail: opts.guestEmail } : {}),
+      // Spread conditionally: DynamoDB refuses an explicit `undefined`.
+      ...(opts.attendeeName ? { attendeeName: opts.attendeeName } : {}),
+      ...(opts.attendeePhone ? { attendeePhone: opts.attendeePhone } : {}),
       createdAt,
       attributes,
     };

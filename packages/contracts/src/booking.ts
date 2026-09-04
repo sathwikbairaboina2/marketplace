@@ -22,6 +22,12 @@ export type CreateBooking = z.infer<typeof CreateBookingSchema>;
  */
 export const GuestBookingSchema = CreateBookingSchema.extend({
   email: z.string().trim().toLowerCase().email().max(254),
+  // Who is actually coming. A class is six people in a room on a Saturday, and
+  // the merchant has to be able to ring the one who has not arrived, message
+  // the group, and tick people in. Booking shipped before any of that was
+  // captured: the cockpit could show a reference code and nothing else.
+  name: z.string().trim().min(1).max(120),
+  phone: z.string().trim().min(4).max(32),
 });
 export type GuestBooking = z.infer<typeof GuestBookingSchema>;
 
@@ -38,6 +44,9 @@ export interface BookingRecord {
   ticketQuantity: number;
   /** Present on a stranger's booking only, exactly as on a guest's order. */
   guestEmail?: string;
+  /** Who is coming, so the merchant can run the class they sold. */
+  attendeeName?: string;
+  attendeePhone?: string;
   reference?: string;
   createdAt: string;
   attributes: Record<string, unknown>;

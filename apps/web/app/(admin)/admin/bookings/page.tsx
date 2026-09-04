@@ -27,6 +27,21 @@ export default function AdminBookingsPage() {
           caption="Shop bookings"
           noun={{ one: 'booking', many: 'bookings' }}
           load={(cursor) => listAllBookings(25, cursor)}
+          search={{
+            placeholder: 'Find someone by name, phone, email or reference',
+            matches: (row, q) => {
+              const needle = q.toLowerCase();
+              const digits = q.replace(/\D/g, '');
+              return (
+                (row.attendeeName ?? '').toLowerCase().includes(needle) ||
+                (row.guestEmail ?? '').toLowerCase().includes(needle) ||
+                (row.reference ?? '').toLowerCase().includes(needle) ||
+                // A phone number is written a dozen ways; compare the digits.
+                (digits.length >= 4 &&
+                  (row.attendeePhone ?? '').replace(/\D/g, '').includes(digits))
+              );
+            },
+          }}
           empty={
             <EmptyState
               title="No bookings yet"
@@ -50,6 +65,25 @@ export default function AdminBookingsPage() {
               render: (eventId: string) => <EventName id={eventId} href={`/events/${eventId}`} />,
             },
             {
+              // The register. A class is six people in a room, and this table
+              // showed a reference code and no way to reach anybody: on the
+              // Saturday morning the merchant could not ring the person who
+              // had not arrived, or tell the group their bowls were fired.
+              title: 'Who is coming',
+              dataIndex: 'attendeeName',
+              render: (name: string | undefined, row) => (
+                <div className="mp-stack-tight">
+                  <span>{name ?? '—'}</span>
+                  {row.attendeePhone && (
+                    <a href={`tel:${row.attendeePhone.replace(/[^\d+]/g, '')}`} className="mp-sub">
+                      {row.attendeePhone}
+                    </a>
+                  )}
+                  {row.guestEmail && <span className="mp-sub">{row.guestEmail}</span>}
+                </div>
+              ),
+            },
+            {
               title: 'Status',
               dataIndex: 'status',
               render: (status: string) => <StatusTag status={status} />,
@@ -62,8 +96,8 @@ export default function AdminBookingsPage() {
             },
             {
               title: 'Ref',
-              dataIndex: 'id',
-              render: (id: string) => <Ref value={id} />,
+              dataIndex: 'reference',
+              render: (reference: string) => <Ref value={reference} />,
             },
           ]}
         />

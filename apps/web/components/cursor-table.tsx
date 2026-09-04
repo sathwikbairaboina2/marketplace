@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Button, Table } from 'antd';
+import { Button, Input, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { notifyProblem } from '../lib/problem-notify';
 import { ErrorPanel } from './error-panel';
@@ -22,6 +22,14 @@ interface Props<T> {
    * "item": a default is how a page about bookings ends up saying "5 items".
    */
   noun: { one: string; many: string };
+  /**
+   * Optional filter over the rows already loaded. Client-side on purpose: the
+   * merchant's real question is "which of these is Priya" over a queue she can
+   * see, and the engine has no search access pattern for orders or bookings --
+   * adding one is an index, not a text box. "Load more" first, then filter, and
+   * the count says which it is showing.
+   */
+  search?: { placeholder: string; matches: (row: T, query: string) => boolean };
 }
 
 /**
@@ -38,12 +46,14 @@ export function CursorTable<T extends object>({
   empty,
   caption,
   noun,
+  search,
 }: Props<T>) {
   const [items, setItems] = useState<T[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
+  const [query, setQuery] = useState('');
 
   const fetchPage = useCallback(
     async (from: string | null, append: boolean) => {
@@ -94,13 +104,30 @@ export function CursorTable<T extends object>({
     return <>{empty}</>;
   }
 
+  const trimmed = query.trim();
+  const rows = trimmed && search ? items.filter((row) => search.matches(row, trimmed)) : items;
+
   return (
     <>
+      {search && (
+        <Input.Search
+          allowClear
+          placeholder={search.placeholder}
+          onChange={(event) => setQuery(event.target.value)}
+          onSearch={setQuery}
+          style={{ maxWidth: 380, marginBottom: 'var(--mp-space-5)' }}
+        />
+      )}
+      {trimmed && rows.length === 0 && (
+        <p className="mp-muted-line">
+          Nothing here matches “{trimmed}”. Load more below if the {noun.one} is older.
+        </p>
+      )}
       {error && <ErrorPanel error={error} onRetry={() => void fetchPage(cursor, true)} />}
       <Table<T>
         rowKey={rowKey}
         columns={columns}
-        dataSource={items}
+        dataSource={rows}
         pagination={false}
         loading={loading}
         scroll={{ x: 'max-content' }}

@@ -253,12 +253,8 @@ export default function OrderDetailPage() {
               type="info"
               showIcon
               style={{ marginTop: 12 }}
-              message={
-                <>
-                  Your order number is <strong className="mp-num">{order.reference}</strong>
-                </>
-              }
-              description="Keep it with the email you gave. Together they find this order again from any browser, under Orders."
+              message="Keep your order number with the email you gave"
+              description="Together they find this order again from any browser, under Orders."
             />
           )}
 

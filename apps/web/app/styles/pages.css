@@ -311,7 +311,11 @@
   margin-bottom: var(--mp-space-4);
 }
 
-.mp-checkout-form h2:not(:first-child) {
+.mp-checkout-form h2:not(:first-child),
+.mp-summary h2:not(:first-child) {
+  /* The summary's headings never got the sibling rule the form's have, so
+     "SUMMARY" sat against whatever preceded it -- on a guest's order page,
+     the Cancel order button. */
   margin-top: var(--mp-space-6);
 }
 
