@@ -2,6 +2,8 @@ import { Controller, Get, HttpCode, Param, Post, UseInterceptors } from '@nestjs
 import {
   AdvanceOrder,
   AdvanceOrderSchema,
+  CustomerLookup,
+  CustomerLookupSchema,
   CreateOrder,
   CreateOrderSchema,
   Page,
@@ -68,6 +70,19 @@ export class OrdersController {
    * The merchant recording that a deposit's balance was handed over in the
    * room. No money moves through this product; it is a note that it did.
    */
+  /**
+   * Everything one customer has bought here. Admin only: it is the merchant
+   * looking somebody up by the number they are calling from.
+   */
+  @Post('customer-history')
+  @HttpCode(200)
+  @Roles('admin')
+  customerHistory(
+    @ZodBody(CustomerLookupSchema) body: CustomerLookup,
+  ): Promise<OrderResponse[]> {
+    return this.orders.historyFor(body);
+  }
+
   @Post(':id/settle-balance')
   @HttpCode(200)
   @Roles('admin')

@@ -2,13 +2,16 @@ import { Injectable } from '@nestjs/common';
 import {
   Card,
   CreateOrder,
+  normalizeEmailHandle,
+  normalizePhoneHandle,
   ORDER_REFERENCE_PATTERN,
   OrderRecord,
   OrderResponse,
   Page,
 } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
-import { entitySk, orderRefSk, skPrefix } from '../persistence/keys';
+import { customerOrderPrefix, entitySk, orderRefSk, skPrefix } from '../persistence/keys';
+import { deriveIdFrom } from '../common/ids';
 import { currentPrincipal } from '../common/tenant-context';
 import { ProblemException } from '../common/problem';
 import { assertAdmin } from '../common/roles';
@@ -121,5 +124,35 @@ export class OrdersService {
       { limit, cursor },
     );
     return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
+  }
+
+  /**
+   * Everything one customer has bought, found by the number or the address
+   * they gave at checkout -- the two handles a shop with no accounts has.
+   *
+   * The merchant's version of this is the same query: she looks a person up by
+   * phone number, which is what her customers are. A miss and an unknown
+   * customer answer identically, so this cannot be used to learn who shops
+   * here.
+   */
+  async historyFor(handle: { email?: string; phone?: string }): Promise<OrderResponse[]> {
+    const normalized = handle.phone
+      ? normalizePhoneHandle(handle.phone)
+      : handle.email
+        ? normalizeEmailHandle(handle.email)
+        : null;
+    if (!normalized) return [];
+
+    const pointers = await this.repo.queryPrefix<{ orderId: string }>(
+      customerOrderPrefix(deriveIdFrom(normalized)),
+      { limit: 50, cursor: null },
+    );
+    const orders = await Promise.all(
+      pointers.items.map((pointer) => this.repo.get<OrderRecord>(entitySk('Order', pointer.orderId))),
+    );
+    return orders
+      .filter((order): order is OrderRecord => Boolean(order))
+      .map(toResponse)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 }

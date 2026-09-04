@@ -130,3 +130,44 @@ export interface OrderRecord {
   currentStageId?: string | null;
   stageEnteredAt?: string;
 }
+
+/**
+ * How a shop knows a returning customer without an account.
+ *
+ * This product deliberately has no sign-up route, so identity is whatever the
+ * buyer typed at checkout. Both are normalised hard before they are hashed: a
+ * phone number is written a dozen ways and an address is case-insensitive, and
+ * a customer who types either differently next time must still be the same
+ * person.
+ *
+ * A phone number is the primary handle because that is what this merchant's
+ * customers actually are -- she looks people up by number, not by address.
+ */
+export function normalizeEmailHandle(email: string): string {
+  return `email:${email.trim().toLowerCase()}`;
+}
+
+export function normalizePhoneHandle(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  // The last ten digits: the same number reaches her as 98765 43210,
+  // +91 98765 43210 and 098765 43210, and all three are one customer.
+  return `phone:${digits.length > 10 ? digits.slice(-10) : digits}`;
+}
+
+/** Looking a customer up: one handle or the other, never both. */
+export const CustomerLookupSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email().max(254).optional(),
+    phone: z.string().trim().min(4).max(32).optional(),
+  })
+  .strict()
+  .refine((v) => Boolean(v.email) || Boolean(v.phone), {
+    message: 'a phone number or an email address',
+  });
+export type CustomerLookup = z.infer<typeof CustomerLookupSchema>;
+
+/** A returning customer asking what they have bought here, by address alone. */
+export const GuestHistorySchema = z
+  .object({ email: z.string().trim().toLowerCase().email().max(254) })
+  .strict();
+export type GuestHistory = z.infer<typeof GuestHistorySchema>;

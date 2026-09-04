@@ -23,6 +23,8 @@ import {
   GuestBookingSchema,
   GuestCancelRequest,
   GuestCancelRequestSchema,
+  GuestHistory,
+  GuestHistorySchema,
   GuestPayRequest,
   GuestPayRequestSchema,
   OrderResponse,
@@ -181,6 +183,33 @@ export class GuestController {
    * id with their email, and a new browser has neither ticket nor cart. Same
    * 404 for a wrong id and a wrong email, so neither confirms the other.
    */
+  /**
+   * Everything this address has bought here, so a returning customer does not
+   * have to have kept a reference code from March.
+   *
+   * The email is the credential, exactly as it is for a single order lookup,
+   * and the same throttle applies: an address is guessable only by brute force
+   * and this must not become a way to enumerate a shop's customers.
+   */
+  @Post('orders/history')
+  @Public()
+  @HttpCode(200)
+  @Throttle({ default: { limit: LOOKUP_LIMIT, ttl: LOOKUP_TTL_MS } })
+  history(
+    @Param('tenantId') tenantId: string,
+    @ZodBody(GuestHistorySchema) body: GuestHistory,
+  ): Promise<OrderResponse[]> {
+    return this.scope.run(tenantId, async () => {
+      const orders = await this.orders.historyFor({ email: body.email });
+      // Only the orders that were placed *as a guest under this address*. A
+      // shared phone number must not hand over somebody else's order, and an
+      // address that also belongs to an account must not leak that account's.
+      return orders.filter(
+        (order) => order.guestEmail?.toLowerCase() === body.email.toLowerCase(),
+      );
+    });
+  }
+
   @Post('orders/lookup')
   @Public()
   @HttpCode(200)

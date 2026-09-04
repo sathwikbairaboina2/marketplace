@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import {
   CreateOrder,
   depositSplit,
+  normalizeEmailHandle,
+  normalizePhoneHandle,
   MAX_ORDER_LINE_ITEMS,
   OrderLineItem,
   OrderRecord,
@@ -13,9 +15,16 @@ import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { PipelineService } from '../pipeline/pipeline.service';
 import { SettingsService } from '../settings/settings.service';
 import { DynamoRepository } from '../persistence/dynamo.repository';
-import { entitySk, gsi1UserPk, gsi1UserSk, orderRefSk, PIPELINE_SK } from '../persistence/keys';
+import {
+  customerOrderSk,
+  entitySk,
+  gsi1UserPk,
+  gsi1UserSk,
+  orderRefSk,
+  PIPELINE_SK,
+} from '../persistence/keys';
 import { currentPrincipal } from '../common/tenant-context';
-import { newId } from '../common/ids';
+import { deriveIdFrom, newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
 import { conflictedTransactionIndexes, failedTransactionIndexes } from '../common/transaction-errors';
 
@@ -124,6 +133,16 @@ export class OrderCheckoutService {
     // the rest in the room, and the order's `status` never learns about it.
     // The shop's policy decides whether one is on offer and how much -- asking
     // the client for the amount would let it name its own.
+    // Who this is, as far as a shop with no accounts can tell: the number and
+    // the address they gave. Hashed, never stored in the key -- `encodeCursor`
+    // hands a sort key to the browser as a paging cursor.
+    const customerHandles = [
+      opts.guestEmail ? normalizeEmailHandle(opts.guestEmail) : null,
+      input.shippingAddress.phone ? normalizePhoneHandle(input.shippingAddress.phone) : null,
+    ]
+      .filter((handle): handle is string => Boolean(handle))
+      .map((handle) => deriveIdFrom(handle));
+
     const balance = input.deposit
       ? depositSplit(totalAmountMinor, await this.settings.getDepositPolicy()).balanceDueMinor
       : 0;
@@ -245,6 +264,26 @@ export class OrderCheckoutService {
           ConditionExpression: 'attribute_not_exists(PK)',
         },
       },
+      // How a returning customer finds what they bought last time. One pointer
+      // per way we know them -- the phone number this merchant actually looks
+      // people up by, and the email a guest checked out with.
+      //
+      // Unconditioned Puts, and that is not an oversight: a condition failure
+      // on an appended item is invisible to `explainFailure` and would surface
+      // as a 500, and these keys legitimately already exist for anybody buying
+      // a second time. An overwrite is the correct outcome anyway -- the key
+      // carries the order id, so the same order writes the same row.
+      ...customerHandles.map((handleHash) => ({
+        Put: {
+          TableName: this.repo.tableName,
+          Item: {
+            ...this.repo.key(customerOrderSk(handleHash, createdAt, id)),
+            entityType: 'CustomerOrder',
+            orderId: id,
+            createdAt,
+          },
+        },
+      })),
     ];
 
     try {

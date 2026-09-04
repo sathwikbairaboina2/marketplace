@@ -10,6 +10,7 @@ import { EmptyState } from '../../../../components/empty-state';
 import { StatusTag } from '../../../../components/status-tag';
 import { PageHeader } from '../../../../components/page-header';
 import { Ref } from '../../../../components/ref';
+import { CustomerLookup } from './customer-lookup';
 
 /**
  * The seller's queue: every order in the shop, not the signed-in admin's own.
@@ -21,6 +22,7 @@ export default function AdminOrdersPage() {
     <>
       <PageHeader title="Orders" subtitle="Everything your shop has taken, and where each one is." />
       <div className="mp-list-measure">
+        <CustomerLookup />
         <CursorTable<OrderResponse>
           rowKey="id"
           caption="Shop orders"

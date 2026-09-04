@@ -44,3 +44,14 @@ export const cancelOrder = (id: string) =>
  * applies. */
 export const listAllOrders = (limit: number, cursor: string | null) =>
   request('/orders/all', { query: { limit, cursor: cursor ?? undefined }, schema: Page });
+
+/**
+ * Everything one customer has bought here. Admin only: this is the merchant
+ * looking up whoever is on the phone, by the number they are calling from.
+ */
+export const customerHistory = (handle: { email?: string; phone?: string }) =>
+  request('/orders/customer-history', {
+    method: 'POST',
+    body: handle,
+    schema: OrderResponseSchema.array(),
+  });

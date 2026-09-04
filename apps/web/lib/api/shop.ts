@@ -159,3 +159,14 @@ export const publicGetContact = (tenantId: string) =>
 
 export const publicGetDepositPolicy = (tenantId: string) =>
   request(`${base(tenantId)}/deposit`, { schema: DepositPolicySchema });
+
+/**
+ * Everything this address has bought at this shop. The email is the
+ * credential, exactly as it is for a single order lookup.
+ */
+export const guestOrderHistory = (tenantId: string, email: string) =>
+  request(`${base(tenantId)}/orders/history`, {
+    method: 'POST',
+    body: { email },
+    schema: OrderResponseSchema.array(),
+  });

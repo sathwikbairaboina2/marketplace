@@ -33,6 +33,24 @@ export function schemaSk(entityType: string): string {
   return `SCHEMA#${entityType}`;
 }
 
+/**
+ * A customer, and the orders they have placed, keyed by a *hash* of how we
+ * know them -- never the address itself. `encodeCursor` puts the sort key in
+ * the browser's paging cursor, so a plaintext key would put one customer's
+ * email into another customer's next-page token.
+ */
+export function customerSk(handleHash: string): string {
+  return `CUSTOMER#${handleHash}`;
+}
+
+export function customerOrderSk(handleHash: string, createdAt: string, orderId: string): string {
+  return `CUSTOMER#${handleHash}#ORDER#${createdAt}#${orderId}`;
+}
+
+export function customerOrderPrefix(handleHash: string): string {
+  return `CUSTOMER#${handleHash}#ORDER#`;
+}
+
 /** The shop's outbox: what it said to a customer, and when. */
 export function mailSk(id: string): string {
   return `MAIL#${id}`;

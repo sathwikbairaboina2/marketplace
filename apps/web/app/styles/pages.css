@@ -846,3 +846,9 @@
 .mp-balance-due {
   color: var(--mp-primary-text);
 }
+
+.mp-lookup-heading {
+  font-family: var(--mp-font-heading);
+  font-size: var(--mp-text-lg);
+  margin-bottom: var(--mp-space-2);
+}
