@@ -4,9 +4,12 @@ import PayPage from './page';
 
 const push = vi.fn();
 const replace = vi.fn();
+// No `?email=`: this is a signed-in buyer, who reaches the order by its id.
+// The guest-with-a-lookup-email path is covered in lib/shop/commerce.test.ts.
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'ord-1' }),
   useRouter: () => ({ push, replace }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 const getOrder = vi.fn();
@@ -29,11 +32,14 @@ vi.mock('../../../../../lib/shop/commerce', () => {
   return { useShopCommerce: () => commerce };
 });
 
+vi.mock('../../../../../lib/shop/shop-context', () => ({ useShop: () => null }));
+
 import { ProblemError } from '../../../../../lib/api/http';
 
 const ORDER = {
   entityType: 'Order',
   id: 'ord-1',
+  reference: 'K7QY-3PX2',
   userId: 'u1',
   status: 'awaiting_payment',
   totalAmountMinor: 2400,

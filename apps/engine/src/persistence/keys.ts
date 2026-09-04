@@ -25,6 +25,15 @@ export function schemaSk(entityType: string): string {
   return `SCHEMA#${entityType}`;
 }
 
+/**
+ * Points a printed order reference at the order's real id, inside the tenant's
+ * own partition. A pointer item rather than a second index: the reference is
+ * read only on the lookup path, and a GSI would cost every order write.
+ */
+export function orderRefSk(reference: string): string {
+  return `ORDERREF#${reference}`;
+}
+
 /** Tenant-level settings records: one item per named setting. */
 export function settingsSk(name: string): string {
   return `SETTINGS#${name}`;

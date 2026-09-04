@@ -44,6 +44,25 @@ export type Card = z.infer<typeof CardSchema>;
 export const PayRequestSchema = z.object({ card: CardSchema });
 export type PayRequest = z.infer<typeof PayRequestSchema>;
 
+/**
+ * A guest paying. The email is the same key `POST orders/lookup` takes, and it
+ * is here because the ticket is not a durable key to an order: a stranger who
+ * signs in, clears storage or comes back in another browser holds a different
+ * guest id, and without this the order they were about to pay for becomes
+ * unpayable by any route while its stock stays reserved. Optional, because a
+ * guest still holding the ticket they checked out with needs nothing extra.
+ */
+export const GuestPayRequestSchema = PayRequestSchema.extend({
+  email: z.string().trim().toLowerCase().email().max(254).optional(),
+});
+export type GuestPayRequest = z.infer<typeof GuestPayRequestSchema>;
+
+/** The same escape hatch for the cancel a guest is entitled to. */
+export const GuestCancelRequestSchema = z
+  .object({ email: z.string().trim().toLowerCase().email().max(254).optional() })
+  .strict();
+export type GuestCancelRequest = z.infer<typeof GuestCancelRequestSchema>;
+
 /** What is stored on the order. Deliberately no card number field. */
 export const PaymentSchema = z.object({
   id: z.string(),

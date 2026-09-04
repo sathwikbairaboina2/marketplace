@@ -59,6 +59,21 @@ function toResponse(record: ProductRecord): ProductResponse {
   return rest;
 }
 
+/**
+ * What a shopper cannot buy sorts last. The shop's order is otherwise the
+ * ULID descending -- newest listed first (`dynamo.repository.ts` queries with
+ * `ScanIndexForward: false`) -- which put a sold-out product in the first tile
+ * of every storefront whose newest listing happened to be out of stock, and in
+ * the first tile of every cross-sell besides.
+ *
+ * A stable sort within the page, not an index: the page is what the shopper
+ * sees, a shop is capped at 100 products, and reordering across pages would
+ * mean a second GSI and a migration for a shop that has one page.
+ */
+export function sellableFirst(a: ProductResponse, b: ProductResponse): number {
+  return Number(a.stock <= 0) - Number(b.stock <= 0);
+}
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -209,11 +224,11 @@ export class ProductsService {
       cursor,
       filter: visibleFilter(),
     });
-    return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
+    return { items: page.items.map(toResponse).sort(sellableFirst), nextCursor: page.nextCursor };
   }
 
   async searchVisible(criteria: SearchProducts): Promise<Page<ProductResponse>> {
     const page = await this.searchProvider.search(criteria, { statuses: VISIBLE_TO_SHOPPERS });
-    return { items: page.items.map(toResponse), nextCursor: page.nextCursor };
+    return { items: page.items.map(toResponse).sort(sellableFirst), nextCursor: page.nextCursor };
   }
 }

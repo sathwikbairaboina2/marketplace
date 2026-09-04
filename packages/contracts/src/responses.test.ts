@@ -29,6 +29,7 @@ const product = {
 const order = {
   entityType: 'Order' as const,
   id: '01J0000000000000000000000D',
+  reference: '0000-000D',
   userId: 'u1',
   status: 'confirmed' as const,
   totalAmountMinor: 3000,

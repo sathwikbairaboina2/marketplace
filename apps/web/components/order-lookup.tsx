@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Form, Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import { normalizeOrderReference, ORDER_REFERENCE_PATTERN } from '@marketplace/contracts';
 import { PageHeader } from './page-header';
 
 /**
@@ -26,16 +27,35 @@ export function OrderLookup() {
         className="mp-checkout-form mp-list-measure"
         onFinish={(values: { orderId: string; email: string }) => {
           setBusy(true);
-          const id = values.orderId.trim().toUpperCase();
+          // Either the short reference the confirmation prints or the full id
+          // a shopper bookmarked. Normalising here means a missing dash, a
+          // lowercase letter, or an `O` typed for a `0` still finds the order.
+          const typed = values.orderId.trim();
+          const reference = normalizeOrderReference(typed);
+          const id = ORDER_REFERENCE_PATTERN.test(reference) ? reference : typed.toUpperCase();
           router.push(`/orders/${encodeURIComponent(id)}?email=${encodeURIComponent(values.email.trim())}`);
         }}
       >
         <Form.Item
           name="orderId"
           label="Order number"
-          rules={[{ required: true, len: 26, message: 'The 26-character order number from your confirmation' }]}
+          rules={[
+            { required: true },
+            {
+              validator: (_, value: string) => {
+                const typed = String(value ?? '').trim();
+                if (!typed) return Promise.resolve();
+                const ok =
+                  ORDER_REFERENCE_PATTERN.test(normalizeOrderReference(typed)) ||
+                  typed.length === 26;
+                return ok
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('The order number from your confirmation, like K7QY-3PX2'));
+              },
+            },
+          ]}
         >
-          <Input placeholder="01M1KEV444FHX3DYK6NJA8Y24P" autoComplete="off" />
+          <Input placeholder="K7QY-3PX2" autoComplete="off" />
         </Form.Item>
         <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
           <Input placeholder="you@example.com" autoComplete="email" />

@@ -57,6 +57,13 @@
   min-height: 100vh;
   background: var(--mp-surface);
   color: var(--mp-ink);
+  /* The body face the merchant chose. `body` hardcodes Inter and the shop
+     wiring stopped at the heading font, so a shop on the `market` preset was
+     served Nunito on its antd controls (via the nested ConfigProvider) and
+     Inter on every paragraph -- one shop, two body faces. */
+  font-family: var(--mp-font-body), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  /* 14px is the cockpit's size. A storefront is read by shoppers on phones. */
+  font-size: var(--mp-text-md);
 }
 
 .mp-shop-header {

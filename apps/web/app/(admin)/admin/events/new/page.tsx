@@ -8,6 +8,7 @@ import { toAttributes, toFormItems } from '../../../../../lib/schema-fields';
 import { useSchema } from '../../../../../lib/schemas/schema-cache';
 import { PageHeader } from '../../../../../components/page-header';
 import { notifyProblem, toFormErrors } from '../../../../../lib/problem-notify';
+import { DEFAULT_CURRENCY, currencyOptions } from '../../../../../lib/format';
 
 export default function NewEventPage() {
   const schema = useSchema('Event');
@@ -46,7 +47,7 @@ export default function NewEventPage() {
     <>
       <PageHeader title="New event" subtitle="Capacity is enforced transactionally when tickets are booked." />
       <Card className="mp-form-card">
-        <Form form={form} layout="vertical" onFinish={submit} initialValues={{ currency: 'USD' }}>
+        <Form form={form} layout="vertical" onFinish={submit} initialValues={{ currency: DEFAULT_CURRENCY }}>
           <Form.Item name="title" label="Title" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
@@ -65,7 +66,7 @@ export default function NewEventPage() {
               <InputNumber min={0} step={0.01} precision={2} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
-              <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
+              <Select options={currencyOptions} />
             </Form.Item>
             <Form.Item name="capacity" label="Capacity" rules={[{ required: true }]}>
               <InputNumber min={1} style={{ width: '100%' }} />

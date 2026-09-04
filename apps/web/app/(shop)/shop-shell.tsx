@@ -114,6 +114,14 @@ export default function ShopShell({ children }: { children: React.ReactNode }) {
           colorTextTertiary: v['--mp-muted'],
           colorBgContainer: v['--mp-surface-raised'],
           colorBgElevated: v['--mp-surface-raised'],
+          // Status, which the wiring pass missed: `resolve.ts` works out a
+          // per-preset success colour and handed it to nobody, so antd drew
+          // its own blue Alert and green tick on every themed shop -- a cold
+          // #e6f4ff panel on a cream confirmation page.
+          colorInfo: accent,
+          colorSuccess: v['--mp-success'],
+          colorWarning: v['--mp-warning'],
+          colorError: v['--mp-danger'],
         },
         components: {
           Table: {

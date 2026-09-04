@@ -11,7 +11,7 @@ import { entitySk } from '../persistence/keys';
 import { currentPrincipal } from '../common/tenant-context';
 import { ProblemException } from '../common/problem';
 import { failedTransactionIndexes } from '../common/transaction-errors';
-import { toResponse } from './order-response';
+import { mayActOn, toResponse } from './order-response';
 
 /** The payment gate: charging an awaiting_payment order into its first stage. */
 @Injectable()
@@ -24,11 +24,13 @@ export class OrderPaymentService {
   /**
    * Takes payment for an order sitting in the awaiting_payment gate and moves
    * it into the first stage of the snapshot it was placed under. Buyer-owned,
-   * same 404-not-403 shape as get/cancel.
+   * same 404-not-403 shape as get/cancel -- and a guest may also prove it with
+   * the email they checked out under, which is the only key to the order that
+   * outlives their browser.
    */
-  async pay(id: string, card: Card): Promise<OrderResponse> {
+  async pay(id: string, card: Card, opts: { guestEmail?: string } = {}): Promise<OrderResponse> {
     const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
-    if (!found || found.userId !== currentPrincipal().userId) {
+    if (!mayActOn(found, currentPrincipal(), { guestEmail: opts.guestEmail })) {
       throw new ProblemException('not-found', 404, 'Order not found');
     }
     const current = toResponse(found);

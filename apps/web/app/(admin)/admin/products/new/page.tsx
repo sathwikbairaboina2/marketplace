@@ -12,6 +12,7 @@ import { useSchema } from '../../../../../lib/schemas/schema-cache';
 import { PageHeader } from '../../../../../components/page-header';
 import { useStorefrontCategories } from '../../../../../lib/storefront-categories';
 import { notifyProblem, toFormErrors } from '../../../../../lib/problem-notify';
+import { DEFAULT_CURRENCY, currencyOptions } from '../../../../../lib/format';
 
 export default function NewProductPage() {
   const schema = useSchema('Product');
@@ -82,7 +83,7 @@ export default function NewProductPage() {
           form={form}
           layout="vertical"
           onFinish={submit}
-          initialValues={{ currency: 'USD', stock: 0, status: 'active' }}
+          initialValues={{ currency: DEFAULT_CURRENCY, stock: 0, status: 'active' }}
         >
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
             <Input />
@@ -125,7 +126,7 @@ export default function NewProductPage() {
               <InputNumber min={0} step={0.01} precision={2} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="currency" label="Currency" rules={[{ required: true }]}>
-              <Select options={[{ value: 'USD' }, { value: 'EUR' }, { value: 'GBP' }]} />
+              <Select options={currencyOptions} />
             </Form.Item>
           </div>
           <div className="mp-field-row">

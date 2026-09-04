@@ -16,7 +16,9 @@ import { useResource } from '../../../../lib/use-resource';
 import { placeholderFor } from '../../../../lib/placeholder';
 import { formatPrice } from '../../../../lib/format';
 import { StatusTag } from '../../../../components/status-tag';
+import { EmptyState } from '../../../../components/empty-state';
 import { ErrorPanel } from '../../../../components/error-panel';
+import { ProblemError } from '../../../../lib/api/http';
 import { DetailSkeleton } from '../../../../components/skeletons';
 import { MoreFromShop } from '../../../../components/more-from-shop';
 
@@ -43,6 +45,23 @@ export default function ProductDetail() {
   // needs to be told which one happened. This previously rendered a skeleton
   // for ever on any failure, which said neither.
   if (loading) return <DetailSkeleton />;
+  // A product that is not there is not a failure to report to a stranger.
+  // ErrorPanel is a cockpit component -- it says "This console and the service
+  // disagree", prints a trace id twice, and offers a Try again that will fail
+  // for ever -- and a shopper who followed a stale link was being shown it.
+  if (error instanceof ProblemError && error.status === 404) {
+    return (
+      <EmptyState
+        title="That product is gone"
+        description="It may have sold out and been taken down, or the link may be old."
+        action={
+          <Link href="/products">
+            <Button type="primary">See what is in the shop</Button>
+          </Link>
+        }
+      />
+    );
+  }
   if (error) return <ErrorPanel error={error} onRetry={retry} />;
   if (!product) return null;
 

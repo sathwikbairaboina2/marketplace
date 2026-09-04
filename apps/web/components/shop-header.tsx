@@ -131,9 +131,14 @@ export function ShopHeader() {
           <>
             <ThemeToggle />
             {/* Straight back to where they were: a stranger who signs in from
-                a product page should land on that product, not the grid. */}
+                a product page should land on that product, not the grid.
+
+                Not `type="primary"`. A storefront's filled button is for
+                buying, and this one was the only one above the fold on a
+                phone -- on the pay page as well, where a stranger who took it
+                left the order they were about to pay for. */}
             <Link href={`/login?next=${encodeURIComponent(pathname)}`} aria-label="Sign in">
-              <Button type="primary" icon={<LoginOutlined />}>
+              <Button icon={<LoginOutlined />}>
                 {narrow ? null : 'Sign in'}
               </Button>
             </Link>

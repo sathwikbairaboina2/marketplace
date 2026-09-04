@@ -5,6 +5,7 @@ const token = {
   putCartLine: vi.fn(),
   clearCart: vi.fn(),
   mergeGuestCart: vi.fn(),
+  cancelOrder: vi.fn(),
 };
 vi.mock('../api/cart', () => ({
   getCart: () => token.getCart(),
@@ -13,7 +14,10 @@ vi.mock('../api/cart', () => ({
   mergeGuestCart: (...a: unknown[]) => token.mergeGuestCart(...a),
 }));
 vi.mock('../api/checkout', () => ({ checkout: vi.fn(), payOrder: vi.fn() }));
-vi.mock('../api/orders', () => ({ getOrder: vi.fn() }));
+vi.mock('../api/orders', () => ({
+  getOrder: vi.fn(),
+  cancelOrder: (...a: unknown[]) => token.cancelOrder(...a),
+}));
 const pub = {
   guestMint: vi.fn(),
   guestGetCart: vi.fn(),
@@ -22,6 +26,7 @@ const pub = {
   guestCheckout: vi.fn(),
   guestGetOrder: vi.fn(),
   guestPayOrder: vi.fn(),
+  guestCancelOrder: vi.fn(),
 };
 vi.mock('../api/shop', () => ({
   guestMint: (...a: unknown[]) => pub.guestMint(...a),
@@ -31,6 +36,7 @@ vi.mock('../api/shop', () => ({
   guestCheckout: (...a: unknown[]) => pub.guestCheckout(...a),
   guestGetOrder: (...a: unknown[]) => pub.guestGetOrder(...a),
   guestPayOrder: (...a: unknown[]) => pub.guestPayOrder(...a),
+  guestCancelOrder: (...a: unknown[]) => pub.guestCancelOrder(...a),
 }));
 vi.mock('../auth/auth-context', () => ({ useAuth: () => ({ principal: null }) }));
 vi.mock('./shop-context', () => ({ useShop: () => null }));
@@ -105,13 +111,17 @@ describe('commerceFor', () => {
 describe('adoptGuestCart', () => {
   const merged = { lines: [{ productId: 'p1' }], totalMinor: 500 };
 
-  it('folds the ticketed cart into the account and spends the ticket', async () => {
+  it('folds the ticketed cart into the account and keeps the ticket', async () => {
     localStorage.setItem('marketplace.guest.acme', 'tkt-1');
     token.mergeGuestCart.mockResolvedValue(merged);
     const c = commerceFor({ tenantId: 'acme' }, true);
     expect(await c.adoptGuestCart()).toEqual(merged);
     expect(token.mergeGuestCart).toHaveBeenCalledWith('tkt-1');
-    expect(localStorage.getItem('marketplace.guest.acme')).toBeNull();
+    // The ticket is the only key to an order placed as a stranger. Spending it
+    // here left an unpaid order that no route could pay for and only the
+    // seller could cancel, with its stock reserved. The merge has already
+    // emptied the guest cart, so keeping it leaks nothing.
+    expect(localStorage.getItem('marketplace.guest.acme')).toBe('tkt-1');
   });
 
   it('answers null and asks for nothing when there is no ticket', async () => {
@@ -120,12 +130,12 @@ describe('adoptGuestCart', () => {
     expect(token.mergeGuestCart).not.toHaveBeenCalled();
   });
 
-  it('spends the ticket even when the merge fails, and does not throw', async () => {
+  it('keeps the ticket when the merge fails, and does not throw', async () => {
     localStorage.setItem('marketplace.guest.acme', 'tkt-1');
     token.mergeGuestCart.mockRejectedValue(new Error('nope'));
     const c = commerceFor({ tenantId: 'acme' }, true);
     expect(await c.adoptGuestCart()).toBeNull();
-    expect(localStorage.getItem('marketplace.guest.acme')).toBeNull();
+    expect(localStorage.getItem('marketplace.guest.acme')).toBe('tkt-1');
   });
 
   it('adopts nothing for a stranger, who has no account to adopt into', async () => {
@@ -140,5 +150,35 @@ describe('adoptGuestCart', () => {
     const c = commerceFor(null, true);
     expect(await c.adoptGuestCart()).toBeNull();
     expect(token.mergeGuestCart).not.toHaveBeenCalled();
+  });
+});
+
+describe('the guest order routes carry the lookup email', () => {
+  it('sends the email a shopper looked the order up with when paying', async () => {
+    localStorage.setItem('marketplace.guest.acme', 'tkt-1');
+    const c = commerceFor({ tenantId: 'acme' }, false);
+    const card = { number: '4242424242424242', expMonth: 12, expYear: 2030, cvc: '123' };
+    await c.payOrder('ord-1', card, 'her@example.com');
+    expect(pub.guestPayOrder).toHaveBeenCalledWith(
+      'acme',
+      'tkt-1',
+      'ord-1',
+      card,
+      'her@example.com',
+    );
+  });
+
+  it('cancels through the shop route, with the email when there is one', async () => {
+    localStorage.setItem('marketplace.guest.acme', 'tkt-1');
+    const c = commerceFor({ tenantId: 'acme' }, false);
+    await c.cancelOrder('ord-1', 'her@example.com');
+    expect(pub.guestCancelOrder).toHaveBeenCalledWith('acme', 'tkt-1', 'ord-1', 'her@example.com');
+  });
+
+  it('cancels through the token route with a session', async () => {
+    const c = commerceFor({ tenantId: 'acme' }, true);
+    await c.cancelOrder('ord-1');
+    expect(token.cancelOrder).toHaveBeenCalledWith('ord-1');
+    expect(pub.guestCancelOrder).not.toHaveBeenCalled();
   });
 });

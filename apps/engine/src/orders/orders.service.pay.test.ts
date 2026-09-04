@@ -186,3 +186,71 @@ describe('OrdersService.cancel from the payment gate', () => {
     await expect(service.cancel('o1')).rejects.toMatchObject({ status: 404 });
   });
 });
+
+describe('a guest proving an order with the email instead of the ticket', () => {
+  const service = new OrdersService(
+    repo as never,
+    new OrderCheckoutService(repo as never, registry as never, pipeline as never),
+    new OrderPaymentService(repo as never, provider as never),
+    new OrderLifecycleService(repo as never),
+  );
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // A ticket the browser no longer holds: this principal is a different
+    // guest from the one that placed the order.
+    (currentPrincipal as jest.Mock).mockReturnValue({
+      tenantId: 'acme',
+      userId: 'guest:other',
+      role: 'guest',
+    });
+  });
+
+  const guestOrder = (over: Record<string, unknown> = {}) =>
+    awaitingOrder({ userId: 'guest:original', guestEmail: 'her@example.com', ...over });
+
+  it('pays when the email matches, whatever ticket the browser now holds', async () => {
+    repo.get.mockResolvedValue(guestOrder());
+    provider.charge.mockResolvedValue({ id: 'pay_1', last4: '4242', amountMinor: 2400, currency: 'INR' });
+    pipeline.get.mockResolvedValue(null);
+    // clearAllMocks keeps implementations, and an earlier case leaves this
+    // rejecting.
+    repo.transactWrite.mockResolvedValue(undefined);
+    await expect(service.pay('o1', card, { guestEmail: 'HER@example.com ' })).resolves.toMatchObject({
+      id: 'o1',
+    });
+  });
+
+  it('404s when the email does not match', async () => {
+    repo.get.mockResolvedValue(guestOrder());
+    await expect(
+      service.pay('o1', card, { guestEmail: 'someone-else@example.com' }),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('404s when no email is offered and the ticket is not the one that ordered', async () => {
+    repo.get.mockResolvedValue(guestOrder());
+    await expect(service.pay('o1', card)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('cancels with the email, so the stock comes back without the seller', async () => {
+    repo.get.mockResolvedValue(guestOrder());
+    repo.transactWrite.mockResolvedValue(undefined);
+    await expect(service.cancel('o1', { guestEmail: 'her@example.com' })).resolves.toMatchObject({
+      status: 'cancelled',
+    });
+  });
+
+  it('404s a cancel with a wrong email', async () => {
+    repo.get.mockResolvedValue(guestOrder());
+    await expect(
+      service.cancel('o1', { guestEmail: 'someone-else@example.com' }),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('does not let an email unlock an order that was never placed by a guest', async () => {
+    repo.get.mockResolvedValue(awaitingOrder({ userId: 'buyer-1', guestEmail: undefined }));
+    await expect(service.pay('o1', card, { guestEmail: 'her@example.com' })).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+});

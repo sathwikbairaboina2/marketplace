@@ -4,10 +4,10 @@ import { useMemo } from 'react';
 import type { Card, CartResponse, CheckoutRequest, OrderResponse } from '@marketplace/contracts';
 import { clearCart, getCart, mergeGuestCart, putCartLine } from '../api/cart';
 import { checkout, payOrder } from '../api/checkout';
-import { getOrder } from '../api/orders';
+import { cancelOrder, getOrder } from '../api/orders';
 import * as pub from '../api/shop';
 import { useAuth } from '../auth/auth-context';
-import { clearGuestTicket, readGuestTicket, writeGuestTicket } from '../guest/guest-ticket';
+import { readGuestTicket, writeGuestTicket } from '../guest/guest-ticket';
 import { useShop, type Shop } from './shop-context';
 
 /**
@@ -34,7 +34,9 @@ export interface ShopCommerce {
   clearCart(): Promise<CartResponse>;
   checkout(body: CheckoutRequest, idempotencyKey: string, email?: string): Promise<OrderResponse>;
   getOrder(id: string): Promise<OrderResponse>;
-  payOrder(id: string, card: Card): Promise<OrderResponse>;
+  /** `email` is the lookup key, for a shopper who no longer holds the ticket. */
+  payOrder(id: string, card: Card, email?: string): Promise<OrderResponse>;
+  cancelOrder(id: string, email?: string): Promise<OrderResponse>;
 }
 
 const EMPTY: CartResponse = { lines: [], totalMinor: 0 };
@@ -44,9 +46,13 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
     return {
       guest: false,
       ticket: () => (shop ? readGuestTicket(shop.tenantId) : null),
-      // Best effort, and the ticket is spent either way: a merge that fails
-      // must not strand the next stranger in this browser with our cart, and
-      // the guest cart the engine still holds is a fresh sign-in away.
+      // Best effort, and the ticket is kept. It used to be spent here, on the
+      // reasoning that the next stranger in this browser should not inherit
+      // our cart -- but the merge empties the guest cart on the engine, so
+      // there is nothing left to inherit, and the ticket is also the only key
+      // to any order this browser placed as a stranger. Spending it turned an
+      // unpaid order into one nobody could pay for and nobody but the seller
+      // could cancel, with its stock reserved the whole time.
       adoptGuestCart: async () => {
         const ticket = shop && signedIn ? readGuestTicket(shop.tenantId) : null;
         if (!shop || !ticket) return null;
@@ -54,8 +60,6 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
           return await mergeGuestCart(ticket);
         } catch {
           return null;
-        } finally {
-          clearGuestTicket(shop.tenantId);
         }
       },
       // On the platform host with no session there is no cart to ask for,
@@ -67,6 +71,7 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
       checkout: (body, key) => checkout(body, key),
       getOrder: (id) => getOrder(id),
       payOrder: (id, card) => payOrder(id, card),
+      cancelOrder: (id) => cancelOrder(id),
     };
   }
   const t = shop.tenantId;
@@ -99,7 +104,8 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
       return pub.guestCheckout(t, await ensure(), { ...body, email }, key);
     },
     getOrder: async (id) => pub.guestGetOrder(t, await ensure(), id),
-    payOrder: async (id, card) => pub.guestPayOrder(t, await ensure(), id, card),
+    payOrder: async (id, card, email) => pub.guestPayOrder(t, await ensure(), id, card, email),
+    cancelOrder: async (id, email) => pub.guestCancelOrder(t, await ensure(), id, email),
   };
 }
 

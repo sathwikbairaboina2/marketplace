@@ -18,9 +18,11 @@ import {
   GuestTokenResponse,
   OrderLookup,
   OrderLookupSchema,
+  GuestCancelRequest,
+  GuestCancelRequestSchema,
+  GuestPayRequest,
+  GuestPayRequestSchema,
   OrderResponse,
-  PayRequest,
-  PayRequestSchema,
   PutCartLine,
   PutCartLineSchema,
 } from '@marketplace/contracts';
@@ -104,12 +106,40 @@ export class GuestController {
     return this.orders.get(id);
   }
 
+  /**
+   * The email is optional and is the same one `orders/lookup` takes. A ticket
+   * belongs to a browser and an order outlives it: without this, a guest who
+   * signs in, clears storage or returns on another device holds an order that
+   * no route can pay for, with its stock reserved until the seller cancels it
+   * by hand.
+   */
   @Post('orders/:id/pay')
   @Public()
   @UseGuards(GuestGuard)
   @HttpCode(200)
-  pay(@Param('id') id: string, @ZodBody(PayRequestSchema) body: PayRequest): Promise<OrderResponse> {
-    return this.orders.pay(id, body.card);
+  @Throttle({ default: { limit: LOOKUP_LIMIT, ttl: LOOKUP_TTL_MS } })
+  pay(
+    @Param('id') id: string,
+    @ZodBody(GuestPayRequestSchema) body: GuestPayRequest,
+  ): Promise<OrderResponse> {
+    return this.orders.pay(id, body.card, { guestEmail: body.email });
+  }
+
+  /**
+   * The cancel the engine already believes a guest is entitled to: an order in
+   * the payment gate holds stock nobody has paid for, and before this route
+   * only the seller could give it back.
+   */
+  @Post('orders/:id/cancel')
+  @Public()
+  @UseGuards(GuestGuard)
+  @HttpCode(200)
+  @Throttle({ default: { limit: LOOKUP_LIMIT, ttl: LOOKUP_TTL_MS } })
+  cancel(
+    @Param('id') id: string,
+    @ZodBody(GuestCancelRequestSchema) body: GuestCancelRequest,
+  ): Promise<OrderResponse> {
+    return this.orders.cancel(id, { guestEmail: body.email });
   }
 
   /**

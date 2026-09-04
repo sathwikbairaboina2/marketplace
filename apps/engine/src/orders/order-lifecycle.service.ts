@@ -9,7 +9,7 @@ import { currentPrincipal } from '../common/tenant-context';
 import { ProblemException } from '../common/problem';
 import { conflictedTransactionIndexes, failedTransactionIndexes } from '../common/transaction-errors';
 import { assertAdmin } from '../common/roles';
-import { toResponse } from './order-response';
+import { mayActOn, toResponse } from './order-response';
 
 /**
  * What happens to a confirmed order after it is placed: the seller advancing
@@ -120,18 +120,17 @@ export class OrderLifecycleService {
    * was marked cancellable by the shop that defined it. Restores the stock the
    * order took, in the mirror image of `create`'s transaction.
    */
-  async cancel(id: string): Promise<OrderResponse> {
+  async cancel(id: string, opts: { guestEmail?: string } = {}): Promise<OrderResponse> {
     // Ownership is checked exactly as `get` does, and reported the same way: a
     // 403 here would confirm the order exists to somebody not allowed to see it.
-    // One widening: a tenant admin may cancel an order stuck in the payment
-    // gate -- clearing stale unpaid orders is the seller's stock coming back.
+    // Two widenings: a tenant admin may cancel an order stuck in the payment
+    // gate -- clearing stale unpaid orders is the seller's stock coming back --
+    // and a guest may cancel with the email they checked out under, so the
+    // stock does not sit reserved behind a ticket their browser has lost.
     const found = await this.repo.get<OrderRecord>(entitySk('Order', id));
     const principal = currentPrincipal();
-    if (
-      !found ||
-      (found.userId !== principal.userId &&
-        !(principal.role === 'admin' && found.status === 'awaiting_payment'))
-    ) {
+    const adminMayCancel = found?.status === 'awaiting_payment';
+    if (!mayActOn(found, principal, { admin: adminMayCancel, guestEmail: opts.guestEmail })) {
       throw new ProblemException('not-found', 404, 'Order not found');
     }
     const current = toResponse(found);

@@ -5,12 +5,13 @@ import {
   OrderLineItem,
   OrderRecord,
   OrderResponse,
+  orderReferenceFrom,
   ProductRecord,
 } from '@marketplace/contracts';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
 import { PipelineService } from '../pipeline/pipeline.service';
 import { DynamoRepository } from '../persistence/dynamo.repository';
-import { entitySk, gsi1UserPk, gsi1UserSk, PIPELINE_SK } from '../persistence/keys';
+import { entitySk, gsi1UserPk, gsi1UserSk, orderRefSk, PIPELINE_SK } from '../persistence/keys';
 import { currentPrincipal } from '../common/tenant-context';
 import { newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
@@ -119,6 +120,7 @@ export class OrderCheckoutService {
     const record: OrderResponse = {
       entityType: 'Order',
       id,
+      reference: orderReferenceFrom(id),
       userId: principal.userId,
       status: opts.awaitPayment ? 'awaiting_payment' : 'confirmed',
       totalAmountMinor,
@@ -196,6 +198,27 @@ export class OrderCheckoutService {
                 ExpressionAttributeValues: { ':expectedVersion': pipeline.version },
               }),
           ExpressionAttributeNames: { '#version': 'version' },
+        },
+      },
+      {
+        // The printed reference, pointed at the real id so `lookup` can resolve
+        // what a shopper reads off their confirmation. Also last, and for the
+        // same reason: `explainFailure` maps a failed index back to a line item
+        // by position, so nothing may go ahead of the stock updates.
+        //
+        // In the transaction rather than after it, so an order can never exist
+        // with a reference printed on it that nothing can resolve. Conditioned
+        // on the reference being free: on the vanishing chance of a collision
+        // the whole checkout fails and the retry mints a new id.
+        Put: {
+          TableName: this.repo.tableName,
+          Item: {
+            ...this.repo.key(orderRefSk(record.reference)),
+            entityType: 'OrderRef',
+            orderId: id,
+            createdAt,
+          },
+          ConditionExpression: 'attribute_not_exists(PK)',
         },
       },
     ];

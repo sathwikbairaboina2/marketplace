@@ -2,12 +2,13 @@ import { Injectable } from '@nestjs/common';
 import {
   Card,
   CreateOrder,
+  ORDER_REFERENCE_PATTERN,
   OrderRecord,
   OrderResponse,
   Page,
 } from '@marketplace/contracts';
 import { DynamoRepository } from '../persistence/dynamo.repository';
-import { entitySk, skPrefix } from '../persistence/keys';
+import { entitySk, orderRefSk, skPrefix } from '../persistence/keys';
 import { currentPrincipal } from '../common/tenant-context';
 import { ProblemException } from '../common/problem';
 import { assertAdmin } from '../common/roles';
@@ -45,16 +46,16 @@ export class OrdersService {
     return this.checkout.create(input, opts);
   }
 
-  pay(id: string, card: Card): Promise<OrderResponse> {
-    return this.payment.pay(id, card);
+  pay(id: string, card: Card, opts: { guestEmail?: string } = {}): Promise<OrderResponse> {
+    return this.payment.pay(id, card, opts);
   }
 
   advance(id: string, expectedStageId: string): Promise<OrderResponse> {
     return this.lifecycle.advance(id, expectedStageId);
   }
 
-  cancel(id: string): Promise<OrderResponse> {
-    return this.lifecycle.cancel(id);
+  cancel(id: string, opts: { guestEmail?: string } = {}): Promise<OrderResponse> {
+    return this.lifecycle.cancel(id, opts);
   }
 
   async get(id: string): Promise<OrderResponse> {
@@ -85,7 +86,13 @@ export class OrdersService {
    * a wrong email -- so the lookup cannot be used to learn which of those it was.
    */
   async lookup(orderId: string, email: string): Promise<OrderResponse> {
-    const found = await this.repo.get<OrderRecord>(entitySk('Order', orderId));
+    // Either form. A printed reference resolves through its pointer item; a
+    // full id is the direct get it always was. A pointer that names an order
+    // which is gone falls through to the same 404 as everything else here.
+    const id = ORDER_REFERENCE_PATTERN.test(orderId)
+      ? (await this.repo.get<{ orderId: string }>(orderRefSk(orderId)))?.orderId
+      : orderId;
+    const found = id ? await this.repo.get<OrderRecord>(entitySk('Order', id)) : null;
     if (!found?.guestEmail || found.guestEmail.toLowerCase() !== email.trim().toLowerCase()) {
       throw new ProblemException('not-found', 404, 'Order not found');
     }

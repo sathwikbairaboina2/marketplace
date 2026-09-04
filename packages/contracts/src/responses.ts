@@ -70,6 +70,10 @@ export const OrderResponseSchema = z
   .object({
     entityType: z.literal('Order'),
     id: UlidSchema,
+    // What the confirmation prints and what a shopper reads back over the
+    // phone. Required on the response and filled by `toResponse` for orders
+    // written before it existed, exactly as the stage fields are.
+    reference: z.string(),
     userId: z.string(),
     status: OrderStatusSchema,
     totalAmountMinor: z.number().int(),

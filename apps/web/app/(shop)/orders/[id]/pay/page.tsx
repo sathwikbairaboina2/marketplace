@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Alert, Button, Form, Input, InputNumber, message } from 'antd';
 import { CreditCardOutlined } from '@ant-design/icons';
 import { CardSchema, type OrderResponse } from '@marketplace/contracts';
 import { useShopCommerce } from '../../../../../lib/shop/commerce';
+import { useShop } from '../../../../../lib/shop/shop-context';
+import { lookupOrder } from '../../../../../lib/api/shop';
 import { ProblemError } from '../../../../../lib/api/http';
 import { useResource } from '../../../../../lib/use-resource';
 import { formatPrice } from '../../../../../lib/format';
@@ -21,9 +23,18 @@ export default function PayPage() {
   const [problem, setProblem] = useState<{ title: string; detail?: string } | null>(null);
 
   const commerce = useShopCommerce();
+  const shop = useShop();
+  // The same `?email=` the order page reads. A guest ticket belongs to a
+  // browser and this order does not: a shopper who signed in, cleared storage
+  // or came back on another device reaches the order through the lookup, and
+  // without carrying its email here the page they arrive at cannot pay.
+  const lookupEmail = useSearchParams().get('email');
   const { data: order, error, loading, retry } = useResource<OrderResponse>(
-    () => commerce.getOrder(id),
-    [id, commerce],
+    () =>
+      commerce.guest && shop && lookupEmail
+        ? lookupOrder(shop.tenantId, id, lookupEmail)
+        : commerce.getOrder(id),
+    [id, commerce, shop, lookupEmail],
   );
 
   if (loading) return <DetailSkeleton />;
@@ -33,7 +44,7 @@ export default function PayPage() {
   // Refreshing after success, or deep-linking to a paid or cancelled order,
   // lands on the tracker instead of a dead form.
   if (order.status !== 'awaiting_payment') {
-    router.replace(`/orders/${order.id}`);
+    router.replace(`/orders/${order.id}${lookupEmail ? `?email=${encodeURIComponent(lookupEmail)}` : ''}`);
     return null;
   }
 
@@ -54,9 +65,9 @@ export default function PayPage() {
     setBusy(true);
     setProblem(null);
     try {
-      await commerce.payOrder(order.id, parsed.data);
+      await commerce.payOrder(order.id, parsed.data, lookupEmail ?? undefined);
       void message.success('Payment received');
-      router.push(`/orders/${order.id}`);
+      router.push(`/orders/${order.id}${lookupEmail ? `?email=${encodeURIComponent(lookupEmail)}` : ''}`);
     } catch (err) {
       // A refusal renders inline with the form intact for another card; only
       // problem-shaped failures are expected here.

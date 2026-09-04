@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { notifyProblem } from './problem-notify';
+import { ProblemError } from './api/http';
 
 export interface Resource<T> {
   data: T | null;
@@ -53,7 +54,12 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>, deps: 
         // The toast still fires: it is what tells someone already looking
         // elsewhere on the page that something failed. ErrorPanel is what
         // remains once it has gone.
-        notifyProblem(err);
+        //
+        // Except for a 404, which is not a failure but an answer. The page
+        // renders it as an empty state, and a toast over the masthead saying
+        // the same thing twice is noise -- on a 390px phone it covered the
+        // whole header.
+        if (!(err instanceof ProblemError && err.status === 404)) notifyProblem(err);
       })
       .finally(() => {
         if (live) setLoading(false);

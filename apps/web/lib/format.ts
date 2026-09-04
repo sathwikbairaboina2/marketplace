@@ -135,3 +135,17 @@ export function formatRelative(value: string | null | undefined, now = Date.now(
   if (delta < 7 * DAY) return plural(Math.floor(delta / DAY), 'day');
   return formatDate(value);
 }
+
+/**
+ * What a seller may price in, and what they get by default. INR leads and is
+ * the default because this product launches in India -- the shopper's currency
+ * select was removed in `d6aae1c` (an order takes the currency its cart is
+ * priced in) and the seller's was left offering USD, EUR and GBP, so a
+ * merchant in Pune could not put a rupee price on anything they sold.
+ *
+ * One list, three forms: the product form, the edit form and the event form
+ * each had their own literal.
+ */
+export const SELLABLE_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'] as const;
+export const DEFAULT_CURRENCY = 'INR';
+export const currencyOptions = SELLABLE_CURRENCIES.map((value) => ({ value }));

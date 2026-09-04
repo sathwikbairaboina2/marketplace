@@ -114,14 +114,17 @@ export default function OrderDetailPage() {
   // An order in the payment gate is always cancellable: no money has moved and
   // no stage has begun.
   const canCancel =
-    // A guest has no cancel route yet (see the guest checkout design): the
-    // seller can clear an unpaid guest order from the cockpit.
-    !commerce.guest &&
-    (awaitingPayment || (order.status === 'confirmed' && currentStage?.cancellable === true));
+    awaitingPayment || (order.status === 'confirmed' && currentStage?.cancellable === true);
 
   const cancel = async () => {
     try {
-      await cancelOrder(order.id);
+      // A guest cancels through the shop's own route, proving the order with
+      // the ticket or with the email they looked it up under -- an unpaid
+      // order holds stock, and before this the seller was the only one who
+      // could give it back.
+      await (commerce.guest
+        ? commerce.cancelOrder(order.id, lookupEmail ?? undefined)
+        : cancelOrder(order.id));
       retry();
     } catch (err) {
       // The seller can advance this order between the page rendering and the
@@ -210,7 +213,11 @@ export default function OrderDetailPage() {
               style={{ marginBottom: 12 }}
               data-testid="awaiting-payment"
               action={
-                <Link href={`/orders/${order.id}/pay`}>
+                <Link
+                  href={`/orders/${order.id}/pay${
+                    lookupEmail ? `?email=${encodeURIComponent(lookupEmail)}` : ''
+                  }`}
+                >
                   <Button type="primary" size="small" data-testid="pay-now-link">
                     Pay now
                   </Button>
@@ -246,8 +253,12 @@ export default function OrderDetailPage() {
               type="info"
               showIcon
               style={{ marginTop: 12 }}
-              message="Keep your order number with the email you gave"
-              description="Together they find this order again from any browser, under Orders."
+              message={
+                <>
+                  Your order number is <strong className="mp-num">{order.reference}</strong>
+                </>
+              }
+              description="Keep it with the email you gave. Together they find this order again from any browser, under Orders."
             />
           )}
 
@@ -277,8 +288,10 @@ export default function OrderDetailPage() {
             <p>{Object.values(order.shippingAddress).join(', ')}</p>
           </div>
           <div className="mp-summary-block">
-            <h3>Reference</h3>
-            <code className="mp-id">{order.id}</code>
+            <h3>Order number</h3>
+            {/* The reference, not the ULID: a shopper reads this one back over
+                the phone, and the lookup takes either. */}
+            <code className="mp-id">{order.reference}</code>
           </div>
         </aside>
       </div>

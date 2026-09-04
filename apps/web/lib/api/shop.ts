@@ -96,10 +96,30 @@ export const guestCheckout = (
 export const guestGetOrder = (tenantId: string, guest: string, id: string) =>
   request(`${base(tenantId)}/orders/${id}`, { schema: OrderResponseSchema, guest });
 
-export const guestPayOrder = (tenantId: string, guest: string, id: string, card: Card) =>
+/**
+ * The email is the lookup key, sent when the shopper reached this order by
+ * looking it up rather than by holding the ticket they checked out with. A
+ * ticket belongs to a browser; the order outlives it.
+ */
+export const guestPayOrder = (
+  tenantId: string,
+  guest: string,
+  id: string,
+  card: Card,
+  email?: string,
+) =>
   request(`${base(tenantId)}/orders/${id}/pay`, {
     method: 'POST',
-    body: { card },
+    body: email ? { card, email } : { card },
+    schema: OrderResponseSchema,
+    guest,
+  });
+
+/** A guest giving back the stock their unpaid order is holding. */
+export const guestCancelOrder = (tenantId: string, guest: string, id: string, email?: string) =>
+  request(`${base(tenantId)}/orders/${id}/cancel`, {
+    method: 'POST',
+    body: email ? { email } : {},
     schema: OrderResponseSchema,
     guest,
   });
