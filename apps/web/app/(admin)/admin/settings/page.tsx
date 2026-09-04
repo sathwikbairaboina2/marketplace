@@ -72,7 +72,7 @@ export default function AdminSettingsPage() {
             <Switch />
           </Form.Item>
           <Button type="primary" htmlType="submit">
-            Save
+            Save announcement
           </Button>
         </Form>
       </Card>

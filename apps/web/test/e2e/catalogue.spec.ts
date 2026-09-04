@@ -26,9 +26,11 @@ test('an order can be placed for two products found through the catalogue', asyn
   await expect(page.getByText(cheap)).toHaveCount(0);
 
   await page.goto('/cart');
+  await page.getByLabel('Full name').fill('Priya Deshpande');
+  await page.getByLabel('Phone').fill('+91 98765 43210');
   await page.getByLabel('Address').fill('1 Test Street');
   await page.getByLabel('City').fill('Testville');
-  await page.getByLabel('Postcode').fill('TE5 7XX');
+  await page.getByLabel('PIN code').fill('411004');
   // Checkout reserves the order and lands on the payment page; the fake
   // provider's success card completes it onto the tracker.
   await page.getByRole('button', { name: 'Checkout' }).click();

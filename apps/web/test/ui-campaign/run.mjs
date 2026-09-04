@@ -699,6 +699,8 @@ await check('checkout marks the missing fields', async () => {
 });
 
 await check('checkout refuses when only the address is filled', async () => {
+  await page.getByLabel('Full name').fill('Priya Deshpande');
+  await page.getByLabel('Phone').fill('+91 98765 43210');
   await page.getByLabel('Address').fill('42 Harbour Road');
   await page.getByRole('button', { name: 'Checkout' }).click();
   await page.waitForTimeout(1200);
@@ -719,7 +721,7 @@ await check('the shopper is not asked to pick a currency, and the summary carrie
 
 await check('a complete checkout reserves the order and lands on the payment page', async () => {
   await page.getByLabel('City').fill('Bristol');
-  await page.getByLabel('Postcode').fill('BS1 4TR');
+  await page.getByLabel('PIN code').fill('411004');
   await page.getByRole('button', { name: 'Checkout' }).click();
   await page.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
 });
@@ -1262,9 +1264,11 @@ await check('a buyer can still add to the cart', async () => {
 
 await check('a buyer can complete a checkout and pay', async () => {
   await page.goto(`${WEB}/cart`);
+  await page.getByLabel('Full name').fill('Priya Deshpande');
+  await page.getByLabel('Phone').fill('+91 98765 43210');
   await page.getByLabel('Address').fill('9 Buyer Lane');
   await page.getByLabel('City').fill('Bristol');
-  await page.getByLabel('Postcode').fill('BS1 4TR');
+  await page.getByLabel('PIN code').fill('411004');
   await page.getByRole('button', { name: 'Checkout' }).click();
   await page.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
   await page.getByTestId('card-number').fill('4242 4242 4242 4242');

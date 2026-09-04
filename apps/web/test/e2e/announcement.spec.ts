@@ -6,9 +6,9 @@ test('the seller sets an announcement and the storefront wears it', async ({ pag
 
   await page.goto('/admin/settings');
   await page.getByLabel('Announcement').fill('Launch week — 10% off');
-  const toggle = page.getByRole('switch');
+  const toggle = page.getByLabel('Show it');
   if ((await toggle.getAttribute('aria-checked')) !== 'true') await toggle.click();
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save announcement' }).click();
   await expect(page.getByText('Announcement saved')).toBeVisible();
 
   await page.goto('/products');
@@ -16,8 +16,8 @@ test('the seller sets an announcement and the storefront wears it', async ({ pag
 
   // And off again — the strip must vanish, not linger.
   await page.goto('/admin/settings');
-  await page.getByRole('switch').click();
-  await page.getByRole('button', { name: 'Save' }).click();
+  await page.getByLabel('Show it').click();
+  await page.getByRole('button', { name: 'Save announcement' }).click();
   await expect(page.getByText('Announcement saved')).toBeVisible();
   await page.goto('/products');
   await expect(page.getByText('Launch week — 10% off')).not.toBeVisible();

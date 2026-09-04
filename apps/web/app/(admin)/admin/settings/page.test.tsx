@@ -73,7 +73,7 @@ describe('AdminSettingsPage', () => {
     await act(async () => {
       land({ text: '', enabled: false });
     });
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save announcement' }));
 
     expect(putAnnouncement).toHaveBeenCalledWith({ text: 'Launch week', enabled: false });
   });

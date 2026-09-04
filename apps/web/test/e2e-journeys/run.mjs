@@ -269,9 +269,11 @@ async function addToCartAndOrder(page, productId, { qty = 1, city = 'Bristol' } 
   await page.getByRole('button', { name: 'Add to cart' }).click();
   await page.waitForTimeout(600);
   await page.goto(`${WEB}/cart`);
+  await page.getByLabel('Full name').fill('Priya Deshpande');
+  await page.getByLabel('Phone').fill('+91 98765 43210');
   await page.getByLabel('Address').fill('42 Harbour Road');
   await page.getByLabel('City').fill(city);
-  await page.getByLabel('Postcode').fill('BS1 4TR');
+  await page.getByLabel('PIN code').fill('411004');
   // Checkout reserves the order into the payment gate, then the fake
   // provider's success card confirms it into stage 1 -- the state every
   // downstream journey expects.
@@ -511,9 +513,11 @@ await journey('a cart line carries the price the product was listed at', async (
 });
 
 await journey('checkout writes an order the engine reports with the same lines', async () => {
+  await shopper.getByLabel('Full name').fill('Priya Deshpande');
+  await shopper.getByLabel('Phone').fill('+91 98765 43210');
   await shopper.getByLabel('Address').fill('42 Harbour Road');
   await shopper.getByLabel('City').fill('Bristol');
-  await shopper.getByLabel('Postcode').fill('BS1 4TR');
+  await shopper.getByLabel('PIN code').fill('411004');
   await shopper.getByRole('button', { name: 'Checkout' }).click();
   await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
   const orderId = shopper.url().split('/').slice(-2)[0];
@@ -556,9 +560,11 @@ await journey('an order with two different products keeps both lines', async () 
   await shopper.goto(`${WEB}/products/${second.id}`);
   await shopper.getByRole('button', { name: 'Add to cart' }).click();
   await shopper.goto(`${WEB}/cart`);
+  await shopper.getByLabel('Full name').fill('Priya Deshpande');
+  await shopper.getByLabel('Phone').fill('+91 98765 43210');
   await shopper.getByLabel('Address').fill('42 Harbour Road');
   await shopper.getByLabel('City').fill('Bristol');
-  await shopper.getByLabel('Postcode').fill('BS1 4TR');
+  await shopper.getByLabel('PIN code').fill('411004');
   await shopper.getByRole('button', { name: 'Checkout' }).click();
   await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
   const twoLineOrderId = shopper.url().split('/').slice(-2)[0];
@@ -1485,9 +1491,11 @@ await journey('a stranger buys a mug on the shop host without ever signing in', 
 
   await page.goto(`${SHOP_A}/cart`);
   await page.getByLabel('Email').fill(GUEST_EMAIL);
+  await page.getByLabel('Full name').fill('Priya Deshpande');
+  await page.getByLabel('Phone').fill('+91 98765 43210');
   await page.getByLabel('Address').fill('42 Harbour Road');
   await page.getByLabel('City').fill('Bristol');
-  await page.getByLabel('Postcode').fill('BS1 4TR');
+  await page.getByLabel('PIN code').fill('411004');
   await page.getByRole('button', { name: /checkout/i }).click();
   await page.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
   guestOrderId = page.url().match(/orders\/([0-9A-Z]{26})/)[1];
@@ -1586,9 +1594,11 @@ await journey("a buyer's cart survives a full reload", async () => {
 
 let gateOrder;
 await journey('a declined card leaves the order awaiting payment, a retry completes it', async () => {
+  await shopper.getByLabel('Full name').fill('Priya Deshpande');
+  await shopper.getByLabel('Phone').fill('+91 98765 43210');
   await shopper.getByLabel('Address').fill('42 Harbour Road');
   await shopper.getByLabel('City').fill('Bristol');
-  await shopper.getByLabel('Postcode').fill('BS1 4TR');
+  await shopper.getByLabel('PIN code').fill('411004');
   await shopper.getByRole('button', { name: 'Checkout' }).click();
   await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
   gateOrder = shopper.url().split('/').slice(-2)[0];
@@ -1615,9 +1625,11 @@ await journey('the seller cannot advance an order stuck in the payment gate', as
   await shopper.getByRole('button', { name: 'Add to cart' }).click();
   await shopper.waitForTimeout(600);
   await shopper.goto(`${WEB}/cart`);
+  await shopper.getByLabel('Full name').fill('Priya Deshpande');
+  await shopper.getByLabel('Phone').fill('+91 98765 43210');
   await shopper.getByLabel('Address').fill('42 Harbour Road');
   await shopper.getByLabel('City').fill('Bristol');
-  await shopper.getByLabel('Postcode').fill('BS1 4TR');
+  await shopper.getByLabel('PIN code').fill('411004');
   await shopper.getByRole('button', { name: 'Checkout' }).click();
   await shopper.waitForURL(/\/orders\/[0-9A-Z]{26}\/pay/, { timeout: 60_000 });
   const unpaidOrder = shopper.url().split('/').slice(-2)[0];

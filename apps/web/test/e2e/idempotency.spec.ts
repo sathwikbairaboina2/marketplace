@@ -19,9 +19,11 @@ test('a double-submitted checkout creates exactly one order', async ({ page }) =
   const before = await rows.count();
 
   await page.goto('/cart');
+  await page.getByLabel('Full name').fill('Priya Deshpande');
+  await page.getByLabel('Phone').fill('+91 98765 43210');
   await page.getByLabel('Address').fill('1 Test Street');
   await page.getByLabel('City').fill('Testville');
-  await page.getByLabel('Postcode').fill('TE5 7XX');
+  await page.getByLabel('PIN code').fill('411004');
 
   // Two clicks in the same tick. The button disables on submit, but the
   // correctness here comes from the idempotency key being minted when the
