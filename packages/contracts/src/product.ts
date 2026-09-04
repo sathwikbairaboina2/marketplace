@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { AttributesSchema, CurrencySchema, MinorAmountSchema, StockSchema } from './common';
+import {
+  AttributesSchema,
+  CurrencySchema,
+  MinorAmountSchema,
+  StockSchema,
+  UlidSchema,
+} from './common';
 
 export const ProductStatusSchema = z.enum(['active', 'draft', 'archived', 'out_of_stock']);
 export type ProductStatus = z.infer<typeof ProductStatusSchema>;
@@ -108,3 +114,26 @@ export interface ProductRecord {
   /** Persistence-only: the lowercased text-search blob. Never on the wire. */
   search?: string;
 }
+
+/**
+ * Somebody asking to be told when a sold-out piece comes back.
+ *
+ * A one-of-a-kind maker is sold out most of the time -- "Sold out" is the
+ * *normal* state of her shop, not an error state -- so the interesting
+ * question on a product page is not "add to cart" but "tell me when there is
+ * another one".
+ */
+export const WaitlistRequestSchema = z
+  .object({ email: z.string().trim().toLowerCase().email().max(254) })
+  .strict();
+export type WaitlistRequest = z.infer<typeof WaitlistRequestSchema>;
+
+export const WaitlistEntrySchema = z
+  .object({
+    entityType: z.literal('Waitlist'),
+    productId: UlidSchema,
+    email: z.string(),
+    createdAt: z.string(),
+  })
+  .strict();
+export type WaitlistEntry = z.infer<typeof WaitlistEntrySchema>;

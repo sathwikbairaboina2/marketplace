@@ -1,9 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   CreateProduct,
   Page,
   ProductRecord,
   ProductResponse,
+  WaitlistEntry,
   ProductStatus,
   productSearchBlob,
   SearchProducts,
@@ -12,9 +13,12 @@ import {
 } from '@marketplace/contracts';
 import { DynamoRepository, FilterSpec } from '../persistence/dynamo.repository';
 import { SchemaRegistryService } from '../registry/schema-registry.service';
-import { entitySk, skPrefix } from '../persistence/keys';
-import { newId } from '../common/ids';
+import { entitySk, skPrefix, waitlistPrefix, waitlistSk } from '../persistence/keys';
+import { deriveIdFrom, newId } from '../common/ids';
 import { ProblemException } from '../common/problem';
+import { NotificationsService } from '../notifications/notifications.service';
+import { backInStock } from '../notifications/messages';
+import { StorefrontService } from '../storefront/storefront.service';
 import { foreignMediaUrl } from '../common/media-policy';
 import { currentPrincipal } from '../common/tenant-context';
 import { SEARCH_PROVIDER, SearchProvider } from './search-provider';
@@ -81,10 +85,14 @@ export function sellableFirst(a: ProductResponse, b: ProductResponse): number {
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+
   constructor(
     private readonly repo: DynamoRepository,
     private readonly registry: SchemaRegistryService,
     @Inject(SEARCH_PROVIDER) private readonly searchProvider: SearchProvider,
+    private readonly notifications: NotificationsService,
+    private readonly storefront: StorefrontService,
   ) {}
 
   async create(input: CreateProduct): Promise<ProductResponse> {
@@ -176,6 +184,27 @@ export class ProductsService {
    * Repricing does not disturb orders already placed: an order records the
    * unit price it locked at the time, and nothing here reaches into one.
    */
+  /**
+   * Somebody asking to hear when a sold-out piece comes back. Public: this is
+   * the one thing a shopper can do on a page for a product they cannot buy.
+   *
+   * Keyed by a hash of the address so asking twice is one row, and holding no
+   * more than the address is deliberate -- a waitlist is not a mailing list,
+   * and the record is deleted the moment it is used.
+   */
+  async joinWaitlist(productId: string, email: string): Promise<void> {
+    const product = await this.repo.get<ProductRecord>(entitySk('Product', productId));
+    if (!product || !VISIBLE_TO_SHOPPERS.includes(product.status)) {
+      throw new ProblemException('not-found', 404, 'Product not found');
+    }
+    await this.repo.put(waitlistSk(productId, deriveIdFrom(email.trim().toLowerCase())), {
+      entityType: 'Waitlist',
+      productId,
+      email: email.trim().toLowerCase(),
+      createdAt: new Date().toISOString(),
+    });
+  }
+
   async update(id: string, patch: UpdateProduct): Promise<ProductResponse> {
     if (patch.images !== undefined) assertOwnMedia(patch.images);
     const existing = await this.repo.get<ProductRecord>(entitySk('Product', id));
@@ -201,7 +230,58 @@ export class ProductsService {
       ...updated,
       search: productSearchBlob(updated),
     });
+
+    // Back on the shelf. Read *after* the write and compared against what was
+    // there before, so a merchant editing a description does not send anybody
+    // anything, and only a genuine nought-to-something restock does.
+    if (existing.stock === 0 && updated.stock > 0 && VISIBLE_TO_SHOPPERS.includes(updated.status)) {
+      await this.notifyWaiting(updated);
+    }
     return updated;
+  }
+
+  /**
+   * Tell everybody waiting, once, and forget them.
+   *
+   * The record is deleted as it is used: a waitlist entry is a single question
+   * -- "is there another one?" -- and keeping it afterwards would turn it into
+   * a subscription nobody agreed to, with an unsubscribe surface to match.
+   * Best effort throughout; a restock must not fail because an address bounced.
+   */
+  private async notifyWaiting(product: ProductResponse): Promise<void> {
+    try {
+      const page = await this.repo.queryPrefix<WaitlistEntry & { SK: string }>(
+        waitlistPrefix(product.id),
+        { limit: 100, cursor: null },
+      );
+      // The repository has no delete, so a used entry is overwritten with a
+      // spent marker rather than removed. That is also what stops a second
+      // restock telling the same person twice about a piece they already
+      // heard about, so the marker is filtered here, not treated as a row.
+      const waiting = page.items.filter((entry) => entry.entityType === 'Waitlist');
+      if (waiting.length === 0) return;
+
+      const published = await this.storefront.getPublished();
+      const shopName = published?.businessProfile?.name ?? currentPrincipal().tenantId;
+      const { subject, body } = backInStock(
+        product,
+        shopName,
+        `/products/${product.id}`,
+      );
+
+      for (const entry of waiting) {
+        await this.notifications.send({
+          kind: 'back-in-stock',
+          to: entry.email,
+          subject,
+          body,
+          about: product.id,
+        });
+        await this.repo.put(entry.SK, { entityType: 'WaitlistSent', sentAt: new Date().toISOString() });
+      }
+    } catch (err) {
+      this.logger.warn(`could not tell the waitlist about ${product.id}: ${String(err)}`);
+    }
   }
 
   async list(limit: number, cursor: string | null): Promise<Page<ProductResponse>> {

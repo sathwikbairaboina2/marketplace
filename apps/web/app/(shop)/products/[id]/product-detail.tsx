@@ -22,6 +22,7 @@ import { ProblemError } from '../../../../lib/api/http';
 import { DetailSkeleton } from '../../../../components/skeletons';
 import { MoreFromShop } from '../../../../components/more-from-shop';
 import { ProductGallery } from '../../../../components/product-gallery';
+import { BackInStock } from '../../../../components/back-in-stock';
 
 const LOW_STOCK = 5;
 
@@ -113,6 +114,12 @@ export default function ProductDetail() {
             </span>
           </div>
 
+          {/* A sold-out one-of-a-kind piece is not a dead end: it is the most
+              likely thing in the shop, and the page offered a disabled button
+              and nothing else. */}
+          {soldOut ? (
+            <BackInStock productId={product.id} />
+          ) : (
           <div className="mp-detail-actions">
             <InputNumber
               min={1}
@@ -146,6 +153,7 @@ export default function ProductDetail() {
               Add to cart
             </Button>
           </div>
+          )}
 
           {/* Tenant-defined attributes, kept apart from the core facts above --
               they are the tenant's vocabulary, not the platform's. */}

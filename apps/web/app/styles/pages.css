@@ -852,3 +852,28 @@
   font-size: var(--mp-text-lg);
   margin-bottom: var(--mp-space-2);
 }
+
+/* What a sold-out page offers instead of a button that cannot be pressed. */
+.mp-restock {
+  margin-top: var(--mp-space-5);
+  padding: var(--mp-space-5);
+  border: 1px solid var(--mp-line);
+  border-radius: var(--mp-radius-lg);
+  background: var(--mp-surface-sunken);
+}
+
+.mp-restock-lead {
+  margin: 0 0 var(--mp-space-4);
+  color: var(--mp-ink-soft);
+  max-width: 46ch;
+}
+
+.mp-restock-row {
+  display: flex;
+  gap: var(--mp-space-3);
+  flex-wrap: wrap;
+}
+
+.mp-restock-row .ant-input {
+  flex: 1 1 200px;
+}

@@ -3,6 +3,8 @@ import {
   Announcement,
   DepositPolicy,
   ShopContact,
+  WaitlistRequest,
+  WaitlistRequestSchema,
   DynamicEntityTypeSchema,
   Page,
   SchemaList,
@@ -10,6 +12,7 @@ import {
   SearchProductsSchema,
   StorefrontPublicResponse,
 } from '@marketplace/contracts';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/public.decorator';
 import { ZodBody, ZodQuery } from '../common/zod-validation.pipe';
 import { ListQuery, ListQuerySchema } from '../common/list-query.schema';
@@ -54,6 +57,24 @@ export class ShopsController {
   @Public()
   getContact(@Param('tenantId') tenantId: string): Promise<ShopContact> {
     return this.scope.run(tenantId, () => this.settings.getContact());
+  }
+
+  /**
+   * Somebody asking to hear when a sold-out piece comes back. Public and
+   * throttled: it takes an address, and it must not become a way to find out
+   * which addresses are already waiting.
+   */
+  @Post('products/:id/waitlist')
+  @Public()
+  @HttpCode(202)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  async joinWaitlist(
+    @Param('tenantId') tenantId: string,
+    @Param('id') id: string,
+    @ZodBody(WaitlistRequestSchema) body: WaitlistRequest,
+  ): Promise<{ waiting: true }> {
+    await this.scope.run(tenantId, () => this.products.joinWaitlist(id, body.email));
+    return { waiting: true };
   }
 
   /** The cart has to know whether this shop offers a deposit before it can offer one. */

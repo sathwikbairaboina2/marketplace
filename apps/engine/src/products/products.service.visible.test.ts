@@ -25,7 +25,13 @@ const principal = { tenantId: 't', userId: 'anonymous', role: 'public' };
 function service(found: Record<string, unknown> | null) {
   const repo = { get: jest.fn().mockResolvedValue(found), queryPrefix: jest.fn() };
   const provider = { search: jest.fn() };
-  return { svc: new ProductsService(repo as never, {} as never, provider as never), repo, provider };
+  return { svc: new ProductsService(
+      repo as never,
+      {} as never,
+      provider as never,
+      { send: jest.fn() } as never,
+      { getPublished: jest.fn() } as never,
+    ), repo, provider };
 }
 
 describe('shopper visibility', () => {

@@ -51,6 +51,19 @@ export function customerOrderPrefix(handleHash: string): string {
   return `CUSTOMER#${handleHash}#ORDER#`;
 }
 
+/**
+ * Somebody waiting for a product to come back. Keyed by product and then by a
+ * hash of the address, so one person asking twice is one row and a restock is
+ * a single query on a prefix.
+ */
+export function waitlistSk(productId: string, handleHash: string): string {
+  return `WAITLIST#${productId}#${handleHash}`;
+}
+
+export function waitlistPrefix(productId: string): string {
+  return `WAITLIST#${productId}#`;
+}
+
 /** The shop's outbox: what it said to a customer, and when. */
 export function mailSk(id: string): string {
   return `MAIL#${id}`;

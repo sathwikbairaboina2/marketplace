@@ -16,6 +16,7 @@ import {
   type SearchProducts,
   pageOf,
 } from '@marketplace/contracts';
+import { z } from 'zod';
 import { request } from './http';
 
 /**
@@ -169,4 +170,12 @@ export const guestOrderHistory = (tenantId: string, email: string) =>
     method: 'POST',
     body: { email },
     schema: OrderResponseSchema.array(),
+  });
+
+/** Ask to hear when a sold-out piece comes back. */
+export const joinWaitlist = (tenantId: string, productId: string, email: string) =>
+  request(`${base(tenantId)}/products/${productId}/waitlist`, {
+    method: 'POST',
+    body: { email },
+    schema: z.object({ waiting: z.literal(true) }),
   });
