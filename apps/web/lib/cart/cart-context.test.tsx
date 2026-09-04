@@ -4,12 +4,14 @@ import { render, screen, act, waitFor } from '@testing-library/react';
 const getCart = vi.fn();
 const putCartLine = vi.fn();
 const clearCart = vi.fn();
+const adoptGuestCart = vi.fn();
 // The binding is the seam now (lib/shop/commerce): the provider talks to
 // whichever cart the binding names, and this test names one.
 let token: string | null = 'tok-1';
 const commerce = {
   guest: false,
   ticket: () => null,
+  adoptGuestCart: (...a: unknown[]) => adoptGuestCart(...a),
   getCart: (...a: unknown[]) => (token ? getCart(...a) : Promise.resolve({ lines: [], totalMinor: 0 })),
   putLine: (...a: unknown[]) => putCartLine(...a),
   clearCart: (...a: unknown[]) => clearCart(...a),
@@ -67,6 +69,7 @@ describe('CartProvider', () => {
     getCart.mockReset().mockResolvedValue({ lines: [], totalMinor: 0 });
     putCartLine.mockReset();
     clearCart.mockReset();
+    adoptGuestCart.mockReset().mockResolvedValue(null);
     notifyProblem.mockReset();
     token = 'tok-1';
   });
@@ -76,6 +79,22 @@ describe('CartProvider', () => {
     renderProbe();
     await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'));
     expect(screen.getByTestId('total')).toHaveTextContent('200');
+  });
+
+  it('shows the cart a stranger built once sign-in adopts it, without asking for the empty one', async () => {
+    adoptGuestCart.mockResolvedValue({ lines: [line('p1', 3)], totalMinor: 300 });
+    renderProbe();
+    await waitFor(() => expect(screen.getByTestId('count')).toHaveTextContent('1'));
+    expect(screen.getByTestId('qty')).toHaveTextContent('3');
+    // The race this replaced: a fetch beside the merge answered empty last.
+    expect(getCart).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the account cart when there is nothing to adopt', async () => {
+    getCart.mockResolvedValue({ lines: [line('p9', 1)], totalMinor: 100 });
+    renderProbe();
+    await waitFor(() => expect(screen.getByTestId('total')).toHaveTextContent('100'));
+    expect(adoptGuestCart).toHaveBeenCalled();
   });
 
   it('does not fetch without a session', async () => {

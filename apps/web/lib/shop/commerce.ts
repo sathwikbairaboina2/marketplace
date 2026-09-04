@@ -2,12 +2,12 @@
 
 import { useMemo } from 'react';
 import type { Card, CartResponse, CheckoutRequest, OrderResponse } from '@marketplace/contracts';
-import { clearCart, getCart, putCartLine } from '../api/cart';
+import { clearCart, getCart, mergeGuestCart, putCartLine } from '../api/cart';
 import { checkout, payOrder } from '../api/checkout';
 import { getOrder } from '../api/orders';
 import * as pub from '../api/shop';
 import { useAuth } from '../auth/auth-context';
-import { readGuestTicket, writeGuestTicket } from '../guest/guest-ticket';
+import { clearGuestTicket, readGuestTicket, writeGuestTicket } from '../guest/guest-ticket';
 import { useShop, type Shop } from './shop-context';
 
 /**
@@ -23,6 +23,12 @@ export interface ShopCommerce {
   guest: boolean;
   /** The ticket, once one exists; what sign-in hands to the merge. */
   ticket(): string | null;
+  /**
+   * The cart this browser built as a stranger, folded into the signed-in
+   * account's and the ticket spent. Null when there is nothing to adopt --
+   * no ticket, or a caller who is still a stranger.
+   */
+  adoptGuestCart(): Promise<CartResponse | null>;
   getCart(): Promise<CartResponse>;
   putLine(productId: string, qty: number): Promise<CartResponse>;
   clearCart(): Promise<CartResponse>;
@@ -38,6 +44,20 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
     return {
       guest: false,
       ticket: () => (shop ? readGuestTicket(shop.tenantId) : null),
+      // Best effort, and the ticket is spent either way: a merge that fails
+      // must not strand the next stranger in this browser with our cart, and
+      // the guest cart the engine still holds is a fresh sign-in away.
+      adoptGuestCart: async () => {
+        const ticket = shop && signedIn ? readGuestTicket(shop.tenantId) : null;
+        if (!shop || !ticket) return null;
+        try {
+          return await mergeGuestCart(ticket);
+        } catch {
+          return null;
+        } finally {
+          clearGuestTicket(shop.tenantId);
+        }
+      },
       // On the platform host with no session there is no cart to ask for,
       // and asking would answer 401 -- which the shell turns into a trip to
       // the login page for a visitor who was only ever going there anyway.
@@ -62,6 +82,8 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
   return {
     guest: true,
     ticket: () => readGuestTicket(t),
+    // Still a stranger: there is no account for the cart to join.
+    adoptGuestCart: async () => null,
     // No ticket yet means no cart yet, and that is an answer, not a request.
     getCart: async () => {
       const ticket = readGuestTicket(t);

@@ -42,9 +42,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // user's, or a stranger's on their ticket. Refetched whenever the binding
   // changes -- a sign-in or sign-out -- so the next person never sees the
   // previous cart. A stranger with no ticket gets an empty cart and no request.
+  //
+  // A sign-in flips the binding here before anything else can run, so the
+  // adoption of the stranger's cart belongs in front of the first read rather
+  // than beside it: done anywhere else it races this fetch, and the empty
+  // answer lands second and wins.
   useEffect(() => {
+    let live = true;
     setCart(EMPTY);
-    commerce.getCart().then(setCart).catch(notifyProblem);
+    void (async () => {
+      const adopted = await commerce.adoptGuestCart();
+      if (!live) return;
+      if (adopted) {
+        setCart(adopted);
+        return;
+      }
+      const own = await commerce.getCart();
+      if (live) setCart(own);
+    })().catch(notifyProblem);
+    return () => {
+      live = false;
+    };
   }, [commerce]);
 
   /** A failed write leaves the server authoritative: refetch, then report. */

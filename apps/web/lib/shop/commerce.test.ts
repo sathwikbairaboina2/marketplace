@@ -1,10 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-const token = { getCart: vi.fn(), putCartLine: vi.fn(), clearCart: vi.fn() };
+const token = {
+  getCart: vi.fn(),
+  putCartLine: vi.fn(),
+  clearCart: vi.fn(),
+  mergeGuestCart: vi.fn(),
+};
 vi.mock('../api/cart', () => ({
   getCart: () => token.getCart(),
   putCartLine: (...a: unknown[]) => token.putCartLine(...a),
   clearCart: () => token.clearCart(),
+  mergeGuestCart: (...a: unknown[]) => token.mergeGuestCart(...a),
 }));
 vi.mock('../api/checkout', () => ({ checkout: vi.fn(), payOrder: vi.fn() }));
 vi.mock('../api/orders', () => ({ getOrder: vi.fn() }));
@@ -93,5 +99,46 @@ describe('commerceFor', () => {
     await expect(c.checkout(body, 'key')).rejects.toThrow(/email/);
     await c.checkout(body, 'key', 'a@b.co');
     expect(pub.guestCheckout).toHaveBeenCalledWith('acme', 't1.mac', { ...body, email: 'a@b.co' }, 'key');
+  });
+});
+
+describe('adoptGuestCart', () => {
+  const merged = { lines: [{ productId: 'p1' }], totalMinor: 500 };
+
+  it('folds the ticketed cart into the account and spends the ticket', async () => {
+    localStorage.setItem('marketplace.guest.acme', 'tkt-1');
+    token.mergeGuestCart.mockResolvedValue(merged);
+    const c = commerceFor({ tenantId: 'acme' }, true);
+    expect(await c.adoptGuestCart()).toEqual(merged);
+    expect(token.mergeGuestCart).toHaveBeenCalledWith('tkt-1');
+    expect(localStorage.getItem('marketplace.guest.acme')).toBeNull();
+  });
+
+  it('answers null and asks for nothing when there is no ticket', async () => {
+    const c = commerceFor({ tenantId: 'acme' }, true);
+    expect(await c.adoptGuestCart()).toBeNull();
+    expect(token.mergeGuestCart).not.toHaveBeenCalled();
+  });
+
+  it('spends the ticket even when the merge fails, and does not throw', async () => {
+    localStorage.setItem('marketplace.guest.acme', 'tkt-1');
+    token.mergeGuestCart.mockRejectedValue(new Error('nope'));
+    const c = commerceFor({ tenantId: 'acme' }, true);
+    expect(await c.adoptGuestCart()).toBeNull();
+    expect(localStorage.getItem('marketplace.guest.acme')).toBeNull();
+  });
+
+  it('adopts nothing for a stranger, who has no account to adopt into', async () => {
+    localStorage.setItem('marketplace.guest.acme', 'tkt-1');
+    const c = commerceFor({ tenantId: 'acme' }, false);
+    expect(await c.adoptGuestCart()).toBeNull();
+    expect(token.mergeGuestCart).not.toHaveBeenCalled();
+    expect(localStorage.getItem('marketplace.guest.acme')).toBe('tkt-1');
+  });
+
+  it('adopts nothing on the platform host, where no shop names a ticket', async () => {
+    const c = commerceFor(null, true);
+    expect(await c.adoptGuestCart()).toBeNull();
+    expect(token.mergeGuestCart).not.toHaveBeenCalled();
   });
 });
