@@ -58,6 +58,7 @@ export default function AdminSettingsPage() {
       <Card className="mp-form-card" title="Announcement">
         <Form
           form={form}
+          name="announcement"
           layout="vertical"
           onFinish={submit}
           initialValues={{ text: '', enabled: false }}

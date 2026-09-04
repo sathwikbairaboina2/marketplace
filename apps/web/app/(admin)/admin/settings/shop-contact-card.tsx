@@ -46,7 +46,13 @@ export function ShopContactCard() {
         Printed at the bottom of every page of your shop. Leave anything blank and it is not
         shown.
       </p>
-      <Form form={form} layout="vertical" onFinish={submit} initialValues={EMPTY_SHOP_CONTACT}>
+      <Form
+        form={form}
+        name="contact"
+        layout="vertical"
+        onFinish={submit}
+        initialValues={EMPTY_SHOP_CONTACT}
+      >
         <div className="mp-field-row">
           <Form.Item name="phone" label="Phone">
             <Input placeholder="+91 98765 43210" />

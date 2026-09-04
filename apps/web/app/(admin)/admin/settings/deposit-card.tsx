@@ -57,6 +57,11 @@ export function DepositCard() {
       </p>
       <Form
         form={form}
+        // Namespaces this form's field ids. Three forms share this page, and
+        // two of them had a field called `enabled`: both switches rendered
+        // `id="enabled"`, so the announcement's label pointed at the deposit
+        // switch -- whose accessible name became "Offer a deposit Show it".
+        name="deposit"
         layout="vertical"
         onFinish={submit}
         initialValues={{
