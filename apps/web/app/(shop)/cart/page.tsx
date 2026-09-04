@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button, Form, Input, InputNumber } from 'antd';
@@ -27,6 +27,15 @@ export default function CartPage() {
   const router = useRouter();
   const [form] = Form.useForm();
   const [busy, setBusy] = useState(false);
+
+  // The mobile action bar is fixed, so it is out of flow and the page cannot
+  // make room for it on its own. This is the one page that renders one.
+  useEffect(() => {
+    document.body.dataset.actionBar = 'true';
+    return () => {
+      delete document.body.dataset.actionBar;
+    };
+  }, []);
 
   // The order is placed in the currency the products are priced in: the
   // engine refuses a mixed-currency order, so the one thing a currency field

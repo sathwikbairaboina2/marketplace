@@ -27,13 +27,30 @@ describe('placeholderFor', () => {
   });
 });
 
-it('draws every tile from the brand hue band, not the full wheel', () => {
-  // Many ids; every gradient's hue must be one of the five palette hues.
+it('draws every tile from the brand hue band where no shop supplies one', () => {
+  // The hue is a custom property now, so a themed shop's tiles take the
+  // merchant's colour. The *fallback* is what the platform host renders, and
+  // it must still be one of the five palette hues rather than the full wheel.
   const allowed = new Set([158, 172, 199, 214, 244]);
   for (let i = 0; i < 50; i++) {
     const { gradient } = placeholderFor(`id-${i}`, 'Widget');
-    const hues = [...gradient.matchAll(/hsl\((\d+) /g)].map((m) => Number(m[1]));
+    const hues = [...gradient.matchAll(/var\(--mp-placeholder-hue, (\d+)\)/g)].map((m) =>
+      Number(m[1]),
+    );
     expect(hues.length).toBeGreaterThan(0);
     for (const hue of hues) expect(allowed.has(hue)).toBe(true);
   }
+});
+
+it('shifts a shop-supplied hue per product rather than repeating one tile', () => {
+  // The shop's colour is the anchor; the product only moves it a little, so a
+  // grid of photograph-less products is varied without leaving the palette.
+  const shifts = new Set(
+    Array.from({ length: 50 }, (_, i) => {
+      const { gradient } = placeholderFor(`id-${i}`, 'Widget');
+      return gradient.match(/var\(--mp-placeholder-hue, \d+\) \+ (-?\d+)\)/)?.[1];
+    }),
+  );
+  expect(shifts.size).toBeGreaterThan(1);
+  for (const shift of shifts) expect(Math.abs(Number(shift))).toBeLessThanOrEqual(16);
 });

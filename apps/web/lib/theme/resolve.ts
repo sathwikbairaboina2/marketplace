@@ -7,6 +7,19 @@ const DEFAULT_FONTS = FONT_STACKS.inter;
 /** A storefront's body size. 14px is the cockpit's, on a page shoppers read. */
 const SHOP_BODY_PX = 16;
 
+/** The hue of a #rrggbb, in degrees. */
+function hueOf(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [((n >> 16) & 0xff) / 255, ((n >> 8) & 0xff) / 255, (n & 0xff) / 255];
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  if (d === 0) return 0;
+  const h =
+    max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return Math.round(((h * 60) + 360) % 360);
+}
+
 /**
  * One function from tenant choice to CSS variables. Null config = today's
  * default vars exactly (plus the two font vars every path now emits), so a
@@ -56,6 +69,11 @@ export function resolveTheme(config: StorefrontConfig | null, mode: Mode): Recor
     // page, and slate-tinted shadows under warm cards.
     '--mp-hero-border': `${accent}33`,
     '--mp-placeholder-ink': c.muted,
+    // The monogram tiles take the shop's hue. `--mp-placeholder-ink` was
+    // themed in the round-2 wiring and the gradient behind it was not, so a
+    // brown shop drew blue-grey placeholders on every product without a
+    // photograph.
+    '--mp-placeholder-hue': String(hueOf(accent)),
     '--mp-hero-bg': preset.heroBg[mode],
     '--mp-hero-ink': c.ink,
     '--mp-hero-muted': c.muted,

@@ -34,10 +34,19 @@ export function placeholderFor(id: string, name: string): { gradient: string; in
       .map((word) => word[0]!.toUpperCase())
       .join('') || '?';
 
+  // A themed shop supplies its own hue and the product only shifts it; the
+  // platform host has none, and the fallback is the id's own pick, so nothing
+  // changes there. Before this, a warm brown pottery shop drew cold blue-grey
+  // monograms -- the five hues below are the *platform* brand's, not the
+  // merchant's, and every product without a photograph advertised that.
+  const shift = (hash(id) % 5) * 8 - 16;
+  const hueA = `calc(var(--mp-placeholder-hue, ${hue}) + ${shift})`;
+  const hueB = `calc(var(--mp-placeholder-hue, ${next}) + ${shift + 14})`;
+
   return {
     gradient:
-      `linear-gradient(135deg, hsl(${hue} var(--mp-placeholder-from)), ` +
-      `hsl(${next} var(--mp-placeholder-to)))`,
+      `linear-gradient(135deg, hsl(${hueA} var(--mp-placeholder-from)), ` +
+      `hsl(${hueB} var(--mp-placeholder-to)))`,
     initials,
   };
 }

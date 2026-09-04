@@ -410,22 +410,32 @@
     /* Room for the bar that now sits over the bottom of the page. */
     padding-bottom: var(--mp-space-3);
   }
-  /* The total and its button, stuck to the bottom of the screen. The card
-     itself cannot be: on the order page it carries an address and a reference
-     as well, and a sticky block that tall would leave nothing to scroll. */
+  /* The total and its button, on the screen the whole time.
+     `position: sticky` cannot do this: it pins an element while its container
+     scrolls past, so a bar inside a summary card that is itself below the fold
+     stays below the fold -- measured at y 1067 in an 844px viewport, which is
+     the defect this was meant to fix, not a fix for it. Fixed, and the page
+     gets room underneath so the bar never covers the end of it. */
   .mp-action-bar {
-    position: sticky;
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: 0;
-    z-index: 20;
-    margin: 0 calc(var(--mp-space-5) * -1) calc(var(--mp-space-5) * -1);
+    z-index: 30;
+    margin: 0;
     padding: var(--mp-space-4) var(--mp-space-5) calc(var(--mp-space-4) + env(safe-area-inset-bottom));
     background: var(--mp-surface-raised);
     border-top: 1px solid var(--mp-line);
-    border-radius: 0 0 var(--mp-radius-lg) var(--mp-radius-lg);
-    box-shadow: 0 -6px 16px rgb(0 0 0 / 6%);
+    border-radius: 0;
+    box-shadow: 0 -6px 16px rgb(0 0 0 / 10%);
   }
   .mp-action-bar .mp-summary-total {
     margin-bottom: var(--mp-space-3);
+  }
+  /* The bar is out of flow, so the page has to make its own room. Set by the
+     one page that renders a bar, and removed when it unmounts. */
+  body[data-action-bar] .mp-shop-footer {
+    padding-bottom: 180px;
   }
   .mp-detail-buy {
     order: 2 !important;

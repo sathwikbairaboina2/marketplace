@@ -4,9 +4,9 @@ import { cssVars } from './tokens';
 import { PRESETS } from './presets';
 import { resolveTheme } from './resolve';
 
-const baseConfig = (presetId: (typeof PRESET_IDS)[number]) => ({
+const baseConfig = (presetId: (typeof PRESET_IDS)[number], accent?: string) => ({
   presetId,
-  overrides: {},
+  overrides: accent ? { accent } : {},
   about: { title: 't', sections: [{ heading: 'h', body: 'b' }] },
   banners: [],
   businessProfile: { kind: 'k', name: 'n', tone: 't', audience: 'a' },
@@ -38,12 +38,21 @@ describe('resolveTheme', () => {
     }
   });
 
-  it('a preset adds the display step and nothing else beyond the defaults', () => {
+  it('a preset adds only the display step and its placeholder hue', () => {
     const keys = new Set(Object.keys(resolveTheme(null, 'light')));
     for (const id of PRESET_IDS) {
       const extra = Object.keys(resolveTheme(baseConfig(id), 'light')).filter((k) => !keys.has(k));
-      expect(extra).toEqual(['--mp-text-display']);
+      expect(extra.sort()).toEqual(['--mp-placeholder-hue', '--mp-text-display']);
     }
+  });
+
+  it('takes the placeholder hue from the shop accent, so tiles match the shop', () => {
+    // A warm brown shop drew cold blue-grey monograms on every product with no
+    // photograph: the ink was themed in the round-2 wiring, the gradient was
+    // not. #7a3b1e is an orange-brown, around 22 degrees.
+    const brown = resolveTheme(baseConfig('artisan', '#7a3b1e'), 'light');
+    expect(Number(brown['--mp-placeholder-hue'])).toBeGreaterThan(10);
+    expect(Number(brown['--mp-placeholder-hue'])).toBeLessThan(40);
   });
 
   it('gives each preset its own rhythm and ladder', () => {
