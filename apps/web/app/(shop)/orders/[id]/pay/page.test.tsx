@@ -40,6 +40,8 @@ const ORDER = {
   entityType: 'Order',
   id: 'ord-1',
   reference: 'K7QY-3PX2',
+  fulfilment: 'delivery',
+  balanceDueMinor: 0,
   userId: 'u1',
   status: 'awaiting_payment',
   totalAmountMinor: 2400,
@@ -61,6 +63,20 @@ const fill = (number: string) => {
   fireEvent.change(screen.getByTestId('card-cvc'), { target: { value: '123' } });
 };
 
+/**
+ * UPI is the default now — nobody in this market pays for a mug by card — so
+ * the card cases start by choosing the card tab.
+ */
+const chooseCard = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByRole('radio', { name: /card/i }));
+  });
+  // antd connects the `useForm` instance to the form element on the render
+  // after it mounts; without this tick `form.setFields` is a silent no-op and
+  // the inline card error never appears.
+  await act(async () => {});
+};
+
 beforeEach(() => {
   getOrder.mockReset().mockResolvedValue(ORDER);
   payOrder.mockReset();
@@ -69,9 +85,18 @@ beforeEach(() => {
 });
 
 describe('PayPage', () => {
+  it('offers UPI first, because that is how this market pays', async () => {
+    render(<PayPage />);
+    await act(async () => {});
+    expect(screen.getByTestId('upi-vpa')).toBeInTheDocument();
+    expect(screen.queryByTestId('card-number')).not.toBeInTheDocument();
+    expect(screen.getByTestId('upi-pay')).toHaveTextContent('24.00');
+  });
+
   it('renders the card form with the amount to pay', async () => {
     render(<PayPage />);
     await act(async () => {});
+    await chooseCard();
     expect(screen.getByTestId('card-number')).toBeInTheDocument();
     expect(screen.getByTestId('pay-now')).toHaveTextContent('24.00');
   });
@@ -79,6 +104,7 @@ describe('PayPage', () => {
   it('blocks a Luhn-invalid number with an inline error, no round trip', async () => {
     render(<PayPage />);
     await act(async () => {});
+    await chooseCard();
     fill('4242 4242 4242 4241');
     await act(async () => {
       fireEvent.click(screen.getByTestId('pay-now'));
@@ -91,6 +117,7 @@ describe('PayPage', () => {
     payOrder.mockResolvedValue({ ...ORDER, status: 'confirmed', currentStageId: 'st-1' });
     render(<PayPage />);
     await act(async () => {});
+    await chooseCard();
     fill('4242 4242 4242 4242');
     await act(async () => {
       fireEvent.click(screen.getByTestId('pay-now'));
@@ -113,6 +140,7 @@ describe('PayPage', () => {
     );
     render(<PayPage />);
     await act(async () => {});
+    await chooseCard();
     fill('4000 0000 0000 0002');
     await act(async () => {
       fireEvent.click(screen.getByTestId('pay-now'));

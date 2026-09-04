@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type {
   BookingResponse,
+  PaymentIntentResponse,
   Card,
   CartResponse,
   CheckoutRequest,
@@ -10,7 +11,7 @@ import type {
   OrderResponse,
 } from '@marketplace/contracts';
 import { clearCart, getCart, mergeGuestCart, putCartLine } from '../api/cart';
-import { checkout, payOrder } from '../api/checkout';
+import { checkout, payOrder, startPayment } from '../api/checkout';
 import { createBooking, getBooking } from '../api/bookings';
 import { cancelOrder, getOrder } from '../api/orders';
 import * as pub from '../api/shop';
@@ -45,6 +46,17 @@ export interface ShopCommerce {
   /** `email` is the lookup key, for a shopper who no longer holds the ticket. */
   payOrder(id: string, card: Card, email?: string): Promise<OrderResponse>;
   cancelOrder(id: string, email?: string): Promise<OrderResponse>;
+  /**
+   * Start a UPI payment. Answers with somewhere to approve and an id to ask
+   * about -- never with a result, because the customer has not approved yet.
+   */
+  startPayment(
+    id: string,
+    body: { method: 'upi'; vpa?: string },
+    email?: string,
+  ): Promise<PaymentIntentResponse>;
+  /** What became of an attempt. */
+  paymentStatus(intentId: string): Promise<PaymentIntentResponse>;
   /**
    * Booking a class. `email` is required of a stranger and ignored for a
    * signed-in buyer, whose account already carries one -- the page asks for it
@@ -93,6 +105,9 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
       getOrder: (id) => getOrder(id),
       payOrder: (id, card) => payOrder(id, card),
       cancelOrder: (id) => cancelOrder(id),
+      startPayment: (id, body) => startPayment(id, body),
+      // Only a shop host can ask: the tenant has to come from the address.
+      paymentStatus: () => Promise.reject(new Error('a shop host is needed to check a payment')),
       book: (body, key) => createBooking(body, key),
       getBooking: (id) => getBooking(id),
     };
@@ -129,6 +144,9 @@ export function commerceFor(shop: Shop | null, signedIn: boolean): ShopCommerce 
     getOrder: async (id) => pub.guestGetOrder(t, await ensure(), id),
     payOrder: async (id, card, email) => pub.guestPayOrder(t, await ensure(), id, card, email),
     cancelOrder: async (id, email) => pub.guestCancelOrder(t, await ensure(), id, email),
+    startPayment: async (id, body, email) =>
+      pub.guestStartPayment(t, await ensure(), id, { ...body, email }),
+    paymentStatus: (intentId) => pub.paymentStatus(t, intentId),
     book: async (body, key, email, name, phone) => {
       if (!email || !name || !phone) {
         throw new Error('a guest booking needs a name, a phone number and an email');

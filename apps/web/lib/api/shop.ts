@@ -2,6 +2,7 @@ import {
   AnnouncementSchema,
   BookingResponseSchema,
   DepositPolicySchema,
+  PaymentIntentResponseSchema,
   ShopContactSchema,
   type Card,
   CartResponseSchema,
@@ -179,3 +180,21 @@ export const joinWaitlist = (tenantId: string, productId: string, email: string)
     body: { email },
     schema: z.object({ waiting: z.literal(true) }),
   });
+
+/** Start a UPI payment as a stranger, on the ticket or the lookup email. */
+export const guestStartPayment = (
+  tenantId: string,
+  guest: string,
+  orderId: string,
+  body: { method: 'upi'; vpa?: string; email?: string },
+) =>
+  request(`${base(tenantId)}/orders/${orderId}/payments`, {
+    method: 'POST',
+    body,
+    schema: PaymentIntentResponseSchema,
+    guest,
+  });
+
+/** What became of an attempt. Public: the intent id is the credential. */
+export const paymentStatus = (tenantId: string, intentId: string) =>
+  request(`${base(tenantId)}/payments/${intentId}`, { schema: PaymentIntentResponseSchema });

@@ -920,3 +920,36 @@
   margin: 0 0 var(--mp-space-5);
   color: var(--mp-ink-soft);
 }
+
+/* ==========================================================================
+   Waiting for a payment that is happening somewhere else
+   ========================================================================== */
+
+.mp-waiting {
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mp-space-4);
+  align-items: flex-start;
+}
+
+.mp-waiting h2 {
+  font-family: var(--mp-font-heading);
+  font-size: var(--mp-text-display, var(--mp-text-xxl));
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.mp-waiting-lead {
+  margin: 0;
+  color: var(--mp-ink-soft);
+}
+
+.mp-waiting-ref {
+  margin: 0;
+  color: var(--mp-muted);
+}
+
+.mp-waiting .ant-progress {
+  width: 100%;
+}

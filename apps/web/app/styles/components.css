@@ -1254,3 +1254,9 @@
   font-size: var(--mp-text-sm);
   color: var(--mp-muted);
 }
+
+.mp-approve-actions {
+  display: flex;
+  gap: var(--mp-space-4);
+  flex-wrap: wrap;
+}

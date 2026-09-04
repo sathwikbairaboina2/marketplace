@@ -2,6 +2,7 @@ import {
   type Card,
   type CheckoutRequest,
   OrderResponseSchema,
+  PaymentIntentResponseSchema,
 } from '@marketplace/contracts';
 import { request } from './http';
 
@@ -16,3 +17,11 @@ export const checkout = (body: CheckoutRequest, idempotencyKey: string) =>
  * awaiting payment, so a retry is a clean 409 rather than a replayed success. */
 export const payOrder = (id: string, card: Card) =>
   request(`/orders/${id}/pay`, { method: 'POST', body: { card }, schema: OrderResponseSchema });
+
+/** Start a UPI payment on an order the signed-in buyer owns. */
+export const startPayment = (orderId: string, body: { method: 'upi'; vpa?: string }) =>
+  request(`/orders/${orderId}/payments`, {
+    method: 'POST',
+    body,
+    schema: PaymentIntentResponseSchema,
+  });
