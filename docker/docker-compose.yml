@@ -139,12 +139,12 @@ services:
       retries: 30
 
   # No ollama service of its own. The model (`qwen3.8:27b`, 17GB) is served by
-  # one shared daemon on this machine -- the research-plugin stack's
-  # `research-ollama`, published on `127.0.0.1:25103` with the GPU attached --
-  # so several projects run against one copy instead of each pulling its own
-  # into a private volume. `host.docker.internal` reaches it from inside this
-  # compose network; `extra_hosts` below makes that name resolve on a Linux
-  # daemon too, where Docker Desktop's automatic entry does not exist.
+  # one shared daemon on this machine -- the Ollama installed on the host, on
+  # its default port 11434 with the GPU attached natively -- so every project
+  # runs against one copy instead of each pulling its own into a private
+  # volume. `host.docker.internal` reaches it from inside this compose
+  # network; `extra_hosts` below makes that name resolve on a Linux daemon
+  # too, where Docker Desktop's automatic entry does not exist.
   # Override OLLAMA_BASE_URL / LLM_MODEL in the environment to point elsewhere.
   ollama-init:
     # A gate, not a server: `ollama pull` against the shared daemon is a no-op
@@ -154,7 +154,7 @@ services:
     # ollama is down -- which reads better than agents' readiness timing out.
     image: ollama/ollama:0.33.1
     environment:
-      OLLAMA_HOST: ${OLLAMA_BASE_URL:-http://host.docker.internal:25103}
+      OLLAMA_HOST: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
     extra_hosts: ['host.docker.internal:host-gateway']
     entrypoint: ['ollama', 'pull', '${LLM_MODEL:-qwen3.8:27b}']
     restart: 'no'
@@ -177,7 +177,7 @@ services:
       ENGINE_BASE_URL: http://engine:3000
       # The shared daemon described above `ollama-init`; both values may be
       # overridden from the environment that runs `docker compose`.
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:25103}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       LLM_MODEL: ${LLM_MODEL:-qwen3.8:27b}
       LOG_LEVEL: info
       DOCS_ENABLED: 'true'
