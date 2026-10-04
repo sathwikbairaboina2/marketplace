@@ -1,239 +1,96 @@
-# Marketplace
+# 🛍️ Marketplace
 
-Multi-tenant commerce and booking platform. Two services, decoupled by an SQS
-FIFO queue:
+> A multi-tenant shop for makers who also teach: one catalogue of products and bookable events, set up by talking to it.
 
-- **MarketplaceEngine** — the deterministic core: CRUD, tenant isolation, and an
-  enforcing per-tenant dynamic schema registry.
-- **MarketplaceAgents** — the conversational layer: a LangGraph.js state machine
-  that turns a chat into a validated schema-change proposal and puts it on the
-  queue. It owns no database.
+**A NestJS engine on a DynamoDB single table, a LangGraph agents service that proposes schema changes and drafts shop content but never applies them, and a Next.js app that is both the public storefront and the seller's cockpit. Tenant isolation, no-oversell stock and capacity, and idempotent checkout are asserted end to end against the full Docker stack.**
 
-Specs and plans:
+<!-- readme-header -->
+[![CI](https://github.com/sathwikbairaboina2/marketplace/actions/workflows/ci.yml/badge.svg)](https://github.com/sathwikbairaboina2/marketplace/actions/workflows/ci.yml) ![NestJS](https://img.shields.io/badge/-NestJS-555) ![Next.js](https://img.shields.io/badge/-Next.js-555) ![TypeScript](https://img.shields.io/badge/-TypeScript-555) ![DynamoDB](https://img.shields.io/badge/-DynamoDB-555) ![LangGraph](https://img.shields.io/badge/-LangGraph-555) ![Docker](https://img.shields.io/badge/-Docker-555)
 
-- `docs/superpowers/specs/2026-08-03-marketplace-engine-design.md`
-- `docs/superpowers/plans/2026-08-03-marketplace-engine.md`
-- `docs/superpowers/specs/2026-08-03-marketplace-agents-design.md`
-- `docs/superpowers/plans/2026-08-03-marketplace-agents.md`
+## What it does
 
-## Layout
+- **Products and bookings in one store.** Products with stock, events with capacity, one cart, one order queue. A pottery studio can sell mugs and run classes without two apps.
+- **A schema that talks back.** Each tenant has a schema registry per entity type, and every write validates tenant-defined `attributes` against it. Forms, search filters and detail rows in the web app are generated from `GET /schemas`. A chat with the agents service produces a validated schema-change proposal; confirming it queues a `PROPOSE_FLOW` message and the engine records a Flow at `status: 'proposed'`. Only a human calling `POST /flows/:id/execute` changes the registry. Changes are add-only, because there is no backfill.
+- **Storefront.** Public shop hosts (`<tenant>.localhost`) with products, events, cart, checkout, order tracking, `robots.txt`, `sitemap.xml` and per-page metadata. Guest checkout uses an HMAC-signed, tenant-bound ticket with order lookup by id plus email.
+- **Payments.** Behind a `PAYMENT_PROVIDER` seam: a fake card provider and a local UPI provider by default, and a Razorpay provider when `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` are set.
+- **Order stages.** Owner-defined stages on an order, visible to the buyer.
+- **Seller cockpit.** `/admin/*` covers dashboard, products, events, orders, bookings, flows, settings, onboarding, an outbox and a chat with the agents.
+- **Agents.** LangGraph.js with a Redis checkpointer: schema-change drafting, an onboarding interview that infers needs and proposes a theme, a copywriter, and an order-support assistant.
+- **Money and errors.** Money is integer minor units plus an ISO-4217 currency, never floats. Every error is an RFC 9457 problem document.
 
-| Path | Contents |
-|---|---|
-| `apps/engine` | NestJS service: auth, products, events, orders, bookings, flows, and the SQS consumer that turns AI-proposed flows into records |
-| `apps/agents` | NestJS service: an authenticated WebSocket gateway backed by a LangGraph.js state machine that turns a chat into a validated schema-change proposal and, on confirmation, pushes a `PROPOSE_FLOW` message onto the queue `apps/engine`'s consumer reads |
-| `apps/web` | Next.js console: a browser client for both services, whose forms, filters and detail rows for tenant-defined `attributes` are generated from the schema registry rather than hand-written |
-| `packages/contracts` | Zod schemas — the single source of truth for entity shapes |
-| `packages/auth` | Shared JWT verifier and tenant context |
-| `docker/` | Compose stack and infrastructure seeding |
+## Architecture
 
-## Running
+```mermaid
+flowchart LR
+  Web["Next.js web :33002<br/>storefront + cockpit"] -->|REST| Engine["Engine :33000<br/>NestJS"]
+  Web -->|socket.io| Agents["Agents :33001<br/>LangGraph.js"]
+  Engine --> DDB[(DynamoDB single table)]
+  Engine --> S3[(S3: product images)]
+  Engine --> Redis[(Redis)]
+  Agents -->|PROPOSE_FLOW| SQS[[SQS FIFO + DLQ]]
+  SQS --> Engine
+  Agents --> Redis
+  Agents -->|HTTP| Ollama["Host Ollama :11434"]
+  Web --> Cognito[cognito-local]
+```
+
+The engine and agents are decoupled by the FIFO queue; agents own no database. The tenant comes only from the `custom:tenant_id` claim on the ID token, and `DynamoRepository` is the only code that builds a partition key, so a cross-tenant query cannot be written. Cross-tenant reads return 404, never 403. Concurrency for stock and capacity uses DynamoDB condition expressions inside `TransactWriteItems`. The queue consumer is a second entry point for a tenant id with no JWT behind it, so it re-validates the id, leaves bad messages unacknowledged so redrive (`maxReceiveCount: 5`) moves them to the DLQ, and deduplicates redelivery per `messageId` in Redis.
+
+## Quickstart
+
+Needs Node 22+, pnpm 9, Docker, and an Ollama daemon on the host with `qwen3.8:27b` (GPU recommended). The stack runs no Ollama of its own; `ollama-init` is only a gate that pulls the model on the host daemon and fails fast if it is down. Override with `OLLAMA_BASE_URL` and `LLM_MODEL`.
 
 ```bash
 pnpm install
-pnpm --filter @marketplace/web exec playwright install chromium   # one-time, for `pnpm e2e`
-pnpm docker:up      # dynamodb-local, localstack (sqs + s3), redis, cognito-local, seed, engine, ollama, ollama-init, agents, web
+pnpm docker:up      # data plane, seed, then engine, agents, web
 pnpm test           # unit + integration
-pnpm e2e            # engine suite, then agents suite, then web suite, then tears down
-pnpm docker:down
+pnpm e2e            # engine, agents, then web suites, then tears down
+pnpm docker:down    # stop and drop volumes
 ```
 
-`pnpm docker:up` runs the `seed` container first. It creates the DynamoDB table,
-the FIFO queue and its DLQ, and a Cognito user pool, then writes the generated
-identifiers to `docker/.env.generated`, which both the engine and agents
-containers read.
+`pnpm docker:up` seeds the DynamoDB table, FIFO queue and DLQ, a Cognito pool, four demo tenants (a seller and a buyer each), their catalogues and photos, and writes generated ids to `docker/.env.generated`. Sign in at <http://localhost:33002> with a seeded persona (see `docker/seed`). Swagger UI is at `http://localhost:33000/api/v1/docs` (engine) and `http://localhost:33001/api/v1/docs` (agents), enabled only when `DOCS_ENABLED=true` with a Cognito endpoint, which is only true in the compose file.
 
-`engine` serves on `:33000`, `agents` on `:33001`, both under `/api/v1`; the
-`web` console is on `:33002`. Every host port is the service's default plus
-30000 (see the table in `CLAUDE.md`); inside the compose network the defaults
-still apply.
+Every host port is the service default plus 30000; inside the compose network the defaults apply.
 
-The stack runs no ollama of its own. `agents` talks to one shared daemon on the
-machine — by default `http://host.docker.internal:25103`, the research-plugin
-stack's `research-ollama`, which holds `qwen3.8:27b` (17GB) for several
-projects — so one copy of the model serves all of them. `ollama-init` is a
-gate, not a server: it runs `ollama pull` against that daemon, a no-op when the
-model is present, and fails fast when the daemon is down. Set
-`OLLAMA_BASE_URL` and `LLM_MODEL` in the environment that runs `docker compose`
-to point anywhere else. `agents`' readiness (`GET /api/v1/health/ready`) is only
-green once Redis answers, the engine reports ready, *and* that daemon lists the
-configured model — not just that it is listening.
+| Port | Service |
+| --- | --- |
+| 33000 | engine |
+| 33001 | agents |
+| 33002 | web |
+| 34566 | localstack (SQS, S3) |
+| 36379 | redis |
+| 38000 | dynamodb-local |
+| 39229 | cognito-local |
 
-`pnpm docker:down` and `pnpm e2e`'s automatic teardown wipe the stack's state
-(in particular the Cognito pool) so every run starts from a clean data plane;
-the model lives outside this stack and is never touched.
-
-With the stack up, Swagger UI is at `http://localhost:33000/api/v1/docs` (engine)
-and `http://localhost:33001/api/v1/docs` (agents). Each page authorizes itself on
-load: it calls its own `POST /api/v1/dev/token`, a dev-only endpoint that mints a
-Cognito ID token for a fixed identity (`DEV_TENANT_ID`/`DEV_USERNAME`) and hands
-it to Swagger UI's "Try it out". Neither the docs page nor `/dev/token` exists
-unless `DOCS_ENABLED=true` **and** `COGNITO_ENDPOINT` is set — true only in
-`docker/docker-compose.yml`, never in a deployed build.
-
-## The console
-
-`http://localhost:33002` is a browser client for both services. Sign in with any
-of eight seeded personas — four tenants, a seller and a buyer each — all sharing
-the password `Passw0rd!`:
-
-| Username | Tenant | Role | Shop |
-|---|---|---|---|
-| `acme-admin` / `acme-buyer` | `acme` | admin / buyer | handmade homeware, 6 products, 2 events |
-| `globex-admin` / `globex-buyer` | `globex` | admin / buyer | site safety and workwear, 2 products |
-| `nimbus-admin` / `nimbus-buyer` | `nimbus` | admin / buyer | rain gear, 4 products, 1 event |
-| `verde-admin` / `verde-buyer` | `verde` | admin / buyer | garden goods, 2 products |
-
-`globex` exists so tenant isolation is visible rather than merely asserted:
-signed in as Globex, none of Acme's catalogue is reachable, including by pasting
-a product URL. Every tenant has a buyer because an order is only visible to the
-user whose `sub` placed it — a tenant with no buyer has no visible sales.
-
-The catalogue, its product photographs, and one order (plus a booking where the
-tenant has events) are seeded on every `docker:up` from
-`docker/seed/fixtures/catalogue.json`. `nimbus` additionally ships the result of
-an agent conversation: an applied Flow that added `waterproofRating` to Product,
-so the registry-driven UI has something to render on a cold stack.
-
-Sign-in posts to `/api/login`, a Next.js route handler that calls Cognito
-server-side; every other request goes straight from the browser to the engine's
-REST API or the agents' WebSocket. The persona list and that password come from
-`DEV_PERSONAS`/`DEV_PASSWORD`, which the seed derives from its own `DEMO_USERS`
-and writes into `docker/.env.generated` — they are deliberately not repeated in
-`docker-compose.yml`, since a list kept in two places will disagree with itself.
-`/api/personas` reads them per request, and they are absent from any build that
-does not set them.
-
-Role selects which navigation is shown and nothing more. **It is not an
-authorization boundary** — the engine enforces tenant isolation on every route
-and enforces nothing about role, so an admin URL typed by hand works perfectly
-well for a buyer.
-
-An admin can attach photographs when creating a product. The browser posts each
-file to the engine, which checks its size and reads its magic number — a
-declared `image/png` that is really an HTML document is refused — and then
-writes it to the `marketplace-media` bucket in LocalStack. The stored objects
-are **public-read by design**, so an `<img>` can load one with no credentials
-and no signing round-trip; tenant isolation therefore does not extend to an
-image URL. Images can only be set when a product is created, because the engine
-has no update routes.
-
-The console has two faces. `/admin/*` is a back-office: a dark sidebar grouped
-into Catalogue, Sales and Schema, with the tenant shown prominently in its foot
-because switching between `acme` and `globex` is how tenant isolation reads.
-Everything else is a storefront: a light header, a hero describing the catalogue
-from live data, a persistent filter rail and a product grid. Both share one
-palette, and a theme toggle switches light and dark; the choice is stored in
-`localStorage` under `marketplace.theme` and applied before first paint, so
-nothing flashes on load.
-
-Below `lg` the sidebar becomes a drawer, and below `md` the filter rail becomes
-a sheet. Tables scroll horizontally rather than reflowing -- cursor pagination
-gives no total to summarise, so there is no honest narrow layout for them.
-
-Forms, search filters and detail rows for tenant-defined `attributes` are
-generated from `GET /schemas`. Executing a flow raises the registry version and
-the console re-reads it, so a field an agent proposed appears everywhere it
-belongs without a page reload and without a line of UI code naming it.
-
-## The conversation
-
-A client connects a WebSocket to `/agents` on port 33001, passing a Cognito ID
-token in the socket.io handshake `auth.token`. Events are `thread.start`,
-`thread.resume`, `message`, `confirm`, `reject`; the server replies with `state`
-snapshots and `error` problem documents. Every payload shape is exported from
-`@marketplace/contracts`.
-
-Confirming a proposal does not change any schema. It queues a `PROPOSE_FLOW`
-message; the Engine records a Flow at `status: 'proposed'`, and a human applies
-it with `POST /api/v1/flows/:id/execute`.
-
-## API surface
-
-All routes are under `/api/v1` and require a valid Cognito ID token (`Authorization: Bearer
-<token>`) except `/health/live` and `/health/ready`.
-
-| Method & path | Purpose |
-|---|---|
-| `POST /products` | Create a product |
-| `GET /products` | List the tenant's products (paginated) |
-| `GET /products/:id` | Get a product by id |
-| `POST /products/search` | Search products by core fields and dynamic `attributes` |
-| `POST /events` | Create an event |
-| `GET /events` | List the tenant's events (paginated) |
-| `GET /events/:id` | Get an event by id |
-| `POST /orders` | Place an order (locks unit prices, decrements stock transactionally) |
-| `GET /orders` | List the caller's own orders (paginated) |
-| `GET /orders/:id` | Get one of the caller's own orders |
-| `POST /bookings` | Book event tickets (enforces capacity transactionally) |
-| `GET /bookings` | List the caller's own bookings (paginated) |
-| `GET /bookings/:id` | Get one of the caller's own bookings |
-| `POST /flows` | Propose a schema change (`status: 'proposed'`, never auto-applied) |
-| `POST /flows/:id/execute` | Apply a proposed Flow's diff to the tenant's registry |
-| `GET /flows` | List the tenant's flows (paginated) |
-| `GET /flows/:id` | Get a flow by id |
-| `POST /uploads/product-image` | Store a product image (multipart `file`); returns its public URL |
-| `GET /me` | Return the caller's verified tenant/user/role, for debugging |
-
-List endpoints accept `?limit=` (1-100, default 25) and `?cursor=` (an opaque, base64-encoded
-`LastEvaluatedKey`) and return `{ items, nextCursor }`.
-
-## Idempotency
-
-`POST /orders` and `POST /bookings` accept an `Idempotency-Key` header. It is required, not
-optional — clients and load balancers retry, and neither double-charging nor double-booking is
-acceptable. Submitting the same key twice for the same tenant and user returns the stored
-response from the first request rather than creating a second order or booking; submitting it
-again while the first request is still in flight returns `409 request-in-progress`. Keys are
-scoped per tenant *and* per user (`idem:<tenantId>:<userId>:<key>`), so two different users
-cannot collide on a key one of them chose and read each other's response.
+Per package: `pnpm --filter @marketplace/engine test:e2e` (engine suites against a running stack), `pnpm --filter @marketplace/web e2e:journeys` (browser journeys), `pnpm --filter @marketplace/web ui:campaign`. Run the whole repo with `npx turbo run test --concurrency=1`; parallel runs have produced unrelated red suites. `npx turbo run typecheck --concurrency=1` is what CI runs.
 
 ## Invariants
 
-These five properties are asserted end to end against the full Docker stack, not just unit
-tested:
+Asserted end to end against the Docker stack, not only unit tested:
 
-1. **Tenant isolation** — a request for another tenant's resource by exact id returns 404, never
-   403 or the resource itself.
-2. **No oversell** — concurrent bookings against a capacity-limited event never exceed capacity;
-   losers get 409, not a corrupted counter.
-3. **No overselling stock** — the same guarantee for concurrent orders against limited product
-   stock.
-4. **Idempotency** — the same `Idempotency-Key` submitted twice produces exactly one order (or
-   booking) and one stock decrement (or capacity claim), never two.
-5. **Flow lifecycle** — a proposed Flow never mutates the registry until a human calls
-   `POST /flows/:id/execute`; executing it is itself idempotent (re-executing an applied Flow
-   does not bump the version a second time).
+1. **Tenant isolation.** Another tenant's resource by exact id returns 404.
+2. **No oversell of capacity.** Concurrent bookings never exceed event capacity; losers get 409.
+3. **No oversell of stock.** The same for concurrent orders.
+4. **Idempotency.** `POST /orders` and `POST /bookings` require an `Idempotency-Key`; the same key twice yields one order or booking. A repeat while the first is in flight returns `409 request-in-progress`. Keys are scoped per tenant and user.
+5. **Flow lifecycle.** A proposed Flow never mutates the registry until executed, and executing twice does not bump the version twice.
 
-## Design notes
+Role selects navigation in the web app and is not an authorization boundary: the engine enforces tenant isolation on every route, and role checks only on admin-only routes.
 
-- **Tenant isolation** — the tenant comes only from the `custom:tenant_id` claim
-  on the ID token. `DynamoRepository` is the only code that builds a partition
-  key, and its methods take no tenant argument, so a cross-tenant query cannot be
-  written. Cross-tenant reads return 404, never 403.
-- **Dynamic attributes** — each tenant has a schema registry record per entity
-  type. Every write validates `attributes` against it. Flows mutate the registry.
-- **Add-only schema changes** — there is no backfill, so field removal and type
-  changes are rejected. Attributes added by a Flow are absent from records
-  written earlier, and `POST /products/search` will not match those records.
-- **Money** — integer minor units plus an ISO-4217 currency. Never floats.
-- **Concurrency** — stock and event capacity are enforced by DynamoDB condition
-  expressions inside `TransactWriteItems`, not by read-then-write in application
-  code.
-- **AI-proposed schema changes never auto-apply** — the SQS consumer
-  (`apps/engine/src/messaging`) turns a `PROPOSE_FLOW` message into a Flow at
-  `status: 'proposed'` and nothing more; only a human calling
-  `POST /flows/:id/execute` can apply it. The consumer is a second,
-  unauthenticated entry point for a tenant id — unlike every HTTP route, it has
-  no JWT behind it — so it re-validates the tenant id against the same pattern
-  the auth chokepoint (`claims.ts`) enforces before that value ever reaches a
-  DynamoDB key. A message that fails validation, fails schema parsing, or is
-  not valid JSON is left unacknowledged rather than deleted, so the queue's
-  redrive policy (`maxReceiveCount: 5`) moves it to the DLQ for forensics
-  instead of discarding it silently. Redelivery is deduplicated per `messageId`
-  in Redis so a retried message never creates a second Flow. The queue is FIFO
-  with `MessageGroupId` set to the tenant id, so a poison message (one that
-  keeps failing, e.g. malformed JSON) head-of-line-blocks the rest of *that
-  tenant's* queued messages for up to five receive attempts before it moves to
-  the DLQ and processing for that tenant resumes — other tenants' groups are
-  unaffected.
+## Project layout
+
+```
+apps/engine          NestJS: auth, products, events, orders, bookings, cart, checkout, payments, flows, registry, storefront, SQS consumer
+apps/agents          NestJS: WebSocket gateway, LangGraph graphs, copywriter, support
+apps/web             Next.js: (shop) storefront and (admin) cockpit
+packages/contracts   Zod schemas, the single source of truth for entity shapes
+packages/auth        shared JWT verifier and tenant context
+packages/openapi     OpenAPI document support
+docker/              Compose stack and seed
+docs/                STATUS, ROADMAP, DECISIONS, backlog, specs and plans under docs/superpowers
+```
+
+Start with `docs/STATUS.md` for what was last verified, `docs/DECISIONS.md` for product calls, and `CLAUDE.md` for the traps this machine springs (IPv6 loopback stalls, parallel test runs).
+
+## Status
+
+Private working prototype, past the original engine and agents specs: cart, checkout, guest checkout, UPI, SEO and order stages are built. `docs/ROADMAP.md` is a proposal and nothing in it is built unless `docs/STATUS.md` says so. Razorpay is wired but needs real credentials to exercise. CI runs typecheck, unit tests and the engine end-to-end suite on a runner; the agents and web suites need the shared model and run locally. The last recorded CI run (a manual dispatch on 3 September 2026) passed. No LICENSE file.
